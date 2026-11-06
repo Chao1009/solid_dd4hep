@@ -1,0 +1,2658 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+solid_lineview -- clean vector line drawings of Geant4 DAWNFILE (.prim) scenes.
+
+A dependency-light replacement for the DAWN (Fukui Renderer) + DAWNCUT workflow:
+
+    Geant4 /vis/open DAWNFILE  ->  g4_XXXX.prim  ->  solid_lineview.py  ->  SVG / PDF / EPS / PNG
+
+Rendering modes
+  hlr        3-D hidden-line removal: crease / boundary / silhouette edges, visibility from a
+             high-resolution depth buffer, output as exact vector polylines   (DAWN mode 4)
+  section    exact 2-D cut of every solid by a plane (closed outlines, optional colour fill)
+  wireframe  feature (or all) edges without hidden-line removal               (DAWN mode 1)
+  surface    flat-shaded hidden-surface image + visible edges                 (DAWN mode 3)
+Half-space cut-aways (DAWNCUT equivalent, any number of planes, capped) work with all modes.
+
+Hard dependency: numpy.  SVG, PDF and EPS are written by hand; PNG needs pycairo or
+matplotlib (whichever is importable).  Python >= 3.8.
+
+Run `solid_lineview.py --help` for the command line, see README.md for the design notes and
+PRIM_FORMAT.md for the .prim grammar.
+"""
+
+import argparse
+import math
+import os
+import re
+import sys
+import time
+import zlib
+import struct
+import warnings
+from collections import Counter, defaultdict
+
+import numpy as np
+
+__version__ = "0.2.0"
+
+TWO_PI = 2.0 * math.pi
+VERBOSE = 1
+_TIMINGS = []
+
+
+def log(msg, level=1):
+    if VERBOSE >= level:
+        print(msg, file=sys.stderr, flush=True)
+
+
+class timed:
+    """Context manager recording wall-clock time of a pipeline stage (--profile)."""
+
+    def __init__(self, label):
+        self.label = label
+
+    def __enter__(self):
+        self.t0 = time.perf_counter()
+        return self
+
+    def __exit__(self, *exc):
+        dt = time.perf_counter() - self.t0
+        _TIMINGS.append((self.label, dt))
+        log("  [%7.2f s] %s" % (dt, self.label), 2)
+        return False
+
+
+def _unit(v):
+    v = np.asarray(v, dtype=float)
+    n = float(np.linalg.norm(v))
+    return v / n if n > 0 else v
+
+
+_UNITS = {"nm": 1e-6, "um": 1e-3, "mm": 1.0, "cm": 10.0, "dm": 100.0, "m": 1000.0}
+
+
+def parse_length(s):
+    """'12', '12mm', '1.5m', '-30cm' -> mm (Geant4 .prim files are in mm)."""
+    if isinstance(s, (int, float)):
+        return float(s)
+    m = re.fullmatch(r"\s*([-+0-9.eE]+)\s*([a-z]*)\s*", s)
+    if not m:
+        raise argparse.ArgumentTypeError("bad length '%s'" % s)
+    u = m.group(2) or "mm"
+    if u not in _UNITS:
+        raise argparse.ArgumentTypeError("unknown unit '%s' (use nm um mm cm m)" % u)
+    return float(m.group(1)) * _UNITS[u]
+
+
+def parse_color(s):
+    s = s.strip()
+    named = {"black": (0, 0, 0), "white": (1, 1, 1), "red": (1, 0, 0), "green": (0, 0.6, 0),
+             "blue": (0, 0, 1), "gray": (0.5, 0.5, 0.5), "grey": (0.5, 0.5, 0.5),
+             "none": None}
+    if s.lower() in named:
+        return named[s.lower()]
+    if s.startswith("#") and len(s) == 7:
+        return tuple(int(s[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+    parts = [float(x) for x in re.split(r"[ ,]+", s) if x]
+    if len(parts) == 3:
+        if max(parts) > 1.0:
+            parts = [p / 255.0 for p in parts]
+        return tuple(parts)
+    raise argparse.ArgumentTypeError("bad colour '%s' (name, #rrggbb or r,g,b)" % s)
+
+
+# =============================================================================
+#  1.  Primitive tessellation (DAWN / g4.prim CSG primitives -> polygon meshes)
+# =============================================================================
+#  All builders return (V, F): V (n,3) local coordinates, F (m,4) int vertex indices with
+#  -1 padding for triangles.  Duplicated vertices (axis points, collapsed rings) are
+#  welded and degenerate faces dropped by _clean_mesh.  Faces are oriented outwards
+#  (counter-clockwise seen from outside, same as G4Polyhedron); _orient_closed() flips a
+#  closed mesh with negative signed volume, as a safety net.
+
+_HEXA_FACES = np.array([[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4],
+                        [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], dtype=np.int64)
+
+
+def _hexahedron(bottom, top, dz):
+    """bottom/top: 4 (x,y) points ordered (-x,-y), (+x,-y), (+x,+y), (-x,+y)."""
+    V = np.array([[x, y, -dz] for x, y in bottom] + [[x, y, dz] for x, y in top], float)
+    return V, _HEXA_FACES.copy()
+
+
+def prim_box(dx, dy, dz):
+    q = [(-dx, -dy), (dx, -dy), (dx, dy), (-dx, dy)]
+    return _hexahedron(q, q, dz)
+
+
+def prim_trd(dx1, dx2, dy1, dy2, dz):
+    return _hexahedron([(-dx1, -dy1), (dx1, -dy1), (dx1, dy1), (-dx1, dy1)],
+                       [(-dx2, -dy2), (dx2, -dy2), (dx2, dy2), (-dx2, dy2)], dz)
+
+
+def prim_trap(dz, th, ph, h1, bl1, tl1, a1, h2, bl2, tl2, a2):
+    """DAWN /Trap (alpha has the opposite sign of G4Trap; see FRTrapForBrep.cc)."""
+    cx = dz * math.tan(th) * math.cos(ph)
+    cy = dz * math.tan(th) * math.sin(ph)
+    d1 = h1 * math.tan(a1)
+    d2 = h2 * math.tan(a2)
+    bot = [(-bl1 + d1 - cx, -h1 - cy), (bl1 + d1 - cx, -h1 - cy),
+           (tl1 - d1 - cx, h1 - cy), (-tl1 - d1 - cx, h1 - cy)]
+    top = [(-bl2 + d2 + cx, -h2 + cy), (bl2 + d2 + cx, -h2 + cy),
+           (tl2 - d2 + cx, h2 + cy), (-tl2 - d2 + cx, h2 + cy)]
+    return _hexahedron(bot, top, dz)
+
+
+def prim_para(dx, dy, dz, tan_alpha, tt_cphi, tt_sphi):
+    cx, cy, d = dz * tt_cphi, dz * tt_sphi, dy * tan_alpha
+    bot = [(-dx - d - cx, -dy - cy), (dx - d - cx, -dy - cy),
+           (dx + d - cx, dy - cy), (-dx + d - cx, dy - cy)]
+    top = [(-dx - d + cx, -dy + cy), (dx - d + cx, -dy + cy),
+           (dx + d + cx, dy + cy), (-dx + d + cx, dy + cy)]
+    return _hexahedron(bot, top, dz)
+
+
+def _nphi(ndiv, dphi):
+    """Number of azimuthal steps, same rule as HepPolyhedron::RotateAroundZ."""
+    return max(1, int(ndiv * min(dphi, TWO_PI) / TWO_PI + 0.5))
+
+
+def revolve_ladder(I, O, sphi, dphi, nseg, closed=False):
+    """Surface of revolution around z of the region between two (r,z) polylines.
+
+    I, O : (n,2) inner / outer profile points (k-th points are 'rungs' of a ladder).
+    closed : the profile polylines are closed loops (torus); otherwise the first and last
+             rungs (I0-O0, In-On) are part of the boundary (end discs / cones).
+    Partial phi ranges get planar end caps built from the ladder quads.
+    """
+    I = np.asarray(I, float)
+    O = np.asarray(O, float)
+    n = len(I)
+    full = dphi >= TWO_PI - 1e-9
+    nph = nseg if full else nseg + 1
+    phis = sphi + (dphi if not full else TWO_PI) * np.arange(nph) / nseg
+    prof = np.vstack([I, O])                                    # point p: 0..n-1 inner, n.. outer
+    c, s = np.cos(phis), np.sin(phis)
+    V = np.empty((2 * n, nph, 3))
+    V[:, :, 0] = prof[:, 0:1] * c[None, :]
+    V[:, :, 1] = prof[:, 0:1] * s[None, :]
+    V[:, :, 2] = prof[:, 1:2]
+    V = V.reshape(-1, 3) + 0.0                                  # -0.0 -> 0.0 for welding
+    j = np.arange(nseg)
+    j1 = (j + 1) % nph if full else j + 1
+
+    def vid(p, jj):
+        return p * nph + jj
+
+    # profile boundary traversed clockwise in (r,z) => outward normals for quads below
+    edges = [(k, k + 1) for k in range(n - 1)]
+    edges += [(n - 1, 0)] if closed else [(n - 1, 2 * n - 1)]
+    edges += [(n + k, n + k - 1) for k in range(n - 1, 0, -1)]
+    edges += [(n, 2 * n - 1)] if closed else [(n, 0)]
+    faces = []
+    for p, q in edges:
+        faces.append(np.stack([vid(p, j), vid(q, j), vid(q, j1), vid(p, j1)], 1))
+    if not full:
+        ks = list(range(n - 1)) + ([n - 1] if closed else [])
+        for k in ks:
+            k1 = (k + 1) % n
+            e = nph - 1
+            faces.append(np.array([[vid(k, e), vid(k1, e), vid(n + k1, e), vid(n + k, e)],
+                                   [vid(n + k, 0), vid(n + k1, 0), vid(k1, 0), vid(k, 0)]]))
+    return V, np.vstack(faces).astype(np.int64)
+
+
+def prim_tubs(rmin, rmax, dz, sphi, dphi, ndiv):
+    return revolve_ladder([(rmin, -dz), (rmin, dz)], [(rmax, -dz), (rmax, dz)],
+                          sphi, dphi, _nphi(ndiv, dphi))
+
+
+def prim_cons(rmin1, rmax1, rmin2, rmax2, dz, sphi, dphi, ndiv):
+    return revolve_ladder([(rmin1, -dz), (rmin2, dz)], [(rmax1, -dz), (rmax2, dz)],
+                          sphi, dphi, _nphi(ndiv, dphi))
+
+
+def prim_sphereseg(rmin, rmax, sth, dth, sphi, dphi, ndiv):
+    nth = max(1, int(((ndiv + 1) // 2) * min(dth, math.pi) / math.pi + 0.5))
+    th = (sth + dth) - dth * np.arange(nth + 1) / nth                 # z increasing
+    I = np.stack([rmin * np.sin(th), rmin * np.cos(th)], 1)
+    O = np.stack([rmax * np.sin(th), rmax * np.cos(th)], 1)
+    return revolve_ladder(I, O, sphi, dphi, _nphi(ndiv, dphi))
+
+
+def prim_torus(rmin, rmax, rtor, sphi, dphi, ndiv):
+    na = max(3, ndiv)
+    a = TWO_PI * np.arange(na) / na
+    I = np.stack([rtor + rmin * np.cos(a), rmin * np.sin(a)], 1)
+    O = np.stack([rtor + rmax * np.cos(a), rmax * np.sin(a)], 1)
+    return revolve_ladder(I, O, sphi, dphi, _nphi(ndiv, dphi), closed=True)
+
+
+def prim_polycone(sphi, dphi, z, rmin, rmax, ndiv, nsides=None):
+    I = np.stack([rmin, z], 1)
+    O = np.stack([rmax, z], 1)
+    if nsides:      # DAWN /PolyGon: radii are corner radii, nsides steps over dphi
+        return revolve_ladder(I, O, sphi, dphi, int(nsides))
+    return revolve_ladder(I, O, sphi, dphi, _nphi(ndiv, dphi))
+
+
+def _weld(V, F):
+    """Merge bit-identical vertices; returns (V', F')."""
+    if len(V) == 0:
+        return V, F
+    Vc = V + 0.0
+    order = np.lexsort((Vc[:, 2], Vc[:, 1], Vc[:, 0]))
+    Vs = Vc[order]
+    new = np.ones(len(V), bool)
+    new[1:] = np.any(Vs[1:] != Vs[:-1], axis=1)
+    uid = np.cumsum(new) - 1
+    remap = np.empty(len(V), np.int64)
+    remap[order] = uid
+    Vn = Vs[new]
+    Fn = np.where(F >= 0, remap[np.maximum(F, 0)], -1)
+    return Vn, Fn
+
+
+def _clean_faces(F, Fvis=None):
+    """Drop repeated consecutive vertices; quads with 3 distinct vertices become
+    triangles, faces with < 3 distinct vertices are removed."""
+    F = np.asarray(F, np.int64)
+    if Fvis is None:
+        Fvis = np.ones(F.shape, bool)
+    m = len(F)
+    if m == 0:
+        return F.reshape(0, 4), Fvis.reshape(0, 4)
+    nv = np.where(F[:, 3] >= 0, 4, 3)
+    nxt = np.where(nv[:, None] == 4, F[:, [1, 2, 3, 0]], F[:, [1, 2, 0, 0]])
+    keep = F != nxt
+    keep[:, 3] &= nv == 4
+    keep &= F >= 0
+    cnt = keep.sum(1)
+    ok = cnt >= 3
+    if np.all(cnt[ok] == nv[ok]) and ok.all():
+        return F, Fvis
+    order = np.argsort(~keep, axis=1, kind="stable")
+    Fk = np.take_along_axis(F, order, 1)
+    Vk = np.take_along_axis(Fvis, order, 1)
+    Fk[:, 3] = np.where(cnt == 4, Fk[:, 3], -1)
+    return Fk[ok], Vk[ok]
+
+
+def _signed_volume(V, F):
+    tri = _triangulate(F)
+    a, b, c = V[tri[:, 0]], V[tri[:, 1]], V[tri[:, 2]]
+    return float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum() / 6.0)
+
+
+def _triangulate(F):
+    """(m,4) faces -> (k,3) triangles (fan); also returns nothing else."""
+    tri = F[:, :3]
+    q = F[:, 3] >= 0
+    return np.vstack([tri, F[q][:, [0, 2, 3]]])
+
+
+def finish_primitive(V, F):
+    V, F = _weld(V, F)
+    F, _ = _clean_faces(F)
+    if len(F) and _signed_volume(V, F) < 0:
+        F = _flip_faces(F)
+    return V, F
+
+
+def _flip_faces(F):
+    G = F.copy()
+    q = F[:, 3] >= 0
+    G[q] = F[q][:, ::-1]
+    G[~q, :3] = F[~q][:, 2::-1]
+    return G
+
+
+# =============================================================================
+#  2.  .prim parser
+# =============================================================================
+
+class Solid:
+    __slots__ = ("index", "name", "depth", "color", "wire", "kind", "v0", "v1", "f0", "f1",
+                 "line", "parent", "path", "closed", "bmin", "bmax", "has_daughters")
+
+    def __repr__(self):
+        return "Solid(%d %s d=%d %s)" % (self.index, self.name, self.depth, self.kind)
+
+
+class PrimScene:
+    """Everything read from a .prim file, geometry concatenated into global arrays.
+
+    V      (Nv,3)  world coordinates [mm]
+    F      (Nf,4)  vertex indices (-1 padded triangles)
+    Fvis   (Nf,4)  DAWN edge-visibility flag of edge k (vertex k -> k+1)
+    fsolid (Nf,)   owning solid index
+    """
+
+    def __init__(self):
+        self.solids = []
+        self.V = np.zeros((0, 3))
+        self.F = np.zeros((0, 4), np.int64)
+        self.Fvis = np.zeros((0, 4), bool)
+        self.fsolid = np.zeros(0, np.int32)
+        self.polylines = []      # (rgb, (n,3))
+        self.markers = []        # (kind 'circle'|'square', rgb, xyz, size, screen?)
+        self.texts = []          # (rgb, xyz, size, dx, dy, text, screen?, font)
+        self.texts2d = []        # (rgb, x_mm, y_mm, size_pt, text, font)
+        self.bbox = None         # /BoundingBox
+        self.clip_comments = []  # '#/ClippingPlane a b c d' written by DAWNCUT
+        self.counts = Counter()
+        self.warnings = Counter()
+
+
+def _floats(s):
+    return [float(x) for x in s.split()]
+
+
+def _fromstring(s, dtype):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return np.fromstring(s, dtype=dtype, sep=" ")
+
+
+def parse_prim(path):
+    """Parse a g4.prim (format 2.4) file written by Geant4's DAWNFILE driver."""
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    # Geant4 11.x writes /MarkText2D(S) strings through a dangling pointer (G4Text::GetText
+    # returns by value), so arbitrary bytes can appear: never fail on decoding.
+    text = raw.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+    sc = PrimScene()
+
+    color = (1.0, 1.0, 1.0)
+    wire = False
+    visible = True
+    ndiv = 24
+    font = "Times-Roman"
+    O = np.zeros(3)
+    M = np.eye(3)                         # rows: e1, e2, e3 (local -> world)
+    pv_name, pv_depth = None, -1
+    blocks_V, blocks_F, blocks_Fvis = [], [], []
+    nvtot = 0
+    nftot = 0
+    cache = {}
+
+    def to_world(P):
+        return P @ M + O
+
+    def add_solid(kind, Vloc, F, Fvis, lineno):
+        nonlocal nvtot, nftot, pv_name, pv_depth
+        if not visible or len(F) == 0:
+            pv_name = None
+            return
+        s = Solid()
+        s.index = len(sc.solids)
+        s.name = pv_name if pv_name is not None else "<%s@%d>" % (kind, lineno)
+        s.depth = pv_depth if pv_name is not None else -1
+        s.color = color
+        s.wire = wire
+        s.kind = kind
+        s.line = lineno
+        s.v0, s.v1 = nvtot, nvtot + len(Vloc)
+        s.f0, s.f1 = nftot, nftot + len(F)
+        Vw = to_world(Vloc)
+        s.bmin, s.bmax = Vw.min(0), Vw.max(0)
+        blocks_V.append(Vw)
+        blocks_F.append(np.where(F >= 0, F + nvtot, -1))
+        blocks_Fvis.append(Fvis)
+        nvtot += len(Vloc)
+        nftot += len(F)
+        sc.solids.append(s)
+        sc.counts[kind] += 1
+        pv_name = None
+
+    def primitive(cmd, args, lineno):
+        key = (cmd, args, ndiv)
+        hit = cache.get(key)
+        if hit is None:
+            v = _floats(args)
+            try:
+                if cmd == "/Box":
+                    VF = prim_box(*v[:3])
+                elif cmd == "/Column":
+                    VF = prim_tubs(0.0, v[0], v[1], 0.0, TWO_PI, ndiv)
+                elif cmd == "/Tubs":
+                    VF = prim_tubs(*v[:5], ndiv)
+                elif cmd == "/Cons":
+                    VF = prim_cons(*v[:7], ndiv)
+                elif cmd == "/Trd":
+                    VF = prim_trd(*v[:5])
+                elif cmd == "/Trap":
+                    VF = prim_trap(*v[:11])
+                elif cmd == "/Parallelepiped":
+                    VF = prim_para(*v[:6])
+                elif cmd == "/Sphere":
+                    VF = prim_sphereseg(0.0, v[0], 0.0, math.pi, 0.0, TWO_PI, ndiv)
+                elif cmd == "/SphereSeg":
+                    VF = prim_sphereseg(*v[:6], ndiv)
+                elif cmd == "/Torus":
+                    VF = prim_torus(*v[:5], ndiv)
+                elif cmd in ("/PolyCone", "/PolyGon"):
+                    if cmd == "/PolyGon":
+                        sphi, dphi, nsides, nz = v[0], v[1], int(v[2]), int(v[3])
+                        rest = v[4:]
+                    else:
+                        sphi, dphi, nz = v[0], v[1], int(v[2])
+                        nsides = None
+                        rest = v[3:]
+                    z = np.array(rest[:nz])
+                    rmin = np.array(rest[nz:2 * nz])
+                    rmax = np.array(rest[2 * nz:3 * nz])
+                    VF = prim_polycone(sphi, dphi, z, rmin, rmax, ndiv, nsides)
+                else:
+                    return
+            except (TypeError, ValueError, IndexError) as exc:
+                sc.warnings["bad %s at line %d: %s" % (cmd, lineno, exc)] += 1
+                return
+            hit = finish_primitive(*VF)
+            cache[key] = hit
+        Vloc, F = hit
+        add_solid(cmd[1:], Vloc, F, np.ones(F.shape, bool), lineno)
+
+    i, n = 0, len(lines)
+    while i < n:
+        s = lines[i].strip()
+        i += 1
+        if not s:
+            continue
+        c0 = s[0]
+        if c0 == "#":
+            if s.startswith("#/PVName"):
+                rest = s[8:]
+                nsp = len(rest) - len(rest.lstrip(" "))
+                pv_depth = max(0, (nsp - 5) // 5)
+                pv_name = rest.strip()
+            elif s.startswith("#/ClippingPlane"):
+                try:
+                    sc.clip_comments.append(tuple(_floats(s[15:])[:4]))
+                except ValueError:
+                    pass
+            continue
+        if c0 == "!":
+            if s.startswith("!ClearData"):
+                blocks_V.clear(); blocks_F.clear(); blocks_Fvis.clear()
+                sc.solids.clear(); sc.polylines.clear(); sc.markers.clear()
+                sc.texts.clear(); sc.texts2d.clear()
+                nvtot = nftot = 0
+            continue
+        parts = s.split(None, 1)
+        cmd = parts[0]
+        args = parts[1] if len(parts) > 1 else ""
+        if cmd == "/Polyhedron":
+            start = i
+            vl, fl = [], []
+            while i < n:
+                b = lines[i].strip()
+                i += 1
+                if b.startswith("/Vertex"):
+                    vl.append(b[7:])
+                elif b.startswith("/Facet"):
+                    fl.append(b[6:])
+                elif b.startswith("/EndPolyhedron"):
+                    break
+                elif b and not b.startswith("#"):
+                    sc.warnings["unexpected '%s' inside /Polyhedron" % b.split()[0]] += 1
+            Vloc = _fromstring(" ".join(vl), float)
+            if len(Vloc) != 3 * len(vl):
+                Vloc = np.array([_floats(x)[:3] for x in vl], float)
+            Vloc = Vloc.reshape(-1, 3)
+            F, Fvis = _parse_facets(fl, len(Vloc), sc, start)
+            # merge exact duplicates (robust adjacency), drop degenerate facets
+            Vloc, F = _weld(Vloc, F)
+            F, Fvis = _clean_faces(F, Fvis)
+            add_solid("Polyhedron", Vloc, F, Fvis, start)
+        elif cmd in ("/Box", "/Column", "/Tubs", "/Cons", "/Trd", "/Trap", "/Parallelepiped",
+                     "/Sphere", "/SphereSeg", "/Torus", "/PolyCone", "/PolyGon"):
+            primitive(cmd, args, i)
+        elif cmd == "/ColorRGB" or cmd == "/DiffuseRGB":
+            try:
+                color = tuple(min(1.0, max(0.0, x)) for x in _floats(args)[:3])
+            except ValueError:
+                sc.warnings["bad /ColorRGB"] += 1
+        elif cmd == "/ForceWireframe" or cmd == "/Transparency":
+            wire = args.strip()[:1] not in ("0", "")
+        elif cmd == "/Visibility":
+            visible = args.strip()[:1] != "0"
+        elif cmd == "/Origin":
+            O = np.array(_floats(args)[:3])
+        elif cmd == "/BaseVector":
+            v = _floats(args)
+            e1, e2 = np.array(v[:3]), np.array(v[3:6])
+            M = np.vstack([e1, e2, np.cross(e1, e2)])
+        elif cmd == "/Ndiv":
+            try:
+                ndiv = max(3, int(float(args)))
+            except ValueError:
+                pass
+        elif cmd == "/BoundingBox":
+            sc.bbox = np.array(_floats(args)[:6])
+        elif cmd == "/Polyline":
+            pts = []
+            while i < n:
+                b = lines[i].strip()
+                i += 1
+                if b.startswith("/PLVertex") or b.startswith("PLVertex"):
+                    pts.append(b.split(None, 1)[1])
+                elif b.startswith("/EndPolyline"):
+                    break
+            if pts and visible:
+                P = _fromstring(" ".join(pts), float).reshape(-1, 3)
+                sc.polylines.append((color, to_world(P)))
+                sc.counts["Polyline"] += 1
+        elif cmd in ("/MarkCircle2D", "/MarkCircle2DS", "/MarkSquare2D", "/MarkSquare2DS"):
+            v = _floats(args)
+            if len(v) >= 4 and visible:
+                kind = "circle" if "Circle" in cmd else "square"
+                sc.markers.append((kind, color, to_world(np.array([v[:3]]))[0], v[3],
+                                   cmd.endswith("S")))
+                sc.counts[cmd[1:]] += 1
+        elif cmd in ("/MarkText2D", "/MarkText2DS"):
+            t = args.split(None, 6)
+            if len(t) >= 7 and visible:
+                try:
+                    xyz = to_world(np.array([[float(t[0]), float(t[1]), float(t[2])]]))[0]
+                    sc.texts.append((color, xyz, float(t[3]), float(t[4]), float(t[5]),
+                                     t[6], cmd.endswith("S"), font))
+                    sc.counts[cmd[1:]] += 1
+                except ValueError:
+                    sc.warnings["bad %s" % cmd] += 1
+        elif cmd == "/Text2DS":
+            t = args.split(None, 3)
+            if len(t) >= 4:
+                try:
+                    sc.texts2d.append((color, float(t[0]), float(t[1]), float(t[2]), t[3], font))
+                except ValueError:
+                    pass
+        elif cmd == "/FontName":
+            font = args.strip() or font
+        elif cmd in ("/SpecularRGB", "/PhongPower", "/CameraPosition", "/TargetPoint",
+                     "/ZoomFactor", "/Scale", "/FocalDistance", "/Wireframe", "/Surface",
+                     "/Lines"):
+            pass
+        else:
+            sc.warnings["unknown command %s" % cmd] += 1
+
+    if blocks_V:
+        sc.V = np.vstack(blocks_V)
+        sc.F = np.vstack(blocks_F).astype(np.int64)
+        sc.Fvis = np.vstack(blocks_Fvis)
+        sc.fsolid = np.repeat(np.arange(len(sc.solids), dtype=np.int32),
+                              [s.f1 - s.f0 for s in sc.solids])
+    _build_hierarchy(sc)
+    return sc
+
+
+def _parse_facets(fl, nv, sc, lineno):
+    m = len(fl)
+    if m == 0:
+        return np.zeros((0, 4), np.int64), np.zeros((0, 4), bool)
+    flat = _fromstring(" ".join(fl), np.int64)
+    if len(flat) == 3 * m:
+        A = np.full((m, 4), 0, np.int64)
+        A[:, :3] = flat.reshape(m, 3)
+        cnt = np.full(m, 3)
+    elif len(flat) == 4 * m:
+        A = flat.reshape(m, 4)
+        cnt = np.full(m, 4)
+    else:
+        cnt = np.array([len(x.split()) for x in fl])
+        if cnt.sum() != len(flat):          # comments or garbage: slow path
+            rows = [[int(t) for t in x.split() if re.fullmatch(r"-?\d+", t)] for x in fl]
+            cnt = np.array([len(r) for r in rows])
+            flat = np.array([t for r in rows for t in r], np.int64)
+        mx = max(4, int(cnt.max()))
+        A = np.zeros((m, mx), np.int64)
+        row = np.repeat(np.arange(m), cnt)
+        col = np.arange(len(flat)) - np.repeat(np.cumsum(cnt) - cnt, cnt)
+        A[row, col] = flat
+    mx = A.shape[1]
+    colidx = np.arange(mx)[None, :]
+    valid = colidx < cnt[:, None]
+    # DAWN: edge (v_{j-1} -> v_j) is invisible if label v_j is negative
+    neg = (A < 0) & valid
+    evis = ~np.roll(neg, -1, axis=1)
+    # roll wraps around within the valid count only for full rows; fix rows with cnt < mx
+    if np.any(cnt < mx):
+        evis = np.ones_like(neg)
+        rr, cc = np.nonzero(neg)
+        evis[rr, (cc - 1) % cnt[rr]] = False
+    idx = np.abs(A) - 1
+    bad = valid & ((idx < 0) | (idx >= nv))
+    if bad.any():
+        sc.warnings["facet index out of range near line %d" % lineno] += 1
+        keep = ~bad.any(1)
+        idx, valid, evis, cnt = idx[keep], valid[keep], evis[keep], cnt[keep]
+    F, Fv = [], []
+    for k in (3, 4):
+        sel = cnt == k
+        if sel.any():
+            f = np.full((sel.sum(), 4), -1, np.int64)
+            f[:, :k] = idx[sel][:, :k]
+            v = np.ones((sel.sum(), 4), bool)
+            v[:, :k] = evis[sel][:, :k]
+            F.append(f)
+            Fv.append(v)
+    big = cnt > 4                                   # n-gons: fan triangulation
+    for r in np.nonzero(big)[0]:
+        k = cnt[r]
+        for t in range(1, k - 1):
+            F.append(np.array([[idx[r, 0], idx[r, t], idx[r, t + 1], -1]]))
+            Fv.append(np.array([[t == 1 and evis[r, 0], evis[r, t],
+                                 t == k - 2 and evis[r, k - 1], True]]))
+    return np.vstack(F), np.vstack(Fv)
+
+
+def _build_hierarchy(sc):
+    """Depth-first order + #/PVName indentation -> parent links.  Invisible envelopes are
+    not written by Geant4, so a candidate parent must also contain the child's bbox."""
+    stack = []
+    for s in sc.solids:
+        s.parent = -1
+        s.has_daughters = False
+        if s.depth < 0:
+            s.path = s.name
+            continue
+        while stack and stack[-1].depth >= s.depth:
+            stack.pop()
+        if stack and stack[-1].depth == s.depth - 1:
+            p = stack[-1]
+            tol = 1e-6 * (1.0 + float(np.abs(p.bmax - p.bmin).max()))
+            if np.all(s.bmin >= p.bmin - tol) and np.all(s.bmax <= p.bmax + tol):
+                s.parent = p.index
+                p.has_daughters = True
+        s.path = (sc.solids[s.parent].path + "/" if s.parent >= 0 else "") + s.name
+        stack.append(s)
+
+
+# =============================================================================
+#  3.  Mesh analysis: normals, triangles, edges
+# =============================================================================
+
+class Mesh:
+    """Static (view independent) derived data of a PrimScene."""
+
+    def __init__(self, sc, crease_deg):
+        self.sc = sc
+        V, F = sc.V, sc.F
+        nf = len(F)
+        quad = F[:, 3] >= 0
+        a, b, c = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
+        d = np.where(quad[:, None], V[np.maximum(F[:, 3], 0)], a)
+        nrm = np.where(quad[:, None], np.cross(c - a, d - b), np.cross(b - a, c - a))
+        ln = np.linalg.norm(nrm, axis=1)
+        self.fnormal = nrm / np.maximum(ln, 1e-300)[:, None]
+        self.farea = 0.5 * ln
+        # triangles (quads split along 0-2)
+        qi = np.nonzero(quad)[0]
+        self.tri = np.vstack([F[:, :3], F[qi][:, [0, 2, 3]]])
+        self.tri_face = np.concatenate([np.arange(nf), qi]).astype(np.int64)
+        # edges of the original polygons
+        nxt = np.where(quad[:, None], F[:, [1, 2, 3, 0]], F[:, [1, 2, 0, 0]])
+        valid = np.ones((nf, 4), bool)
+        valid[:, 3] = quad
+        ea, eb = F[valid], nxt[valid]
+        ef = np.broadcast_to(np.arange(nf)[:, None], (nf, 4))[valid]
+        evis = sc.Fvis[valid]
+        lo, hi = np.minimum(ea, eb), np.maximum(ea, eb)
+        nv = max(1, len(V))
+        key = lo * nv + hi
+        order = np.argsort(key, kind="stable")
+        key, lo, hi, ef, evis = key[order], lo[order], hi[order], ef[order], evis[order]
+        fwd = (ea < eb)[order]
+        first = np.ones(len(key), bool)
+        first[1:] = key[1:] != key[:-1]
+        start = np.nonzero(first)[0]
+        cnt = np.diff(np.append(start, len(key)))
+        self.e0, self.e1 = lo[start], hi[start]
+        self.ef1 = ef[start]
+        has2 = cnt >= 2
+        self.ef2 = np.where(has2, ef[np.minimum(start + 1, len(key) - 1)], -1)
+        self.ecount = cnt
+        # DAWN edge flags: drawn as feature only if visible in at least one face
+        evis_any = np.maximum.reduceat(evis.astype(np.int8), start).astype(bool) \
+            if len(start) else np.zeros(0, bool)
+        self.esolid = sc.fsolid[self.ef1] if len(self.ef1) else np.zeros(0, np.int32)
+        # orientation consistency (both faces traverse the edge in opposite directions)
+        same_dir = has2 & (fwd[start] == fwd[np.minimum(start + 1, len(key) - 1)])
+        n1 = self.fnormal[self.ef1]
+        n2 = self.fnormal[np.maximum(self.ef2, 0)]
+        cosang = np.einsum("ij,ij->i", n1, n2)
+        crease = has2 & (cosang < math.cos(math.radians(crease_deg)))
+        self.ecrease = crease & evis_any
+        self.eboundary = (cnt == 1) & evis_any
+        self.enonmanifold = cnt > 2
+        self.efeature = self.ecrease | self.eboundary | self.enonmanifold
+        # per solid: closed = every edge has exactly two faces with opposite orientation
+        nsol = len(sc.solids)
+        openish = (cnt != 2) | same_dir
+        bad = np.bincount(self.esolid[openish], minlength=nsol) if nsol else np.zeros(0)
+        for s in sc.solids:
+            s.closed = bool(bad[s.index] == 0)
+        self.n_inconsistent = int(same_dir.sum())
+
+
+# =============================================================================
+#  4.  Camera
+# =============================================================================
+
+class Camera:
+    """eye: unit vector from the target towards the camera (Geant4 'viewpoint direction').
+    dist None -> orthographic, else perspective with the camera at target + dist*eye."""
+
+    def __init__(self, eye, up=(0, 1, 0), target=(0, 0, 0), dist=None):
+        e = _unit(eye)
+        u0 = _unit(up)
+        r = np.cross(u0, e)
+        if np.linalg.norm(r) < 1e-9:
+            # DAWN / Geant4 rule for a viewpoint along the up vector: screen-right = +z
+            r = np.array([0.0, 0.0, 1.0]) if abs(e[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
+            r = r - np.dot(r, e) * e
+        r = _unit(r)
+        self.e, self.r, self.u = e, r, np.cross(e, r)
+        self.T = np.asarray(target, float)
+        self.dist = dist
+        self.ortho = dist is None
+
+    @property
+    def position(self):
+        return None if self.ortho else self.T + self.dist * self.e
+
+    def view(self, P):
+        """world (N,3) -> (x, y, depth) ; for perspective x,y are scaled to the target plane."""
+        d = np.asarray(P, float) - self.T
+        x = d @ self.r
+        y = d @ self.u
+        z = -(d @ self.e)
+        if self.ortho:
+            return x, y, z
+        depth = self.dist + z
+        f = self.dist / np.maximum(depth, 1e-9)
+        return x * f, y * f, depth
+
+    def zkey(self, depth):
+        """A depth key that is affine in screen coordinates (1/w for perspective)."""
+        return depth if self.ortho else -1.0 / np.maximum(depth, 1e-9)
+
+    def facing(self, normals, points):
+        """>0 for faces whose outward normal points to the camera."""
+        if self.ortho:
+            return normals @ self.e
+        return np.einsum("ij,ij->i", normals, self.position[None, :] - points)
+
+    def near_plane(self):
+        if self.ortho:
+            return None
+        n = -self.e
+        C = self.position
+        near = 1e-3 * self.dist
+        return (n, float(-(n @ C) - near))  # keep  n.P + d > 0  <=>  (C-P).e > near
+
+
+def dawn_angles_to_eye(polar_deg, azim_deg):
+    """DAWN camera angles (.DAWN_1.history lines 2,3) = Geant4 /vis/viewer/set/
+    viewpointThetaPhi: polar angle from +z, azimuth from +x of the camera direction."""
+    t, p = math.radians(polar_deg), math.radians(azim_deg)
+    return np.array([math.sin(t) * math.cos(p), math.sin(t) * math.sin(p), math.cos(t)])
+
+
+VIEW_PRESETS = {
+    # name: (eye = target->camera direction, up)
+    "side": ((-1.0, 0.0, 0.0), (0, 1, 0)),     # camera at -x: z to the right, y up
+    "side-x": ((1.0, 0.0, 0.0), (0, 1, 0)),    # camera at +x: z to the left, y up
+    "top": ((0.0, 1.0, 0.0), (0, 1, 0)),       # camera at +y: z to the right, x up (DAWN rule)
+    "bottom": ((0.0, -1.0, 0.0), (0, 1, 0)),
+    "beam": ((0.0, 0.0, 1.0), (0, 1, 0)),      # from downstream: x to the right, y up
+    "front": ((0.0, 0.0, -1.0), (0, 1, 0)),    # from upstream (beam's eye): x to the left
+    "iso": ((-0.75, 0.48, -0.45), (0, 1, 0)),  # oblique, beam left -> right
+    "iso-down": ((-0.75, 0.48, 0.45), (0, 1, 0)),
+}
+
+SECTION_FOR_VIEW = {"side": (1, 0, 0), "side-x": (1, 0, 0), "top": (0, 1, 0),
+                    "bottom": (0, 1, 0), "beam": (0, 0, 1), "front": (0, 0, 1)}
+
+
+# =============================================================================
+#  5.  Half-space clipping and plane sections
+# =============================================================================
+#  A plane is (n, d) with n a unit 3-vector; the KEPT half space is n.P + d >= 0
+#  (Geant4 cut-away convention, /vis/viewer/addCutawayPlane).
+
+def clip_triangles(P, fid, planes):
+    """P (M,3,3) world triangles, fid (M,) payload -> clipped (M',3,3), fid'."""
+    for n, d in planes:
+        if len(P) == 0:
+            break
+        s = P @ n + d
+        ins = s >= 0
+        k = ins.sum(1)
+        keep = P[k == 3], fid[k == 3]
+        out = [keep]
+        # one vertex inside -> one triangle
+        m1 = k == 1
+        if m1.any():
+            Q, S, f = P[m1], s[m1], fid[m1]
+            r = np.argmax(ins[m1], 1)
+            idx = (r[:, None] + np.arange(3)[None, :]) % 3
+            Q = np.take_along_axis(Q, idx[:, :, None], 1)
+            S = np.take_along_axis(S, idx, 1)
+            t1 = (S[:, 0] / (S[:, 0] - S[:, 1]))[:, None]
+            t2 = (S[:, 0] / (S[:, 0] - S[:, 2]))[:, None]
+            A = Q[:, 0]
+            out.append((np.stack([A, A + t1 * (Q[:, 1] - A), A + t2 * (Q[:, 2] - A)], 1), f))
+        m2 = k == 2
+        if m2.any():
+            Q, S, f = P[m2], s[m2], fid[m2]
+            r = np.argmin(ins[m2], 1)                      # the outside vertex first
+            idx = (r[:, None] + np.arange(3)[None, :]) % 3
+            Q = np.take_along_axis(Q, idx[:, :, None], 1)
+            S = np.take_along_axis(S, idx, 1)
+            Ov, A, B = Q[:, 0], Q[:, 1], Q[:, 2]
+            tb = (S[:, 2] / (S[:, 2] - S[:, 0]))[:, None]  # on B -> O
+            ta = (S[:, 0] / (S[:, 0] - S[:, 1]))[:, None]  # on O -> A
+            Qb = B + tb * (Ov - B)
+            Qa = Ov + ta * (A - Ov)
+            out.append((np.stack([A, B, Qb], 1), f))
+            out.append((np.stack([A, Qb, Qa], 1), f))
+        P = np.concatenate([o[0] for o in out])
+        fid = np.concatenate([o[1] for o in out])
+    return P, fid
+
+
+def clip_segments(A, B, planes, *payload):
+    """Clip segments A->B (N,3) by half spaces; payload arrays are filtered alongside."""
+    keep = np.ones(len(A), bool)
+    A = A.copy()
+    B = B.copy()
+    for n, d in planes:
+        sa = A @ n + d
+        sb = B @ n + d
+        keep &= (sa >= 0) | (sb >= 0)
+        ca = (sa < 0) & (sb >= 0)
+        cb = (sb < 0) & (sa >= 0)
+        if ca.any():
+            t = (sa[ca] / (sa[ca] - sb[ca]))[:, None]
+            A[ca] = A[ca] + t * (B[ca] - A[ca])
+        if cb.any():
+            t = (sb[cb] / (sb[cb] - sa[cb]))[:, None]
+            B[cb] = B[cb] + t * (A[cb] - B[cb])
+    return (A[keep], B[keep]) + tuple(p[keep] for p in payload)
+
+
+def section_segments(V, tri, plane):
+    """Intersect triangles (vertex index triples) with a plane.
+    Returns Q0, Q1 (k,3), the triangle index, and integer node keys of the two crossed
+    mesh edges (for exact topological chaining)."""
+    n, d = plane
+    s = V @ n + d
+    st = s[tri]
+    pos = st >= 0
+    k = pos.sum(1)
+    cross = (k == 1) | (k == 2)
+    ti = np.nonzero(cross)[0]
+    if len(ti) == 0:
+        z = np.zeros((0, 3))
+        e = np.zeros(0, np.int64)
+        return z, z, e, e, e
+    T = tri[ti]
+    S = st[ti]
+    lone = np.where(k[ti] == 1, np.argmax(pos[ti], 1), np.argmin(pos[ti], 1))
+    idx = (lone[:, None] + np.arange(3)[None, :]) % 3
+    T = np.take_along_axis(T, idx, 1)
+    S = np.take_along_axis(S, idx, 1)
+    Va, Vb, Vc = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
+    t1 = (S[:, 0] / (S[:, 0] - S[:, 1]))[:, None]
+    t2 = (S[:, 0] / (S[:, 0] - S[:, 2]))[:, None]
+    Q0 = Va + t1 * (Vb - Va)
+    Q1 = Va + t2 * (Vc - Va)
+    nv = len(V)
+    k0 = np.minimum(T[:, 0], T[:, 1]) * nv + np.maximum(T[:, 0], T[:, 1])
+    k1 = np.minimum(T[:, 0], T[:, 2]) * nv + np.maximum(T[:, 0], T[:, 2])
+    return Q0, Q1, ti, k0, k1
+
+
+def chain_segments(k0, k1, Q0, Q1):
+    """Chain segments sharing node keys into polylines.  Returns a list of
+    (points (m,3), closed) tuples.  Works on a per-call basis (call per solid)."""
+    nseg = len(k0)
+    if nseg == 0:
+        return []
+    adj = defaultdict(list)
+    for i in range(nseg):
+        adj[k0[i]].append((i, 0))
+        adj[k1[i]].append((i, 1))
+    used = np.zeros(nseg, bool)
+    out = []
+    # start from odd-degree nodes first (open chains), then loops
+    starts = [kk for kk, v in adj.items() if len(v) % 2 == 1] + list(adj.keys())
+    for node in starts:
+        while True:
+            nxt = None
+            for (i, end) in adj[node]:
+                if not used[i]:
+                    nxt = (i, end)
+                    break
+            if nxt is None:
+                break
+            pts = []
+            first_node = node
+            cur = node
+            while nxt is not None:
+                i, end = nxt
+                used[i] = True
+                a, b = (Q0[i], Q1[i]) if end == 0 else (Q1[i], Q0[i])
+                if not pts:
+                    pts.append(a)
+                pts.append(b)
+                cur = k1[i] if end == 0 else k0[i]
+                nxt = None
+                for (j, e2) in adj[cur]:
+                    if not used[j]:
+                        nxt = (j, e2)
+                        break
+            closed = cur == first_node and len(pts) > 2
+            if closed:
+                pts = pts[:-1]
+            out.append((np.array(pts), closed))
+    return out
+
+
+def clip_polygon(P, planes):
+    """Sutherland-Hodgman clip of one closed 3-D polygon by half spaces."""
+    for n, d in planes:
+        if len(P) == 0:
+            return P
+        s = P @ n + d
+        res = []
+        m = len(P)
+        for i in range(m):
+            a, b = P[i], P[(i + 1) % m]
+            sa, sb = s[i], s[(i + 1) % m]
+            if sa >= 0:
+                res.append(a)
+            if (sa >= 0) != (sb >= 0):
+                res.append(a + (sa / (sa - sb)) * (b - a))
+        P = np.array(res).reshape(-1, 3)
+    return P
+
+
+# =============================================================================
+#  6.  Depth-buffer rasterisation (vectorised scan conversion)
+# =============================================================================
+
+ID_BITS = 24
+ID_MASK = (1 << ID_BITS) - 1
+ZQ_MAX = (1 << (62 - ID_BITS)) - 1
+EMPTY = np.iinfo(np.int64).max
+
+
+class DepthBuffer:
+    """Packed (quantised zkey << 24 | id) int64 buffer, scatter-min with np.minimum.at.
+    ids 0..M-1 are triangles, M.. are cut-plane caps.  zkey is affine in screen space,
+    so the exact surface depth at any sub-pixel point is recovered from the per-id plane
+    coefficients (A x + B y + C) -- quantisation never enters the visibility test."""
+
+    def __init__(self, W, H, zlo, zhi):
+        self.W, self.H = int(W), int(H)
+        self.buf = np.full(self.W * self.H, EMPTY, np.int64)
+        self.zlo = float(zlo)
+        span = max(float(zhi) - float(zlo), 1e-30)
+        self.zscale = ZQ_MAX / span
+        self.fragments = 0
+
+    def quant(self, z):
+        q = (z - self.zlo) * self.zscale
+        return np.clip(q, 0, ZQ_MAX).astype(np.int64)
+
+    def add_triangles(self, X, Y, A, B, C, ids, max_frag=6_000_000):
+        """X,Y (M,3) pixel coords (pixel (i,j) centre at (i+.5, j+.5)); zkey = A x+B y+C."""
+        W, H = self.W, self.H
+        eps = 1e-7
+        ymin = Y.min(1)
+        ymax = Y.max(1)
+        j0 = np.maximum(np.ceil(ymin - 0.5 - eps), 0).astype(np.int64)
+        j1 = np.minimum(np.floor(ymax - 0.5 + eps), H - 1).astype(np.int64)
+        xmin = X.min(1)
+        xmax = X.max(1)
+        ok = (j1 >= j0) & (xmax >= 0) & (xmin <= W)
+        idx = np.nonzero(ok)[0]
+        if len(idx) == 0:
+            return
+        area = 0.5 * np.abs((X[idx, 1] - X[idx, 0]) * (Y[idx, 2] - Y[idx, 0])
+                            - (X[idx, 2] - X[idx, 0]) * (Y[idx, 1] - Y[idx, 0]))
+        est = area + (j1[idx] - j0[idx] + 1) * 2.0
+        cum = np.cumsum(est)
+        nb = int(cum[-1] // max_frag) + 1
+        bounds = np.searchsorted(cum, np.linspace(0, cum[-1], nb + 1)[1:-1])
+        for part in np.split(idx, bounds):
+            if len(part):
+                self._raster(part, X, Y, A, B, C, ids, j0, j1)
+
+    def _raster(self, part, X, Y, A, B, C, ids, j0, j1):
+        W, H = self.W, self.H
+        eps = 1e-7
+        nr = j1[part] - j0[part] + 1
+        tp = np.repeat(part, nr)
+        row = np.repeat(j0[part], nr) + (np.arange(nr.sum()) - np.repeat(np.cumsum(nr) - nr, nr))
+        yc = row + 0.5
+        Xt, Yt = X[tp], Y[tp]
+        xl = np.full(len(tp), np.inf)
+        xr = np.full(len(tp), -np.inf)
+        for a, b in ((0, 1), (1, 2), (2, 0)):
+            ya, yb, xa, xb = Yt[:, a], Yt[:, b], Xt[:, a], Xt[:, b]
+            lo = np.minimum(ya, yb) - eps
+            hi = np.maximum(ya, yb) + eps
+            v = (yc >= lo) & (yc <= hi)
+            dy = yb - ya
+            flat = np.abs(dy) < 1e-12
+            t = np.clip((yc - ya) / np.where(flat, 1.0, dy), 0.0, 1.0)
+            x = xa + t * (xb - xa)
+            l_ = np.where(flat, np.minimum(xa, xb), x)
+            r_ = np.where(flat, np.maximum(xa, xb), x)
+            xl = np.where(v, np.minimum(xl, l_), xl)
+            xr = np.where(v, np.maximum(xr, r_), xr)
+        c0 = np.maximum(np.ceil(xl - 0.5 - eps), 0)
+        c1 = np.minimum(np.floor(xr - 0.5 + eps), W - 1)
+        good = np.isfinite(xl) & (c1 >= c0)
+        tp, row, c0, c1 = tp[good], row[good], c0[good].astype(np.int64), c1[good].astype(np.int64)
+        nc = c1 - c0 + 1
+        tot = int(nc.sum())
+        if tot == 0:
+            return
+        self.fragments += tot
+        pr = np.repeat(np.arange(len(tp)), nc)
+        col = np.repeat(c0, nc) + (np.arange(tot) - np.repeat(np.cumsum(nc) - nc, nc))
+        tf = tp[pr]
+        z = A[tf] * (col + 0.5) + B[tf] * (row[pr] + 0.5) + C[tf]
+        key = (self.quant(z) << ID_BITS) | ids[tf]
+        np.minimum.at(self.buf, row[pr] * W + col, key)
+
+    def add_cap(self, mask, A, B, C, cid):
+        """mask (H,W) pixels covered by a cap with zkey = A x + B y + C."""
+        jj, ii = np.nonzero(mask)
+        if len(jj) == 0:
+            return
+        z = A * (ii + 0.5) + B * (jj + 0.5) + C
+        key = (self.quant(z) << ID_BITS) | np.int64(cid)
+        p = jj * self.W + ii
+        self.buf[p] = np.minimum(self.buf[p], key)
+
+    def ids(self):
+        b = self.buf
+        return np.where(b == EMPTY, -1, b & ID_MASK).reshape(self.H, self.W)
+
+
+def polygon_spans(X0, Y0, X1, Y1, sid, W, H):
+    """Even-odd scan conversion of a soup of closed-polygon edges, separately for each
+    solid id (sid).  Returns (row, c0, c1, sid) spans of pixel columns [c0, c1]."""
+    ylo = np.minimum(Y0, Y1)
+    yhi = np.maximum(Y0, Y1)
+    j0 = np.maximum(np.ceil(ylo - 0.5), 0).astype(np.int64)        # centre yc in [ylo, yhi)
+    j1 = np.minimum(np.ceil(yhi - 0.5) - 1, H - 1).astype(np.int64)
+    nr = np.maximum(j1 - j0 + 1, 0)
+    if nr.sum() == 0:
+        e = np.zeros(0, np.int64)
+        return e, e, e, e
+    seg = np.repeat(np.arange(len(X0)), nr)
+    row = np.repeat(j0, nr) + (np.arange(nr.sum()) - np.repeat(np.cumsum(nr) - nr, nr))
+    yc = row + 0.5
+    t = (yc - Y0[seg]) / (Y1[seg] - Y0[seg])
+    x = X0[seg] + t * (X1[seg] - X0[seg])
+    s = sid[seg]
+    o = np.lexsort((x, row, s))
+    x, row, s = x[o], row[o], s[o]
+    grp = np.ones(len(x), bool)
+    grp[1:] = (row[1:] != row[:-1]) | (s[1:] != s[:-1])
+    gstart = np.nonzero(grp)[0]
+    gcount = np.diff(np.append(gstart, len(x)))
+    rank = np.arange(len(x)) - np.repeat(gstart, gcount)
+    # within a group use pairs (0,1),(2,3)...; drop a trailing odd crossing
+    even = (rank % 2 == 0) & (rank + 1 < np.repeat(gcount, gcount))
+    a = np.nonzero(even)[0]
+    xa, xb = x[a], x[a + 1]
+    c0 = np.maximum(np.ceil(xa - 0.5), 0).astype(np.int64)
+    c1 = np.minimum(np.ceil(xb - 0.5) - 1, W - 1).astype(np.int64)
+    ok = c1 >= c0
+    return row[a][ok], c0[ok], c1[ok], s[a][ok]
+
+
+def spans_to_pixels(row, c0, c1, W):
+    n = c1 - c0 + 1
+    tot = int(n.sum())
+    if tot == 0:
+        return np.zeros(0, np.int64), np.zeros(0, np.int64)
+    k = np.repeat(np.arange(len(row)), n)
+    col = np.repeat(c0, n) + (np.arange(tot) - np.repeat(np.cumsum(n) - n, n))
+    return row[k] * W + col, k
+
+
+# =============================================================================
+#  7.  Rendering
+# =============================================================================
+
+class Edges:
+    """A batch of 3-D segments to draw, with attributes."""
+
+    def __init__(self):
+        self.A, self.B = [], []
+        self.f1, self.f2, self.solid, self.kind = [], [], [], []
+
+    def add(self, A, B, f1, f2, solid, kind):
+        if len(A) == 0:
+            return
+        self.A.append(A); self.B.append(B)
+        self.f1.append(np.asarray(f1, np.int64)); self.f2.append(np.asarray(f2, np.int64))
+        self.solid.append(np.asarray(solid, np.int64))
+        self.kind.append(np.full(len(A), kind, np.int8))
+
+    def arrays(self):
+        if not self.A:
+            z = np.zeros((0, 3))
+            e = np.zeros(0, np.int64)
+            return z, z, e, e, e, np.zeros(0, np.int8)
+        return (np.concatenate(self.A), np.concatenate(self.B), np.concatenate(self.f1),
+                np.concatenate(self.f2), np.concatenate(self.solid), np.concatenate(self.kind))
+
+
+K_CREASE, K_SIL, K_CUT, K_ALL = 0, 1, 2, 3
+
+
+class DrawList:
+    """Output primitives in canvas pixel coordinates (x right, y down)."""
+
+    def __init__(self, W, H, dpi, bg):
+        self.W, self.H, self.dpi, self.bg = W, H, dpi, bg
+        self.items = []
+
+    def lines(self, polylines, rgb, lw_pt, dash=None, cap="round"):
+        if polylines:
+            self.items.append(("lines", polylines, rgb, lw_pt, dash, cap))
+
+    def fill(self, rings, rgb, stroke=None, lw_pt=0.0, alpha=1.0):
+        if rings:
+            self.items.append(("fill", rings, rgb, stroke, lw_pt, alpha))
+
+    def marker(self, kind, x, y, r_px, rgb):
+        self.items.append(("marker", kind, x, y, r_px, rgb))
+
+    def text(self, x, y, s, size_pt, rgb, anchor="start", font="Helvetica"):
+        self.items.append(("text", x, y, s, size_pt, rgb, anchor, font))
+
+    def image(self, rgb_u8):
+        self.items.append(("image", rgb_u8))
+
+
+def _rgbhex(c):
+    return "#%02x%02x%02x" % tuple(int(round(255 * min(1, max(0, v)))) for v in c)
+
+
+def chain_2d(X0, Y0, X1, Y1, tol=1e-3):
+    """Join 2-D segments with coincident end points into polylines."""
+    n = len(X0)
+    if n == 0:
+        return []
+    P = np.concatenate([np.stack([X0, Y0], 1), np.stack([X1, Y1], 1)])
+    q = np.round(P / tol).astype(np.int64)
+    _, node = np.unique(q, axis=0, return_inverse=True)
+    node = node.ravel()
+    na, nb = node[:n], node[n:]
+    deg = np.bincount(np.concatenate([na, nb]))
+    adj = defaultdict(list)
+    for i in range(n):
+        adj[na[i]].append(i)
+        adj[nb[i]].append(i)
+    used = np.zeros(n, bool)
+    out = []
+    order = list(np.nonzero(deg != 2)[0]) + list(range(len(deg)))
+    for start in order:
+        for i0 in adj[start]:
+            if used[i0]:
+                continue
+            pts = []
+            cur = start
+            i = i0
+            while i is not None:
+                used[i] = True
+                if na[i] == cur:
+                    a, b, cur = (X0[i], Y0[i]), (X1[i], Y1[i]), nb[i]
+                else:
+                    a, b, cur = (X1[i], Y1[i]), (X0[i], Y0[i]), na[i]
+                if not pts:
+                    pts.append(a)
+                pts.append(b)
+                i = None
+                if deg[cur] == 2:
+                    for j in adj[cur]:
+                        if not used[j]:
+                            i = j
+                            break
+            out.append(np.array(pts))
+    return out
+
+
+class Renderer:
+    def __init__(self, sc, opts):
+        self.sc = sc
+        self.o = opts
+        with timed("mesh analysis (normals, edges, crease %.0f deg)" % opts.crease):
+            self.mesh = Mesh(sc, opts.crease)
+
+    # ------------------------------------------------------------------ selection
+    def select_solids(self):
+        o, sc = self.o, self.sc
+        n = len(sc.solids)
+        sel = np.ones(n, bool)
+        transparent = np.zeros(n, bool)
+        inc = [re.compile(x) for x in (o.include or [])]
+        exc = [re.compile(x) for x in (o.exclude or [])]
+        trn = [re.compile(x) for x in (o.transparent or [])]
+        for s in sc.solids:
+            key = s.path if o.match_path else s.name
+            if inc and not any(r.search(key) for r in inc):
+                sel[s.index] = False
+            if exc and any(r.search(key) for r in exc):
+                sel[s.index] = False
+            if o.min_depth is not None and 0 <= s.depth < o.min_depth:
+                sel[s.index] = False
+            if o.max_depth is not None and s.depth > o.max_depth:
+                sel[s.index] = False
+            if o.exclude_color and any(np.allclose(s.color, c, atol=0.02) for c in o.exclude_color):
+                sel[s.index] = False
+            if o.only_color and not any(np.allclose(s.color, c, atol=0.02) for c in o.only_color):
+                sel[s.index] = False
+            if s.wire:
+                if o.wireframe_volumes == "hide":
+                    sel[s.index] = False
+                else:
+                    transparent[s.index] = True
+            if trn and any(r.search(key) for r in trn):
+                transparent[s.index] = True
+        if o.mothers != "opaque":
+            for s in sc.solids:
+                if s.has_daughters and any(sel[d.index] for d in sc.solids if d.parent == s.index):
+                    if o.mothers == "hide":
+                        sel[s.index] = False
+                    else:
+                        transparent[s.index] = True
+        return sel, transparent
+
+    # ------------------------------------------------------------------ main entry
+    def render(self, cam, planes, cap_planes, mode):
+        o, sc, mesh = self.o, self.sc, self.mesh
+        sel, transp = self.select_solids()
+        self.sel, self.transp = sel, transp
+        nsel = int(sel.sum())
+        log("  %d of %d solids selected (%d non-occluding)" % (nsel, len(sc.solids),
+                                                              int((sel & transp).sum())))
+        V = sc.V
+        fsel = sel[sc.fsolid] if len(sc.fsolid) else np.zeros(0, bool)
+        tri_sel = fsel[mesh.tri_face] if len(mesh.tri_face) else np.zeros(0, bool)
+        planes = list(planes)
+        near = cam.near_plane()
+        all_planes = planes + ([near] if near else [])
+
+        # ---- edges to draw (3-D)
+        edges = Edges()
+        with timed("feature + silhouette edges"):
+            esel = sel[mesh.esolid] if len(mesh.esolid) else np.zeros(0, bool)
+            facing = cam.facing(mesh.fnormal, V[sc.F[:, 0]]) if len(sc.F) else np.zeros(0)
+            front = facing > 0
+            f1, f2 = mesh.ef1, mesh.ef2
+            has2 = f2 >= 0
+            sil = has2 & (front[f1] != front[np.maximum(f2, 0)])
+            if mode == "wireframe" and o.all_edges:
+                draw = esel.copy()
+            else:
+                draw = esel & (mesh.efeature | (sil if not o.no_silhouettes else False))
+            # cull edges whose faces all face away (hidden by their own closed solid)
+            if mode in ("hlr", "surface"):
+                closed = np.array([s.closed for s in sc.solids], bool)[mesh.esolid]
+                opaque = ~transp[mesh.esolid]
+                anyfront = front[f1] | (has2 & front[np.maximum(f2, 0)])
+                draw &= ~(closed & opaque & ~anyfront)
+            di = np.nonzero(draw)[0]
+            kind = np.where(sil[di] & ~mesh.efeature[di], K_SIL, K_CREASE)
+            A, B = V[mesh.e0[di]], V[mesh.e1[di]]
+            A, B, ef1, ef2, es, ek = clip_segments(A, B, all_planes, f1[di], f2[di],
+                                                   mesh.esolid[di], kind)
+            for k in (K_CREASE, K_SIL):
+                m = ek == k
+                edges.add(A[m], B[m], ef1[m], ef2[m], es[m], k)
+
+        # ---- triangles (clipped)
+        with timed("clip triangles (%d cut planes)" % len(all_planes)):
+            ti = np.nonzero(tri_sel)[0]
+            P = V[mesh.tri[ti]]
+            P, tface = clip_triangles(P, mesh.tri_face[ti], all_planes)
+
+        # ---- cut-plane sections (caps)
+        caps = []          # (plane_index, Q0, Q1, solid, face, k0, k1)
+        with timed("cut-plane sections"):
+            tsel_idx = np.nonzero(tri_sel)[0]
+            for pi, pl in enumerate(cap_planes):
+                Q0, Q1, ti_, k0, k1 = section_segments(V, mesh.tri[tsel_idx], pl)
+                tri_i = tsel_idx[ti_]
+                face = mesh.tri_face[tri_i]
+                sol = sc.fsolid[face]
+                caps.append((pi, Q0, Q1, sol, face, k0, k1))
+                others = [p for j, p in enumerate(cap_planes) if j != pi] + \
+                         [p for p in all_planes if not any(p is q for q in cap_planes)]
+                C0, C1, cf, cs = clip_segments(Q0, Q1, others, face, sol)
+                edges.add(C0, C1, cf, np.full(len(cf), -1), cs, K_CUT)
+
+        self.edges3d = edges
+        self.tris3d = (P, tface)
+        self.caps = caps
+        return self._finish(cam, planes, cap_planes, mode)
+
+    # ------------------------------------------------------------------ screen mapping
+    def _fit(self, cam, pts_list):
+        o = self.o
+        W, H = o.width, o.height
+        if o.mag is not None:
+            # DAWN-compatible: magnification relative to the /BoundingBox fit, centred on target
+            bb = self.sc.bbox if self.sc.bbox is not None else np.concatenate(
+                [self.sc.V.min(0), self.sc.V.max(0)])
+            corners = np.array([[bb[i], bb[j], bb[k]] for i in (0, 3) for j in (1, 4) for k in (2, 5)])
+            x, y, _ = cam.view(corners)
+            s = min(W / max(np.ptp(x), 1e-9), H / max(np.ptp(y), 1e-9)) * o.mag
+            cx, cy = 0.0, 0.0
+            return s, cx, cy, W, H
+        xs, ys = [], []
+        for P in pts_list:
+            if len(P):
+                x, y, _ = cam.view(P)
+                xs.append(x); ys.append(y)
+        if not xs:
+            return 1.0, 0.0, 0.0, W, H
+        x = np.concatenate(xs)
+        y = np.concatenate(ys)
+        x0, x1, y0, y1 = x.min(), x.max(), y.min(), y.max()
+        if o.fit_box:
+            x0, x1, y0, y1 = o.fit_box
+        m = o.margin * min(W, H)
+        dx, dy = max(x1 - x0, 1e-9), max(y1 - y0, 1e-9)
+        s = min((W - 2 * m) / dx, (H - 2 * m) / dy)
+        cy = 0.5 * (y0 + y1)
+        if not o.no_crop:
+            W = int(math.ceil(dx * s + 2 * m))
+            H = int(math.ceil(dy * s + 2 * m))
+            if o.title:
+                # reserve a band above the drawing so the title never overlaps the geometry
+                band = int(math.ceil(3.0 * o.font_size * o.dpi / 72.0))
+                H += band
+                cy += 0.5 * band / s   # move the drawing down by the band
+        return s, 0.5 * (x0 + x1), cy, W, H
+
+    def _finish(self, cam, planes, cap_planes, mode):
+        o, sc, mesh = self.o, self.sc, self.mesh
+        P, tface = self.tris3d
+        A3, B3, ef1, ef2, es, ek = self.edges3d.arrays()
+        fitpts = [P.reshape(-1, 3), A3, B3]
+        if o.fit_traj:
+            fitpts += [pl for _, pl in sc.polylines]
+        s, cx, cy, W, H = self._fit(cam, fitpts)
+        self.scale_px_per_mm = s if cam.ortho else None
+        log("  canvas %d x %d px, scale %.4g px/mm" % (W, H, s))
+
+        def to_px(Pw):
+            x, y, depth = cam.view(Pw)
+            return (x - cx) * s + 0.5 * W, 0.5 * H - (y - cy) * s, cam.zkey(depth)
+
+        self.to_px = to_px
+        dl = DrawList(W, H, o.dpi, o.background)
+        hs = o.hlr_scale
+        Wd, Hd = int(round(W * hs)), int(round(H * hs))
+
+        # ---- project triangles
+        if len(P):
+            X, Y, Z = to_px(P.reshape(-1, 3))
+            X, Y, Z = X.reshape(-1, 3) * hs, Y.reshape(-1, 3) * hs, Z.reshape(-1, 3)
+        else:
+            X = Y = Z = np.zeros((0, 3))
+        tsol = sc.fsolid[tface] if len(tface) else np.zeros(0, np.int64)
+        opaque_t = ~self.transp[tsol] if len(tsol) else np.zeros(0, bool)
+        # plane coefficients of zkey in depth-buffer pixel space
+        det = (X[:, 1] - X[:, 0]) * (Y[:, 2] - Y[:, 0]) - (X[:, 2] - X[:, 0]) * (Y[:, 1] - Y[:, 0])
+        good = np.abs(det) > 1e-12
+        dsafe = np.where(good, det, 1.0)
+        zA = ((Z[:, 1] - Z[:, 0]) * (Y[:, 2] - Y[:, 0]) - (Z[:, 2] - Z[:, 0]) * (Y[:, 1] - Y[:, 0])) / dsafe
+        zB = ((X[:, 1] - X[:, 0]) * (Z[:, 2] - Z[:, 0]) - (X[:, 2] - X[:, 0]) * (Z[:, 1] - Z[:, 0])) / dsafe
+        zC = Z[:, 0] - zA * X[:, 0] - zB * Y[:, 0]
+        # screen-space orientation: front facing if counter-clockwise on screen (y down -> det<0)
+        closed = np.array([sl.closed for sl in sc.solids], bool)
+        frontfacing = det < 0
+        rast = good & opaque_t
+        if not o.no_cull:
+            rast &= frontfacing | ~closed[tsol]
+        self.n_tri = len(P)
+        need_depth = mode in ("hlr", "surface")
+        db = None
+        if need_depth:
+            zall = Z[rast]
+            zlo = float(zall.min()) if zall.size else 0.0
+            zhi = float(zall.max()) if zall.size else 1.0
+            pad = 1e-3 * (zhi - zlo + 1e-9)
+            zlo, zhi = zlo - pad, zhi + pad
+            db = DepthBuffer(Wd, Hd, zlo, zhi)
+            M = len(P)
+            if M + len(cap_planes) > ID_MASK:
+                raise RuntimeError("too many triangles for the depth buffer id field")
+            ids_all = np.arange(M, dtype=np.int64)
+            with timed("rasterise %d triangles into %dx%d depth buffer" % (int(rast.sum()), Wd, Hd)):
+                ri = np.nonzero(rast)[0]
+                db.add_triangles(X[ri], Y[ri], zA[ri], zB[ri], zC[ri], ids_all[ri])
+            log("  depth buffer: %d triangles, %.3g fragments" % (int(rast.sum()), db.fragments), 2)
+            # caps
+            capA, capB, capC = [], [], []
+            self.cap_solid_maps = []
+            with timed("rasterise %d cut-plane caps" % len(cap_planes)):
+                for (pi, Q0, Q1, sol, face, k0, k1) in self.caps:
+                    cA, cB, cC, smap = self._cap_raster(cam, to_px, hs, Wd, Hd, cap_planes, pi,
+                                                        planes, Q0, Q1, sol)
+                    capA.append(cA); capB.append(cB); capC.append(cC)
+                    self.cap_solid_maps.append(smap)
+                    if smap is not None:
+                        db.add_cap(smap >= 0, cA, cB, cC, M + pi)
+            self.db = db
+            self.zA = np.concatenate([zA, np.array(capA, float)])
+            self.zB = np.concatenate([zB, np.array(capB, float)])
+            self.zC = np.concatenate([zC, np.array(capC, float)])
+            self.zface = np.concatenate([tface, np.full(len(capA), -2, np.int64)])
+            self.zgrad = np.hypot(self.zA, self.zB)
+            self.eps_z = 1e-7 * (zhi - zlo)
+
+        # ---- surface image / polygons
+        if mode == "surface":
+            self._surface(dl, cam, X, Y, Z, tface, tsol, rast, hs)
+
+        # ---- cap fills (hlr) / section look
+        if mode in ("hlr", "surface", "wireframe") and o.cap_fill != "none" and self.caps:
+            self._cap_fills(dl, cam, cap_planes, planes, to_px)
+
+        # ---- project edges, hidden-line test
+        X0, Y0, Z0 = to_px(A3)
+        X1, Y1, Z1 = to_px(B3)
+        if need_depth and len(A3):
+            with timed("hidden-line test of %d edges" % len(A3)):
+                segs = self._visible_runs(X0 * hs, Y0 * hs, Z0, X1 * hs, Y1 * hs, Z1, ef1, ef2)
+            seg_e, t0, t1 = segs
+        else:
+            seg_e = np.arange(len(A3))
+            t0 = np.zeros(len(A3))
+            t1 = np.ones(len(A3))
+        sx0 = X0[seg_e] + t0 * (X1[seg_e] - X0[seg_e])
+        sy0 = Y0[seg_e] + t0 * (Y1[seg_e] - Y0[seg_e])
+        sx1 = X0[seg_e] + t1 * (X1[seg_e] - X0[seg_e])
+        sy1 = Y0[seg_e] + t1 * (Y1[seg_e] - Y0[seg_e])
+        self.n_vis_segments = len(seg_e)
+        with timed("style + chain %d visible segments" % len(seg_e)):
+            self._emit_edges(dl, sx0, sy0, sx1, sy1, es[seg_e], ek[seg_e])
+
+        # ---- overlays
+        self._overlays(dl, cam, to_px, s, planes)
+        self._decorations(dl, cam, s)
+        return dl
+
+    # ------------------------------------------------------------------ caps
+    def _cap_raster(self, cam, to_px, hs, Wd, Hd, cap_planes, pi, planes, Q0, Q1, sol):
+        n, d = cap_planes[pi]
+        # zkey plane of the cut plane in depth-buffer pixel coords, from 3 points on it
+        p0 = -d * n
+        t1 = _unit(np.cross(n, [1, 0, 0] if abs(n[0]) < 0.9 else [0, 1, 0]))
+        t2 = np.cross(n, t1)
+        L = 1000.0
+        pts = np.array([p0, p0 + L * t1, p0 + L * t2])
+        X, Y, Z = to_px(pts)
+        X, Y = X * hs, Y * hs
+        det = (X[1] - X[0]) * (Y[2] - Y[0]) - (X[2] - X[0]) * (Y[1] - Y[0])
+        if abs(det) < 1e-12:            # plane seen edge-on: no visible cap area
+            return 0.0, 0.0, 0.0, None
+        A = ((Z[1] - Z[0]) * (Y[2] - Y[0]) - (Z[2] - Z[0]) * (Y[1] - Y[0])) / det
+        B = ((X[1] - X[0]) * (Z[2] - Z[0]) - (X[2] - X[0]) * (Z[1] - Z[0])) / det
+        C = Z[0] - A * X[0] - B * Y[0]
+        opaque = ~self.transp[sol]
+        if not opaque.any():
+            return A, B, C, None
+        x0, y0, _ = to_px(Q0[opaque])
+        x1, y1, _ = to_px(Q1[opaque])
+        row, c0, c1, ss = polygon_spans(x0 * hs, y0 * hs, x1 * hs, y1 * hs, sol[opaque], Wd, Hd)
+        smap = np.full(Wd * Hd, -1, np.int64)
+        pix, k = spans_to_pixels(row, c0, c1, Wd)
+        if len(pix):
+            np.maximum.at(smap, pix, ss[k])
+        smap = smap.reshape(Hd, Wd)
+        # other cut planes: drop cap pixels outside the kept region
+        others = [p for j, p in enumerate(cap_planes) if j != pi]
+        if others and (smap >= 0).any():
+            jj, ii = np.nonzero(smap >= 0)
+            Pw = self._unproject_to_plane(cam, (ii + 0.5) / hs, (jj + 0.5) / hs, n, d)
+            ok = np.ones(len(jj), bool)
+            for (m_, dd) in others:
+                ok &= Pw @ m_ + dd >= 0
+            smap[jj[~ok], ii[~ok]] = -1
+        return A, B, C, smap
+
+    def _unproject_to_plane(self, cam, xs, ys, n, d):
+        s, cx, cy, W, H = self._fitinfo
+        xv = (xs - 0.5 * W) / s + cx
+        yv = (0.5 * H - ys) / s + cy
+        if cam.ortho:
+            O = cam.T[None, :] + xv[:, None] * cam.r + yv[:, None] * cam.u
+            D = -cam.e
+        else:
+            C = cam.position
+            tgt = cam.T[None, :] + xv[:, None] * cam.r + yv[:, None] * cam.u
+            O = np.broadcast_to(C, tgt.shape)
+            D = tgt - C
+        if D.ndim == 1:
+            D = np.broadcast_to(D, O.shape)
+        den = D @ n
+        t = -(O @ n + d) / np.where(np.abs(den) < 1e-12, 1e-12, den)
+        return O + t[:, None] * D
+
+    def _cap_fills(self, dl, cam, cap_planes, planes, to_px):
+        o, sc = self.o, self.sc
+        by_solid = defaultdict(list)
+        for (pi, Q0, Q1, sol, face, k0, k1) in self.caps:
+            others = [p for j, p in enumerate(cap_planes) if j != pi]
+            for sid in np.unique(sol):
+                if self.transp[sid]:
+                    continue
+                m = sol == sid
+                for pts, closed in chain_segments(k0[m], k1[m], Q0[m], Q1[m]):
+                    if not closed:
+                        continue
+                    pts = clip_polygon(pts, others)
+                    if len(pts) >= 3:
+                        x, y, _ = to_px(pts)
+                        by_solid[sid].append(np.stack([x, y], 1))
+        for sid in sorted(by_solid):
+            col = self._fill_color(sc.solids[sid].color)
+            dl.fill(by_solid[sid], col)
+
+    def _fill_color(self, c):
+        o = self.o
+        if o.cap_fill == "white":
+            return o.background or (1, 1, 1)
+        if o.cap_fill not in ("color", "colour"):
+            fc = parse_color(o.cap_fill)
+            return fc
+        w = o.fill_lighten
+        return tuple(w + (1 - w) * v for v in c)
+
+    # ------------------------------------------------------------------ HLR core
+    def _visible_runs(self, x0, y0, z0, x1, y1, z1, f1, f2, step=None, max_samples=8_000_000):
+        o = self.o
+        step = step or o.sample_step
+        L = np.hypot(x1 - x0, y1 - y0)
+        ns = np.maximum(2, np.ceil(L / step).astype(np.int64) + 1)
+        out_e, out_t0, out_t1 = [], [], []
+        cum = np.cumsum(ns)
+        nb = int(cum[-1] // max_samples) + 1 if len(cum) else 0
+        bounds = np.searchsorted(cum, np.linspace(0, cum[-1], nb + 1)[1:-1]) if nb > 1 else []
+        for part in np.split(np.arange(len(ns)), bounds):
+            if len(part) == 0:
+                continue
+            e, a, b = self._runs_part(part, ns[part], x0, y0, z0, x1, y1, z1, f1, f2)
+            out_e.append(e); out_t0.append(a); out_t1.append(b)
+        if not out_e:
+            z = np.zeros(0)
+            return np.zeros(0, np.int64), z, z
+        return np.concatenate(out_e), np.concatenate(out_t0), np.concatenate(out_t1)
+
+    def _runs_part(self, part, ns, x0, y0, z0, x1, y1, z1, f1, f2):
+        db = self.db
+        W, H = db.W, db.H
+        tot = int(ns.sum())
+        e = np.repeat(part, ns)
+        first = np.repeat(np.cumsum(ns) - ns, ns)
+        k = np.arange(tot) - first
+        nn = np.repeat(ns, ns)
+        t = k / (nn - 1.0)
+        x = x0[e] + t * (x1[e] - x0[e])
+        y = y0[e] + t * (y1[e] - y0[e])
+        z = z0[e] + t * (z1[e] - z0[e])
+        ix = np.floor(x - 0.5).astype(np.int64)
+        iy = np.floor(y - 0.5).astype(np.int64)
+        vis = np.zeros(tot, bool)
+        inside = (ix >= -1) & (ix < W) & (iy >= -1) & (iy < H)
+        vis |= ~inside
+        a1, a2 = f1[e], f2[e]
+        tol_k = self.o.slope_tol
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            px = np.clip(ix + dx, 0, W - 1)
+            py = np.clip(iy + dy, 0, H - 1)
+            key = db.buf[py * W + px]
+            empty = key == EMPTY
+            idv = np.where(empty, 0, key & ID_MASK)
+            fz = self.zface[idv]
+            own = (fz == a1) | (fz == a2)
+            zs = self.zA[idv] * x + self.zB[idv] * y + self.zC[idv]
+            tol = self.eps_z + tol_k * self.zgrad[idv]
+            vis |= empty | own | (z <= zs + tol)
+        # morphological clean-up along each edge: close 1-sample gaps, drop lone samples
+        same_prev = np.zeros(tot, bool)
+        same_prev[1:] = e[1:] == e[:-1]
+        same_next = np.zeros(tot, bool)
+        same_next[:-1] = e[:-1] == e[1:]
+        prev = np.zeros(tot, bool)
+        prev[1:] = vis[:-1]
+        nxt = np.zeros(tot, bool)
+        nxt[:-1] = vis[1:]
+        prev &= same_prev
+        nxt &= same_next
+        vis = vis | (prev & nxt)
+        prev = np.zeros(tot, bool)
+        prev[1:] = vis[:-1]
+        nxt = np.zeros(tot, bool)
+        nxt[:-1] = vis[1:]
+        lone = vis & ~(prev & same_prev) & ~(nxt & same_next) & (nn > 4)
+        vis &= ~lone
+        # runs
+        pv = np.zeros(tot, bool)
+        pv[1:] = vis[:-1]
+        pv &= same_prev
+        nv_ = np.zeros(tot, bool)
+        nv_[:-1] = vis[1:]
+        nv_ &= same_next
+        st = np.nonzero(vis & ~pv)[0]
+        en = np.nonzero(vis & ~nv_)[0]
+        # extend run ends half a sample towards the hidden neighbour
+        ts = np.where(k[st] > 0, (k[st] - 0.5) / (nn[st] - 1.0), 0.0)
+        te = np.where(k[en] < nn[en] - 1, (k[en] + 0.5) / (nn[en] - 1.0), 1.0)
+        keep = te > ts + 1e-12
+        return e[st][keep], ts[keep], te[keep]
+
+    # ------------------------------------------------------------------ styling
+    def _emit_edges(self, dl, x0, y0, x1, y1, solid, kind):
+        o, sc = self.o, self.sc
+        depth = np.array([max(s.depth, 0) for s in sc.solids], float)
+        dmin = depth[self.sel].min() if self.sel.any() else 0.0
+        groups = defaultdict(list)
+        lw_base = np.where(kind == K_CUT, o.lw_cut, np.where(kind == K_SIL, o.lw_outline, o.lw))
+        if o.depth_lw_factor != 1.0:
+            lw_base = lw_base * o.depth_lw_factor ** (depth[solid] - dmin)
+        lwq = np.round(lw_base, 3)
+        if o.color_lines:
+            cols = np.array([sc.solids[i].color for i in range(len(sc.solids))])
+            cols = cols * o.line_color_scale
+            ci = solid
+        else:
+            cols = np.array([o.line_color])
+            ci = np.zeros(len(solid), np.int64)
+        key = np.stack([ci, np.round(lwq * 1000).astype(np.int64)], 1) if len(ci) else np.zeros((0, 2), np.int64)
+        if len(key) == 0:
+            return
+        uk, inv = np.unique(key, axis=0, return_inverse=True)
+        inv = inv.ravel()
+        for g in range(len(uk)):
+            m = inv == g
+            pls = chain_2d(x0[m], y0[m], x1[m], y1[m])
+            dl.lines(pls, tuple(cols[uk[g][0]]), uk[g][1] / 1000.0)
+
+    # ------------------------------------------------------------------ surface mode
+    def _surface(self, dl, cam, X, Y, Z, tface, tsol, rast, hs):
+        o, sc, mesh = self.o, self.sc, self.mesh
+        nf = len(sc.F)
+        Lw = _unit(o.light[0] * cam.r + o.light[1] * cam.u + o.light[2] * cam.e)
+        nrm = mesh.fnormal
+        towards = cam.facing(nrm, sc.V[sc.F[:, 0]]) if nf else np.zeros(0)
+        nn = np.where((towards < 0)[:, None], -nrm, nrm)
+        lam = np.clip(nn @ Lw, 0, 1)
+        base = np.array([s.color for s in sc.solids]) if sc.solids else np.zeros((0, 3))
+        fcol = base[sc.fsolid] * (o.ambient + (1 - o.ambient) * lam)[:, None]
+        fcol = np.clip(fcol, 0, 1)
+        M = len(tface)
+        ncap = len(self.caps)
+        if o.surface_vector:
+            ids = self.db.ids()
+            vis_ids = np.unique(ids[(ids >= 0) & (ids < M)])
+            zc = Z[vis_ids].mean(1)
+            order = vis_ids[np.argsort(-zc)]
+            polys = [np.stack([X[i] / hs, Y[i] / hs], 1) for i in order]
+            cols = fcol[tface[order]]
+            # group consecutive equal colours to keep the files small
+            for i, pl in enumerate(polys):
+                dl.items.append(("fill", [pl], tuple(cols[i]), tuple(cols[i]), 0.25, 1.0))
+        else:
+            ids = self.db.ids()
+            img = np.empty(ids.shape + (3,), float)
+            img[:] = o.background or (1, 1, 1)
+            m = (ids >= 0) & (ids < M)
+            img[m] = fcol[tface[ids[m]]]
+            for c in range(ncap):
+                mc = ids == M + c
+                smap = self.cap_solid_maps[c]
+                if mc.any() and smap is not None:
+                    sid = smap[mc]
+                    img[mc] = base[sid] * (o.ambient + (1 - o.ambient) * abs(float(
+                        self._cap_normal(c) @ Lw)))
+            if hs != 1:
+                # box-filter down to the canvas resolution
+                f = int(round(hs))
+                if f > 1 and img.shape[0] % f == 0 and img.shape[1] % f == 0:
+                    img = img.reshape(img.shape[0] // f, f, img.shape[1] // f, f, 3).mean((1, 3))
+            dl.image((np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8))
+
+    def _cap_normal(self, c):
+        return self._cap_planes[c][0]
+
+    # ------------------------------------------------------------------ overlays
+    def _overlays(self, dl, cam, to_px, s, planes):
+        o, sc = self.o, self.sc
+        dpi = o.dpi
+        pt2px = dpi / 72.0
+        near = cam.near_plane()
+        pl_planes = ([near] if near else []) + (list(planes) if o.clip_traj else [])
+        if not o.no_traj and sc.polylines:
+            groups = defaultdict(list)
+            for rgb, pts in sc.polylines:
+                if len(pts) < 2:
+                    continue
+                A, B = pts[:-1], pts[1:]
+                if pl_planes:
+                    A, B = clip_segments(A, B, pl_planes)
+                if len(A) == 0:
+                    continue
+                xa, ya, za = to_px(A)
+                xb, yb, zb = to_px(B)
+                if o.traj_hlr and hasattr(self, "db") and self.db is not None:
+                    hs = o.hlr_scale
+                    m1 = np.full(len(A), -9, np.int64)
+                    e, t0, t1 = self._visible_runs(xa * hs, ya * hs, za, xb * hs, yb * hs, zb, m1, m1)
+                    xa2 = xa[e] + t0 * (xb[e] - xa[e]); ya2 = ya[e] + t0 * (yb[e] - ya[e])
+                    xb2 = xa[e] + t1 * (xb[e] - xa[e]); yb2 = ya[e] + t1 * (yb[e] - ya[e])
+                    xa, ya, xb, yb = xa2, ya2, xb2, yb2
+                col = o.traj_color if o.traj_color is not None else rgb
+                groups[tuple(col)].append((xa, ya, xb, yb))
+            for col, parts in groups.items():
+                xa = np.concatenate([p[0] for p in parts]); ya = np.concatenate([p[1] for p in parts])
+                xb = np.concatenate([p[2] for p in parts]); yb = np.concatenate([p[3] for p in parts])
+                dl.lines(chain_2d(xa, ya, xb, yb), col, o.traj_lw)
+        if not o.no_hits:
+            for kind, rgb, xyz, size, screen in sc.markers:
+                x, y, z = to_px(xyz[None, :])
+                if any(pl[0] @ xyz + pl[1] < 0 for pl in pl_planes):
+                    continue
+                r = size * pt2px * o.marker_scale if screen else size * s * o.marker_scale
+                dl.marker(kind, float(x[0]), float(y[0]), max(r, 0.5), rgb)
+        if not o.no_text:
+            for rgb, xyz, size, dx, dy, txt, screen, font in sc.texts:
+                x, y, z = to_px(xyz[None, :])
+                k = pt2px if screen else s
+                if not txt.isprintable() or "�" in txt:
+                    continue      # Geant4 11 G4Text dangling-pointer garbage
+                dl.text(float(x[0]) + dx * k, float(y[0]) - dy * k, txt, size * (1 if screen else s / pt2px),
+                        rgb if not o.mono_text else (0, 0, 0))
+            for rgb, xmm, ymm, size, txt, font in sc.texts2d:
+                if "�" in txt:
+                    continue
+                dl.text(xmm / 25.4 * dpi, dl.H - ymm / 25.4 * dpi, txt, size, rgb)
+
+    def _decorations(self, dl, cam, s):
+        o = self.o
+        pt2px = o.dpi / 72.0
+        W, H = dl.W, dl.H
+        fs = o.font_size
+        if o.title:
+            dl.text(W / 2, 1.6 * fs * pt2px, o.title, fs * 1.3, (0, 0, 0), "middle")
+        if o.scale_bar is not None and cam.ortho:
+            L = o.scale_bar
+            if L <= 0:      # auto: 1-2-5 sequence, ~15 % of the width
+                target = 0.15 * W / s
+                p10 = 10 ** math.floor(math.log10(target))
+                L = max(m * p10 for m in (1, 2, 5) if m * p10 <= target * 1.0001) if target >= p10 else p10
+            Lpx = L * s
+            x0 = o.margin * min(W, H) * 0.6 + 4 * pt2px
+            y0 = H - 4 * pt2px - 0.6 * o.margin * min(W, H)
+            tick = 3 * pt2px
+            dl.lines([np.array([[x0, y0 - tick], [x0, y0], [x0 + Lpx, y0], [x0 + Lpx, y0 - tick]])],
+                     (0, 0, 0), 1.0, cap="butt")
+            lab = ("%g m" % (L / 1000.0)) if L >= 1000 else ("%g cm" % (L / 10.0)) if L >= 10 else "%g mm" % L
+            dl.text(x0 + Lpx / 2, y0 - tick - 2 * pt2px, lab, fs, (0, 0, 0), "middle")
+        if o.axes:
+            ax = np.eye(3)
+            L = 18 * pt2px
+            ox = W - 30 * pt2px - 0.6 * o.margin * min(W, H)
+            oy = H - 30 * pt2px - 0.6 * o.margin * min(W, H)
+            for i, name in enumerate("xyz"):
+                vx, vy = ax[i] @ cam.r, -(ax[i] @ cam.u)
+                if math.hypot(vx, vy) < 0.15:
+                    dl.marker("circle", ox, oy, 2.5 * pt2px, (0, 0, 0))
+                    dl.text(ox + 4 * pt2px, oy - 4 * pt2px, name + ("⊙" if ax[i] @ cam.e > 0 else "⊗"),
+                            fs, (0, 0, 0))
+                    continue
+                ex, ey = ox + L * vx, oy + L * vy
+                dl.lines([np.array([[ox, oy], [ex, ey]])], (0, 0, 0), 0.8)
+                ang = math.atan2(vy, vx)
+                hl = 4 * pt2px
+                for da in (2.6, -2.6):
+                    dl.lines([np.array([[ex, ey], [ex + hl * math.cos(ang + da), ey + hl * math.sin(ang + da)]])],
+                             (0, 0, 0), 0.8)
+                dl.text(ex + 6 * pt2px * vx, ey + 6 * pt2px * vy + 0.35 * fs * pt2px, name, fs, (0, 0, 0), "middle")
+
+
+# =============================================================================
+#  8.  2-D section mode
+# =============================================================================
+
+def render_section(sc, o, cam, plane, extra_planes):
+    """Exact cut of every selected solid by `plane`; outlines (+ optional fills)."""
+    rd = Renderer(sc, o)
+    sel, transp = rd.select_solids()
+    rd.sel, rd.transp = sel, transp
+    mesh = rd.mesh
+    V = sc.V
+    fsel = sel[sc.fsolid]
+    tsel = np.nonzero(fsel[mesh.tri_face])[0]
+    with timed("plane section of %d triangles" % len(tsel)):
+        Q0, Q1, ti, k0, k1 = section_segments(V, mesh.tri[tsel], plane)
+        sol = sc.fsolid[mesh.tri_face[tsel[ti]]]
+    loops = []          # (solid, pts, closed)
+    with timed("chain outlines"):
+        order = np.argsort(sol, kind="stable")
+        Q0, Q1, k0, k1, sol = Q0[order], Q1[order], k0[order], k1[order], sol[order]
+        bounds = np.nonzero(np.diff(sol))[0] + 1
+        for grp in np.split(np.arange(len(sol)), bounds):
+            if len(grp) == 0:
+                continue
+            sid = int(sol[grp[0]])
+            for pts, closed in chain_segments(k0[grp], k1[grp], Q0[grp], Q1[grp]):
+                if extra_planes:
+                    if closed:
+                        pts = clip_polygon(pts, extra_planes)
+                    else:
+                        a, b = clip_segments(pts[:-1], pts[1:], extra_planes)
+                        if len(a) == 0:
+                            continue
+                        pts = np.vstack([a[:1], b])
+                if len(pts) >= 2:
+                    loops.append((sid, pts, closed))
+    rd.n_loops = len(loops)
+    allpts = [p for _, p, _ in loops]
+    fit = [np.vstack(allpts)] if allpts else [V[:1]]
+    if o.fit_traj:
+        fit += [pl for _, pl in sc.polylines]
+    s, cx, cy, W, H = rd._fit(cam, fit)
+    rd._fitinfo = (s, cx, cy, W, H)
+    log("  canvas %d x %d px, scale %.4g px/mm, %d outlines" % (W, H, s, len(loops)))
+
+    def to_px(Pw):
+        x, y, depth = cam.view(Pw)
+        return (x - cx) * s + 0.5 * W, 0.5 * H - (y - cy) * s, cam.zkey(depth)
+
+    rd.to_px = to_px
+    dl = DrawList(W, H, o.dpi, o.background)
+    if o.fill:
+        by = defaultdict(list)
+        for sid, pts, closed in loops:
+            if closed and len(pts) >= 3:
+                x, y, _ = to_px(pts)
+                by[sid].append(np.stack([x, y], 1))
+        w = o.fill_lighten
+        for sid in sorted(by):
+            c = sc.solids[sid].color
+            dl.fill(by[sid], tuple(w + (1 - w) * v for v in c), alpha=o.fill_alpha)
+    groups = defaultdict(list)
+    for sid, pts, closed in loops:
+        x, y, _ = to_px(pts)
+        xy = np.stack([x, y], 1)
+        if closed:
+            xy = np.vstack([xy, xy[:1]])
+        col = tuple(np.array(sc.solids[sid].color) * o.line_color_scale) if o.color_lines else o.line_color
+        groups[col].append(xy)
+    for col, pls in groups.items():
+        dl.lines(pls, col, o.lw_cut if o.lw_cut else o.lw)
+    rd._overlays(dl, cam, to_px, s, extra_planes)
+    rd._decorations(dl, cam, s)
+    return dl, rd
+
+
+# =============================================================================
+#  9.  Writers: SVG, PDF, EPS (hand written), PNG (pycairo or matplotlib)
+# =============================================================================
+
+def _fmt(a):
+    return " ".join("%.2f" % v for v in a)
+
+
+def write_svg(dl, path):
+    k = 72.0 / dl.dpi
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+           'version="1.1" width="%.2fpt" height="%.2fpt" viewBox="0 0 %d %d">' % (dl.W * k, dl.H * k, dl.W, dl.H),
+           '<!-- generated by solid_lineview %s -->' % __version__]
+    if dl.bg:
+        out.append('<rect x="0" y="0" width="%d" height="%d" fill="%s"/>' % (dl.W, dl.H, _rgbhex(dl.bg)))
+    pt = dl.dpi / 72.0
+    for it in dl.items:
+        if it[0] == "lines":
+            _, pls, rgb, lw, dash, cap = it
+            d = []
+            for p in pls:
+                d.append("M" + _fmt(p[0]) + "L" + " ".join(_fmt(q) for q in p[1:]))
+            extra = ' stroke-dasharray="%s"' % ",".join("%g" % (v * pt) for v in dash) if dash else ""
+            out.append('<path fill="none" stroke="%s" stroke-width="%.3f" stroke-linecap="%s" '
+                       'stroke-linejoin="round"%s d="%s"/>' % (_rgbhex(rgb), lw * pt, cap, extra, "".join(d)))
+        elif it[0] == "fill":
+            _, rings, rgb, stroke, lw, alpha = it
+            d = "".join("M" + _fmt(r[0]) + "L" + " ".join(_fmt(q) for q in r[1:]) + "Z" for r in rings)
+            st = ' stroke="%s" stroke-width="%.3f" stroke-linejoin="round"' % (_rgbhex(stroke), lw * pt) \
+                if stroke is not None and lw > 0 else ' stroke="none"'
+            op = ' fill-opacity="%.3f"' % alpha if alpha < 1 else ""
+            out.append('<path fill="%s" fill-rule="evenodd"%s%s d="%s"/>' % (_rgbhex(rgb), op, st, d))
+        elif it[0] == "marker":
+            _, kind, x, y, r, rgb = it
+            if kind == "circle":
+                out.append('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s"/>' % (x, y, r, _rgbhex(rgb)))
+            else:
+                out.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="%s"/>'
+                           % (x - r, y - r, 2 * r, 2 * r, _rgbhex(rgb)))
+        elif it[0] == "text":
+            _, x, y, s, size, rgb, anchor, font = it
+            s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            out.append('<text x="%.2f" y="%.2f" font-family="Helvetica, Arial, sans-serif" font-size="%.2f" '
+                       'fill="%s" text-anchor="%s">%s</text>' % (x, y, size * pt, _rgbhex(rgb), anchor, s))
+        elif it[0] == "image":
+            import base64
+            png = _png_bytes(it[1])
+            out.append('<image x="0" y="0" width="%d" height="%d" preserveAspectRatio="none" '
+                       'xlink:href="data:image/png;base64,%s"/>' % (dl.W, dl.H, base64.b64encode(png).decode()))
+    out.append("</svg>")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(out) + "\n")
+
+
+def _png_bytes(img):
+    """Minimal PNG encoder (RGB8) with zlib, no dependencies."""
+    h, w, _ = img.shape
+    raw = b"".join(b"\x00" + img[r].tobytes() for r in range(h))
+
+    def chunk(tag, data):
+        c = struct.pack(">I", len(data)) + tag + data
+        return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
+
+
+def _ps_escape(s):
+    s = s.encode("latin-1", "replace").decode("latin-1")
+    return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _content_stream(dl, eps=False):
+    """PDF (or PostScript) drawing operators in pt with y up."""
+    k = 72.0 / dl.dpi
+    Hpt = dl.H * k
+    o = []
+    if eps:
+        M, L, S, RG, rg, W_, J, F = "m", "l", "S", "RG", "rg", "w", "J", "f"
+    else:
+        M, L, S, RG, rg, W_, J, F = "m", "l", "S", "RG", "rg", "w", "J", "f*"
+    o.append("1 j")
+    if dl.bg:
+        o.append("%.4f %.4f %.4f %s" % (tuple(dl.bg) + (rg,)))
+        o.append("0 0 %.2f %.2f re %s" % (dl.W * k, Hpt, F if not eps else "f"))
+    images = []
+
+    def pts(p):
+        return [(x * k, Hpt - y * k) for x, y in p]
+
+    for it in dl.items:
+        if it[0] == "lines":
+            _, pls, rgb, lw, dash, cap = it
+            o.append("%.4f %.4f %.4f %s %.3f %s %d %s" % (rgb[0], rgb[1], rgb[2], RG, lw, W_,
+                                                     1 if cap == "round" else 0, J))
+            o.append(("[%s] 0 d" % " ".join("%g" % v for v in dash)) if dash else "[] 0 d")
+            buf = []
+            for p in pls:
+                q = pts(p)
+                buf.append("%.2f %.2f %s" % (q[0][0], q[0][1], M))
+                buf.extend("%.2f %.2f %s" % (x, y, L) for x, y in q[1:])
+                buf.append(S)
+            o.append("\n".join(buf))
+        elif it[0] == "fill":
+            _, rings, rgb, stroke, lw, alpha = it
+            o.append("%.4f %.4f %.4f %s" % (rgb[0], rgb[1], rgb[2], rg))
+            buf = []
+            for r in rings:
+                q = pts(r)
+                buf.append("%.2f %.2f %s" % (q[0][0], q[0][1], M))
+                buf.extend("%.2f %.2f %s" % (x, y, L) for x, y in q[1:])
+                buf.append("h")
+            if stroke is not None and lw > 0:
+                o.append("%.4f %.4f %.4f %s %.3f %s" % (stroke[0], stroke[1], stroke[2], RG, lw, W_))
+                buf.append("B*" if not eps else "gsave eofill grestore stroke")
+            else:
+                buf.append("f*" if not eps else "eofill")
+            o.append("\n".join(buf))
+        elif it[0] == "marker":
+            _, kind, x, y, r, rgb = it
+            (cxp, cyp), = pts([(x, y)])
+            rp = r * k
+            o.append("%.4f %.4f %.4f %s" % (rgb[0], rgb[1], rgb[2], rg))
+            if kind == "circle":
+                c = 0.5523 * rp
+                o.append("%.2f %.2f m %.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c "
+                         "%.2f %.2f %.2f %.2f %.2f %.2f c %.2f %.2f %.2f %.2f %.2f %.2f c %s"
+                         % (cxp + rp, cyp, cxp + rp, cyp + c, cxp + c, cyp + rp, cxp, cyp + rp,
+                            cxp - c, cyp + rp, cxp - rp, cyp + c, cxp - rp, cyp,
+                            cxp - rp, cyp - c, cxp - c, cyp - rp, cxp, cyp - rp,
+                            cxp + c, cyp - rp, cxp + rp, cyp - c, cxp + rp, cyp, "f" if not eps else "fill")
+                         if not eps else
+                         "newpath %.2f %.2f %.2f 0 360 arc fill" % (cxp, cyp, rp))
+            else:
+                o.append("%.2f %.2f %.2f %.2f re %s" % (cxp - rp, cyp - rp, 2 * rp, 2 * rp, "f")
+                         if not eps else "%.2f %.2f %.2f %.2f rectfill" % (cxp - rp, cyp - rp, 2 * rp, 2 * rp))
+        elif it[0] == "text":
+            _, x, y, s, size, rgb, anchor, font = it
+            (xp, yp), = pts([(x, y)])
+            o.append("%.4f %.4f %.4f %s" % (rgb[0], rgb[1], rgb[2], rg))
+            if eps:
+                just = {"start": "", "middle": "dup stringwidth pop 2 div neg 0 rmoveto ",
+                        "end": "dup stringwidth pop neg 0 rmoveto "}[anchor]
+                o.append("/Helvetica findfont %.2f scalefont setfont %.2f %.2f moveto (%s) %sshow"
+                         % (size, xp, yp, _ps_escape(s), just))
+            else:
+                wapprox = 0.5 * size * len(s)
+                dx = {"start": 0, "middle": -wapprox / 2, "end": -wapprox}[anchor]
+                o.append("BT /F1 %.2f Tf %.2f %.2f Td (%s) Tj ET" % (size, xp + dx, yp, _ps_escape(s)))
+        elif it[0] == "image":
+            images.append(it[1])
+            if not eps:
+                o.append("q %.2f 0 0 %.2f 0 0 cm /Im%d Do Q" % (dl.W * k, Hpt, len(images) - 1))
+            else:
+                h, w, _ = it[1].shape
+                o.append("gsave %.2f %.2f scale %d %d 8 [%d 0 0 %d 0 %d] currentfile /ASCIIHexDecode filter "
+                         "false 3 colorimage" % (dl.W * k, Hpt, w, h, w, -h, h))
+                o.append(it[1].tobytes().hex() + ">")
+                o.append("grestore")
+    return "\n".join(o), images
+
+
+def write_pdf(dl, path):
+    k = 72.0 / dl.dpi
+    content, images = _content_stream(dl)
+    data = zlib.compress(content.encode("latin-1", "replace"), 6)
+    objs = []
+    objs.append(b"<< /Type /Catalog /Pages 2 0 R >>")
+    objs.append(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+    xobj = " ".join("/Im%d %d 0 R" % (i, 6 + i) for i in range(len(images)))
+    objs.append(("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Contents 4 0 R "
+                 "/Resources << /Font << /F1 5 0 R >> /XObject << %s >> >> >>"
+                 % (dl.W * k, dl.H * k, xobj)).encode())
+    objs.append(b"<< /Length %d /Filter /FlateDecode >>\nstream\n" % len(data) + data + b"\nendstream")
+    objs.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
+    for img in images:
+        h, w, _ = img.shape
+        d = zlib.compress(img.tobytes(), 6)
+        objs.append(("<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB "
+                     "/BitsPerComponent 8 /Filter /FlateDecode /Length %d >>\nstream\n" % (w, h, len(d))).encode()
+                    + d + b"\nendstream")
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offs = []
+    for i, ob in enumerate(objs):
+        offs.append(len(out))
+        out += b"%d 0 obj\n" % (i + 1) + ob + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1)
+    for of in offs:
+        out += b"%010d 00000 n \n" % of
+    out += b"trailer\n<< /Size %d /Root 1 0 R /Info << /Producer (solid_lineview %s) >> >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objs) + 1, __version__.encode(), xref)
+    with open(path, "wb") as fh:
+        fh.write(out)
+
+
+def write_eps(dl, path):
+    k = 72.0 / dl.dpi
+    content, _ = _content_stream(dl, eps=True)
+    defs = "/m {moveto} bind def /l {lineto} bind def /S {stroke} bind def /h {closepath} bind def\n" \
+           "/RG {setrgbcolor} bind def /rg {setrgbcolor} bind def /w {setlinewidth} bind def\n" \
+           "/J {setlinecap} bind def /j {setlinejoin} bind def /d {setdash} bind def\n" \
+           "/re {4 2 roll moveto 1 index 0 rlineto 0 exch rlineto neg 0 rlineto closepath} bind def\n" \
+           "/f {fill} bind def\n"
+    content = content.replace(" m\n", " m\n")
+    # PostScript needs 'newpath' only before fills built with re; moveto starts a new subpath anyway
+    with open(path, "w", encoding="latin-1", errors="replace") as fh:
+        fh.write("%%!PS-Adobe-3.0 EPSF-3.0\n%%%%BoundingBox: 0 0 %d %d\n%%%%HiResBoundingBox: 0 0 %.2f %.2f\n"
+                 "%%%%Creator: solid_lineview %s\n%%%%EndComments\n" % (
+                     math.ceil(dl.W * k), math.ceil(dl.H * k), dl.W * k, dl.H * k, __version__))
+        fh.write(defs)
+        fh.write(content.replace("re f\n", "re fill\n"))
+        fh.write("\nshowpage\n%%EOF\n")
+
+
+def write_png(dl, path, backend="auto"):
+    if backend in ("auto", "cairo"):
+        try:
+            import cairo  # noqa: F401
+            return _png_cairo(dl, path)
+        except ImportError:
+            if backend == "cairo":
+                raise
+    try:
+        import matplotlib  # noqa: F401
+    except ImportError:
+        raise RuntimeError("PNG output needs pycairo or matplotlib")
+    return _png_matplotlib(dl, path)
+
+
+def _png_cairo(dl, path):
+    import cairo
+    W, H = dl.W, dl.H
+    pt = dl.dpi / 72.0
+    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
+    cr = cairo.Context(surf)
+    cr.set_source_rgb(*(dl.bg or (1, 1, 1)))
+    cr.paint()
+    cr.set_line_join(cairo.LINE_JOIN_ROUND)
+    for it in dl.items:
+        if it[0] == "lines":
+            _, pls, rgb, lw, dash, cap = it
+            cr.set_source_rgb(*rgb)
+            cr.set_line_width(lw * pt)
+            cr.set_line_cap(cairo.LINE_CAP_ROUND if cap == "round" else cairo.LINE_CAP_BUTT)
+            cr.set_dash([v * pt for v in dash] if dash else [])
+            for p in pls:
+                cr.move_to(*p[0])
+                for q in p[1:]:
+                    cr.line_to(*q)
+                cr.stroke()
+        elif it[0] == "fill":
+            _, rings, rgb, stroke, lw, alpha = it
+            cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+            for r in rings:
+                cr.move_to(*r[0])
+                for q in r[1:]:
+                    cr.line_to(*q)
+                cr.close_path()
+            cr.set_source_rgba(rgb[0], rgb[1], rgb[2], alpha)
+            if stroke is not None and lw > 0:
+                cr.fill_preserve()
+                cr.set_source_rgb(*stroke)
+                cr.set_line_width(lw * pt)
+                cr.stroke()
+            else:
+                cr.fill()
+        elif it[0] == "marker":
+            _, kind, x, y, r, rgb = it
+            cr.set_source_rgb(*rgb)
+            if kind == "circle":
+                cr.arc(x, y, r, 0, TWO_PI)
+            else:
+                cr.rectangle(x - r, y - r, 2 * r, 2 * r)
+            cr.fill()
+        elif it[0] == "text":
+            _, x, y, s, size, rgb, anchor, font = it
+            cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+            cr.set_font_size(size * pt)
+            ext = cr.text_extents(s)
+            dx = {"start": 0, "middle": -ext.x_advance / 2, "end": -ext.x_advance}[anchor]
+            cr.set_source_rgb(*rgb)
+            cr.move_to(x + dx, y)
+            cr.show_text(s)
+        elif it[0] == "image":
+            img = it[1]
+            h, w, _ = img.shape
+            argb = np.empty((h, w, 4), np.uint8)
+            argb[:, :, 0] = img[:, :, 2]
+            argb[:, :, 1] = img[:, :, 1]
+            argb[:, :, 2] = img[:, :, 0]
+            argb[:, :, 3] = 255
+            stride = cairo.ImageSurface.format_stride_for_width(cairo.FORMAT_ARGB32, w)
+            buf = np.zeros((h, stride // 4, 4), np.uint8)
+            buf[:, :w] = argb
+            isurf = cairo.ImageSurface.create_for_data(memoryview(buf), cairo.FORMAT_ARGB32, w, h, stride)
+            cr.save()
+            cr.scale(W / w, H / h)
+            cr.set_source_surface(isurf, 0, 0)
+            cr.paint()
+            cr.restore()
+    surf.write_to_png(path)
+
+
+def _png_matplotlib(dl, path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+    from matplotlib.path import Path
+    from matplotlib.patches import PathPatch, Circle, Rectangle
+    W, H, dpi = dl.W, dl.H, dl.dpi
+    fig = plt.figure(figsize=(W / dpi, H / dpi), dpi=dpi)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, W)
+    ax.set_ylim(H, 0)
+    ax.axis("off")
+    fig.patch.set_facecolor(dl.bg or (1, 1, 1))
+    z = 1
+    for it in dl.items:
+        z += 1
+        if it[0] == "lines":
+            _, pls, rgb, lw, dash, cap = it
+            lc = LineCollection(pls, colors=[rgb], linewidths=lw, capstyle="round" if cap == "round" else "butt",
+                                joinstyle="round", zorder=z)
+            if dash:
+                lc.set_linestyle((0, dash))
+            ax.add_collection(lc)
+        elif it[0] == "fill":
+            _, rings, rgb, stroke, lw, alpha = it
+            verts, codes = [], []
+            for r in rings:
+                verts.extend(r.tolist() + [r[0].tolist()])
+                codes.extend([Path.MOVETO] + [Path.LINETO] * (len(r) - 1) + [Path.CLOSEPOLY])
+            pp = PathPatch(Path(verts, codes), facecolor=rgb, alpha=alpha, zorder=z,
+                           edgecolor=stroke if stroke is not None else "none",
+                           linewidth=lw if stroke is not None else 0)
+            ax.add_patch(pp)
+        elif it[0] == "marker":
+            _, kind, x, y, r, rgb = it
+            p = Circle((x, y), r, color=rgb, zorder=z) if kind == "circle" else \
+                Rectangle((x - r, y - r), 2 * r, 2 * r, color=rgb, zorder=z)
+            ax.add_patch(p)
+        elif it[0] == "text":
+            _, x, y, s, size, rgb, anchor, font = it
+            ax.text(x, y, s, fontsize=size, color=rgb, ha={"start": "left", "middle": "center", "end": "right"}[anchor],
+                    va="baseline", zorder=z)
+        elif it[0] == "image":
+            ax.imshow(it[1], extent=(0, W, H, 0), interpolation="bilinear", zorder=z)
+    fig.savefig(path, dpi=dpi, facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def write_outputs(dl, outputs, png_backend):
+    for path in outputs:
+        ext = os.path.splitext(path)[1].lower()
+        with timed("write %s" % path):
+            if ext == ".svg":
+                write_svg(dl, path)
+            elif ext == ".pdf":
+                write_pdf(dl, path)
+            elif ext in (".eps", ".ps"):
+                write_eps(dl, path)
+            elif ext == ".png":
+                write_png(dl, path, png_backend)
+            else:
+                raise SystemExit("unknown output format: %s" % path)
+        log("wrote %s (%.1f kB)" % (path, os.path.getsize(path) / 1024.0))
+
+
+# =============================================================================
+#  10.  DAWN compatibility helpers
+# =============================================================================
+
+def read_dawn_history(path):
+    """.DAWN_1.history (written by G4DAWNFILEViewer::SendViewParameters / dawn_tweak)."""
+    with open(path) as fh:
+        L = [x.strip() for x in fh.read().splitlines()]
+
+    def f(i, default=None):
+        try:
+            return float(L[i - 1])
+        except (IndexError, ValueError):
+            return default
+
+    h = {"camera_distance": f(1), "polar": f(2, 0.0), "azimuth": f(3, 0.0),
+         "auto_target": f(4, 0.0), "target": (f(5, 0.0), f(6, 0.0), f(7, 0.0)),
+         "style": int(f(9, 4) or 4), "aux_threshold": f(24, 70.0)}
+    mag = L[7] if len(L) > 7 else "1"
+    h["mag"] = None if mag.startswith("fd") else float(mag)
+    h["focal_distance"] = float(mag[2:]) if mag.startswith("fd") else None
+    return h
+
+
+DAWN_STYLE_TO_MODE = {1: "wireframe", 2: "wireframe", 3: "surface", 4: "hlr", 5: "surface"}
+
+
+def dawncut_to_plane(a, b, c, d):
+    """DAWNCUT 1.54a semantics (verified in its source): unit normal n=(a,b,c)/|..|, the
+    part with n.P - d > 0 is erased.  Returned in solid_lineview convention (keep >= 0)."""
+    n = np.array([a, b, c], float)
+    nn = np.linalg.norm(n)
+    if nn == 0:
+        raise SystemExit("dawncut: zero normal")
+    n /= nn
+    return (-n, float(d))
+
+
+def plane_from_abcd(a, b, c, d):
+    n = np.array([a, b, c], float)
+    nn = np.linalg.norm(n)
+    if nn == 0:
+        raise SystemExit("zero plane normal")
+    return (n / nn, float(d) / nn)
+
+
+def parse_section_spec(spec):
+    """'x=0', 'y=-10cm', 'z=2.5m' -> plane (n, d) with n along +axis."""
+    m = re.fullmatch(r"\s*([xyz])\s*=\s*(.+)", spec)
+    if not m:
+        raise argparse.ArgumentTypeError("section spec must look like x=0 / z=2.5m")
+    ax = "xyz".index(m.group(1))
+    n = np.zeros(3)
+    n[ax] = 1.0
+    return (n, -parse_length(m.group(2)))
+
+
+def parse_slab(spec):
+    """'y=-1:1' (mm) or 'x=-5cm:5cm' -> two keep-planes."""
+    m = re.fullmatch(r"\s*([xyz])\s*=\s*([^:]+):(.+)", spec)
+    if not m:
+        raise argparse.ArgumentTypeError("slab spec must look like y=-1:1")
+    ax = "xyz".index(m.group(1))
+    lo, hi = parse_length(m.group(2)), parse_length(m.group(3))
+    n = np.zeros(3)
+    n[ax] = 1.0
+    return [(n.copy(), -lo), (-n, hi)]
+
+
+# =============================================================================
+#  11.  CLI
+# =============================================================================
+
+EPILOG = r"""
+examples
+  # DAWN-like hidden-line side view of the half detector x>0 (camera at -x), PDF + PNG
+  solid_lineview.py g4_0000.prim --view side --cut 1 0 0 0 -o side.pdf -o side.png
+
+  # exact y-z section at x=0, coloured fills
+  solid_lineview.py g4_0000.prim --mode section --view side --fill -o section_yz.svg
+
+  # what the old views/top_view/generate_eps of this repository did (side view part):
+  #   dawncut -1 0 0 1 ; dawn_tweak --mag 10 --draw 3 --theta 165 --phi 75
+  solid_lineview.py g4_0000.prim --dawncut -1 0 0 1 --dawn-angles 75 165 --mode hlr -o view.pdf
+
+  # read camera + style from an existing .DAWN_1.history
+  solid_lineview.py g4_0000.prim --dawn-history .DAWN_1.history -o top.pdf
+
+conventions
+  lengths are mm unless a unit is given (e.g. 2.5m, -30cm); --cut a b c d keeps a*x+b*y+c*z+d >= 0
+  (Geant4 /vis/viewer/addCutawayPlane convention); --dawncut a b c d reproduces DAWNCUT 1.54a exactly
+  (erases the side n.x > d, n = unit(a,b,c)).  View presets: side (camera at -x, z right, y up),
+  side-x, top (camera at +y, z right, x up), bottom, beam (camera at +z: x right, y up), front, iso.
+"""
+
+
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="solid_lineview.py",
+        description="Clean DAWN-style vector line drawings (SVG/PDF/EPS/PNG) from Geant4 DAWNFILE .prim files.",
+        epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("prim", help="input .prim file (Geant4 DAWNFILE output, g4.prim format 2.4)")
+    p.add_argument("-o", "--output", action="append", default=[],
+                   help="output file(s); format from extension: .svg .pdf .eps .png (repeatable)")
+    p.add_argument("--mode", choices=["hlr", "section", "wireframe", "surface"], default="hlr")
+    g = p.add_argument_group("camera")
+    g.add_argument("--view", default="side", help="preset: %s (default side)" % ", ".join(VIEW_PRESETS))
+    g.add_argument("--dawn-angles", nargs=2, type=float, metavar=("POLAR", "AZIMUTH"),
+                   help="DAWN camera angles in deg (= .DAWN_1.history lines 2,3 = dawn_tweak --phi/--theta "
+                        "= Geant4 viewpointThetaPhi)")
+    g.add_argument("--view-dir", nargs=3, type=float, metavar=("DX", "DY", "DZ"),
+                   help="direction from the target towards the camera")
+    g.add_argument("--up", nargs=3, type=float, default=None, metavar=("UX", "UY", "UZ"),
+                   help="up vector (default +y)")
+    g.add_argument("--target", nargs=3, type=parse_length, metavar=("X", "Y", "Z"),
+                   help="target point (default: centre of the drawn geometry)")
+    g.add_argument("--perspective", type=parse_length, metavar="DIST",
+                   help="perspective projection with the camera at this distance from the target")
+    g.add_argument("--mag", type=float, help="DAWN-compatible magnification relative to the /BoundingBox fit "
+                                             "(disables auto-fit and auto-crop)")
+    g.add_argument("--dawn-history", metavar="FILE", help="take camera, mag, style and aux-edge angle from a "
+                                                          ".DAWN_1.history file")
+    g.add_argument("--fit-box", nargs=4, type=parse_length, metavar=("X0", "X1", "Y0", "Y1"),
+                   help="fit this window (screen axes, mm, relative to the target) instead of the content")
+    g = p.add_argument_group("cuts and sections")
+    g.add_argument("--cut", nargs=4, type=float, action="append", metavar=("A", "B", "C", "D"),
+                   help="keep a*x+b*y+c*z+d >= 0 (mm); repeatable (intersection of half spaces)")
+    g.add_argument("--dawncut", nargs=4, type=float, action="append", metavar=("A", "B", "C", "D"),
+                   help="DAWNCUT semantics: erase n.x > d with n = unit(a,b,c); repeatable")
+    g.add_argument("--slab", action="append", type=parse_slab, metavar="AXIS=LO:HI",
+                   help="keep LO <= axis <= HI (e.g. y=-1:1), like the dawncut pair in generate_eps")
+    g.add_argument("--section", type=parse_section_spec, metavar="AXIS=VALUE",
+                   help="section plane for --mode section (default: from the view preset through the target)")
+    g.add_argument("--plane", nargs=4, type=float, metavar=("A", "B", "C", "D"),
+                   help="general section plane a*x+b*y+c*z+d=0 for --mode section")
+    g.add_argument("--no-caps", action="store_true", help="do not close cut solids with caps (hlr/surface)")
+    g.add_argument("--cap-fill", default="none", help="fill of cut faces in hlr/surface: none (default), white, "
+                                                    "color, or a colour")
+    g = p.add_argument_group("selection")
+    g.add_argument("--include", action="append", metavar="REGEX", help="only volumes whose PV name matches")
+    g.add_argument("--exclude", action="append", metavar="REGEX", help="drop volumes whose PV name matches")
+    g.add_argument("--transparent", action="append", metavar="REGEX",
+                   help="draw these volumes but let them hide nothing (like ForceWireframe)")
+    g.add_argument("--match-path", action="store_true", help="match regexes against the volume path "
+                                                           "(mother/daughter) instead of the name")
+    g.add_argument("--min-depth", type=int, help="drop volumes shallower than this hierarchy depth")
+    g.add_argument("--max-depth", type=int, help="drop volumes deeper than this hierarchy depth")
+    g.add_argument("--exclude-color", action="append", type=parse_color, metavar="RGB")
+    g.add_argument("--only-color", action="append", type=parse_color, metavar="RGB")
+    g.add_argument("--mothers", choices=["opaque", "transparent", "hide"], default="opaque",
+                   help="volumes with drawn daughters: opaque (physical, default), transparent, hide")
+    g.add_argument("--wireframe-volumes", choices=["transparent", "hide"], default="transparent",
+                   help="volumes flagged /ForceWireframe 1 (default: drawn, non-occluding)")
+    g = p.add_argument_group("edges and style")
+    g.add_argument("--crease", type=float, default=35.0,
+                   help="feature-edge angle in deg between face normals (default 35; DAWN uses 70)")
+    g.add_argument("--no-silhouettes", action="store_true")
+    g.add_argument("--all-edges", action="store_true", help="wireframe: draw every polygon edge")
+    g.add_argument("--lw", type=float, default=0.35, help="line width in pt (default 0.35)")
+    g.add_argument("--lw-outline", type=float, default=None, help="silhouette line width (default = --lw)")
+    g.add_argument("--lw-cut", type=float, default=None, help="cut/section outline width (default 1.4 x --lw)")
+    g.add_argument("--depth-lw-factor", type=float, default=1.0,
+                   help="multiply the width by this factor per hierarchy level (e.g. 0.8)")
+    g.add_argument("--color-lines", action="store_true", help="draw lines in the volume colours")
+    g.add_argument("--line-color", type=parse_color, default=(0, 0, 0), help="monochrome line colour")
+    g.add_argument("--line-color-scale", type=float, default=0.8, help="darken volume colours for lines")
+    g.add_argument("--fill", action="store_true", help="section mode: fill outlines with the volume colour")
+    g.add_argument("--fill-lighten", type=float, default=0.35, help="blend fills towards white (0..1)")
+    g.add_argument("--fill-alpha", type=float, default=1.0)
+    g.add_argument("--background", type=parse_color, default=(1, 1, 1), help="'none' for transparent")
+    g.add_argument("--light", nargs=3, type=float, default=(-0.35, 0.55, 0.75), metavar=("R", "U", "E"),
+                   help="surface mode light direction in camera axes (right, up, towards camera)")
+    g.add_argument("--ambient", type=float, default=0.35)
+    g.add_argument("--surface-vector", action="store_true",
+                   help="surface mode: painter-sorted vector polygons instead of an embedded raster")
+    g = p.add_argument_group("trajectories, hits, text")
+    g.add_argument("--no-traj", action="store_true")
+    g.add_argument("--no-hits", action="store_true")
+    g.add_argument("--no-text", action="store_true")
+    g.add_argument("--traj-lw", type=float, default=0.6)
+    g.add_argument("--traj-color", type=parse_color, default=None)
+    g.add_argument("--traj-hlr", action="store_true", help="hide trajectory parts behind solids")
+    g.add_argument("--clip-traj", action="store_true", help="apply the cut planes to trajectories/hits too")
+    g.add_argument("--fit-traj", action="store_true", help="include trajectories in the auto-fit")
+    g.add_argument("--marker-scale", type=float, default=1.0)
+    g.add_argument("--mono-text", action="store_true")
+    g = p.add_argument_group("canvas and decorations")
+    g.add_argument("--size", default="3000x2000", help="canvas in px (default 3000x2000); the content is "
+                                                     "fitted and the canvas cropped to it unless --no-crop")
+    g.add_argument("--dpi", type=float, default=300.0, help="px per inch for vector page size and line widths")
+    g.add_argument("--margin", type=float, default=0.03, help="margin as a fraction of the smaller side")
+    g.add_argument("--no-crop", action="store_true")
+    g.add_argument("--hlr-scale", type=float, default=1.0, help="depth-buffer resolution / canvas resolution")
+    g.add_argument("--sample-step", type=float, default=0.5, help="edge sampling step in depth-buffer px")
+    g.add_argument("--slope-tol", type=float, default=1.0, help="depth tolerance in units of the occluder's "
+                                                              "depth change per px")
+    g.add_argument("--no-cull", action="store_true", help="rasterise back faces too")
+    g.add_argument("--scale-bar", type=parse_length, nargs="?", const=0.0, default=None, metavar="LEN",
+                   help="draw a scale bar (auto length if no value)")
+    g.add_argument("--axes", action="store_true", help="draw a small x/y/z axis triad")
+    g.add_argument("--title", default=None)
+    g.add_argument("--font-size", type=float, default=9.0)
+    g.add_argument("--png-backend", choices=["auto", "cairo", "matplotlib"], default="auto")
+    g = p.add_argument_group("information")
+    g.add_argument("--info", action="store_true", help="print the volume tree and statistics, no drawing")
+    g.add_argument("--profile", action="store_true", help="print stage timings")
+    g.add_argument("-v", "--verbose", action="count", default=0)
+    g.add_argument("-q", "--quiet", action="store_true")
+    g.add_argument("--version", action="version", version="solid_lineview " + __version__)
+    return p
+
+
+def print_info(sc, mesh):
+    print("solids: %d   vertices: %d   facets: %d   (closed: %d)" % (
+        len(sc.solids), len(sc.V), len(sc.F), sum(s.closed for s in sc.solids)))
+    print("kinds:", ", ".join("%s=%d" % kv for kv in sorted(sc.counts.items())))
+    if sc.bbox is not None:
+        print("/BoundingBox:", " ".join("%.6g" % v for v in sc.bbox))
+    if len(sc.V):
+        print("geometry extent [mm]: x %.1f..%.1f  y %.1f..%.1f  z %.1f..%.1f" % (
+            sc.V[:, 0].min(), sc.V[:, 0].max(), sc.V[:, 1].min(), sc.V[:, 1].max(),
+            sc.V[:, 2].min(), sc.V[:, 2].max()))
+    print("edges: %d (feature %d, boundary %d, non-manifold %d, inconsistent orientation %d)" % (
+        len(mesh.e0), int(mesh.efeature.sum()), int(mesh.eboundary.sum()), int(mesh.enonmanifold.sum()),
+        mesh.n_inconsistent))
+    if sc.clip_comments:
+        print("DAWNCUT planes recorded in file:", sc.clip_comments)
+    for w, c in sc.warnings.most_common():
+        print("warning (%dx): %s" % (c, w))
+    names = Counter()
+    for s in sc.solids:
+        names[(s.depth, s.name.rsplit(":", 1)[0], s.kind, s.color, s.wire, s.closed)] += 1
+    print("\n%-5s %-6s %-28s %-12s %-17s %s" % ("depth", "count", "volume", "kind", "colour", "flags"))
+    seen = set()
+    for s in sc.solids:
+        k = (s.depth, s.name.rsplit(":", 1)[0], s.kind, s.color, s.wire, s.closed)
+        if k in seen:
+            continue
+        seen.add(k)
+        flags = ("wire " if s.wire else "") + ("" if s.closed else "open")
+        print("%-5d %-6d %-28s %-12s %-17s %s" % (s.depth, names[k], ("  " * max(s.depth - 1, 0)) + k[1],
+                                                  s.kind, "%.2f,%.2f,%.2f" % s.color, flags))
+
+
+def main(argv=None):
+    global VERBOSE
+    args = build_parser().parse_args(argv)
+    VERBOSE = 0 if args.quiet else 1 + args.verbose + (1 if args.profile else 0)
+    try:
+        W, H = [int(v) for v in args.size.lower().split("x")]
+    except ValueError:
+        raise SystemExit("--size must look like 3000x2000")
+    args.width, args.height = W, H
+    if args.lw_outline is None:
+        args.lw_outline = args.lw
+    if args.lw_cut is None:
+        args.lw_cut = 1.4 * args.lw
+
+    t_start = time.perf_counter()
+    with timed("parse %s" % args.prim):
+        sc = parse_prim(args.prim)
+    log("parsed %s: %d solids, %d facets, %d polylines, %d markers" % (
+        os.path.basename(args.prim), len(sc.solids), len(sc.F), len(sc.polylines), len(sc.markers)))
+    for w, c in sc.warnings.most_common(10):
+        log("  warning (%dx): %s" % (c, w))
+
+    # ---- DAWN history -> defaults
+    mode = args.mode
+    if args.dawn_history:
+        h = read_dawn_history(args.dawn_history)
+        if args.dawn_angles is None:
+            args.dawn_angles = (h["polar"], h["azimuth"])
+        if args.target is None and not h["auto_target"]:
+            args.target = h["target"]
+        if args.mag is None and h["mag"] is not None:
+            args.mag = h["mag"]
+        if "--mode" not in (argv if argv is not None else sys.argv):
+            mode = DAWN_STYLE_TO_MODE.get(h["style"], "hlr")
+        log("  .DAWN_1.history: angles %.4g %.4g, target %s, mag %s, style %d -> mode %s" % (
+            h["polar"], h["azimuth"], h["target"], h["mag"], h["style"], mode))
+
+    if args.info:
+        mesh = Mesh(sc, args.crease)
+        print_info(sc, mesh)
+        return 0
+    if not args.output:
+        raise SystemExit("no output given (-o file.svg|pdf|eps|png), or use --info")
+
+    # ---- camera
+    up = args.up if args.up is not None else (0, 1, 0)
+    if args.dawn_angles is not None:
+        eye = dawn_angles_to_eye(*args.dawn_angles)
+        preset = None
+    elif args.view_dir is not None:
+        eye = _unit(args.view_dir)
+        preset = None
+    else:
+        if args.view not in VIEW_PRESETS:
+            raise SystemExit("unknown view preset %s" % args.view)
+        eye, up0 = VIEW_PRESETS[args.view]
+        if args.up is None:
+            up = up0
+        preset = args.view
+    if args.target is not None:
+        target = np.array(args.target, float)
+    elif len(sc.V):
+        target = 0.5 * (sc.V.min(0) + sc.V.max(0))
+        if args.mag is not None and sc.bbox is not None:
+            target = 0.5 * (sc.bbox[:3] + sc.bbox[3:])
+    else:
+        target = np.zeros(3)
+    cam = Camera(eye, up, target, args.perspective)
+
+    # ---- planes
+    planes = []
+    for c in args.cut or []:
+        planes.append(plane_from_abcd(*c))
+    for c in args.dawncut or []:
+        planes.append(dawncut_to_plane(*c))
+    for pair in args.slab or []:
+        planes.extend(pair)
+    cap_planes = [] if args.no_caps else list(planes)
+
+    if mode == "section":
+        if args.plane is not None:
+            sec = plane_from_abcd(*args.plane)
+        elif args.section is not None:
+            sec = args.section
+        else:
+            ax = SECTION_FOR_VIEW.get(preset)
+            if ax is None:
+                ax = tuple(cam.e)
+            n = _unit(ax)
+            sec = (n, -float(n @ target) if args.target is not None else 0.0)
+            if args.target is None:
+                # through the origin of the hall frame, the natural choice for SoLID
+                sec = (n, 0.0)
+        log("section plane: n=(%.3g, %.3g, %.3g) d=%.4g mm" % (sec[0][0], sec[0][1], sec[0][2], sec[1]))
+        with timed("render section"):
+            dl, rd = render_section(sc, args, cam, sec, planes)
+    else:
+        rd = Renderer(sc, args)
+        with timed("render %s" % mode):
+            rd._fitinfo = None
+            # _fit is needed by cap rasterisation (unprojection); compute it inside _finish
+            orig_fit = rd._fit
+
+            def fit_and_store(cam_, pts):
+                r = orig_fit(cam_, pts)
+                rd._fitinfo = r
+                return r
+
+            rd._fit = fit_and_store
+            rd._cap_planes = cap_planes
+            dl = rd.render(cam, planes, cap_planes, mode)
+        log("  %d triangles after cuts, %d visible edge segments" % (rd.n_tri, rd.n_vis_segments))
+
+    if args.background is None:
+        dl.bg = None
+    write_outputs(dl, args.output, args.png_backend)
+    log("total %.2f s" % (time.perf_counter() - t_start))
+    if args.profile:
+        print("\nstage timings:", file=sys.stderr)
+        for lab, dt in _TIMINGS:
+            print("  %8.3f s  %s" % (dt, lab), file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

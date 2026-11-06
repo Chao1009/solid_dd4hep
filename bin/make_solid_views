@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: LGPL-3.0-or-later
+"""Standard SoLID line drawings: run ddsim with the Geant4 DAWNFILE driver, then render with solid_lineview.
+
+usage (inside eic-shell / solid-shell, after `source thissolid.sh <config>`):
+    make_solid_views [-c CONFIG] [-o OUTDIR] [-n EVENTS] [--prim FILE] [--views v1,v2,...] [--formats svg,pdf,png]
+
+Views (all in the GEMC hall frame, beam from left to right):
+    section_yz   exact cut at x = 0, filled with the vis colors (the classic SoLID side-view layout)
+    section_xz   exact cut at y = 0 (top view)
+    cutaway      3-D hidden-line drawing of the far half (x > 0) seen from the -x side: interior visible (DAWN-style)
+    lines_yz     side view, hidden-line removed outlines of the half x > 0 (black on white, no fill)
+    beam_<z>     beam-eye section at z = <z> cm (x-y plane), e.g. beam_440 for the forward EC
+With -n EVENTS > 0 the default particle gun of steering/solid_sim.py shoots EVENTS electrons and their trajectories
+are drawn on top of the section/lines views.
+
+The .prim file is written by Geant4 (DAWNFILE driver); G4DAWNFILE_VIEWER is set to 'true' so that the legacy
+DAWN program is not started.  Rendering needs only numpy (+ pycairo or matplotlib for PNG).
+"""
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+VIEWS = {
+    'section_yz': ['--mode', 'section', '--section', 'x=0', '--view', 'side', '--fill', '--scale-bar'],
+    'section_xz': ['--mode', 'section', '--section', 'y=0', '--view', 'top', '--fill', '--scale-bar'],
+    'cutaway':    ['--mode', 'hlr', '--dawncut', '-1', '0', '0', '0', '--view', 'iso', '--perspective', '40000',
+                   '--no-traj', '--no-hits'],
+    'lines_yz':   ['--mode', 'hlr', '--dawncut', '-1', '0', '0', '0', '--view', 'side'],
+}
+DEFAULT_VIEWS = 'section_yz,section_xz,cutaway,lines_yz'
+
+MACRO_GEOMETRY = """/vis/open DAWNFILE
+/vis/viewer/set/lineSegmentsPerCircle {segments}
+/vis/scene/create
+/vis/scene/add/volume
+/vis/sceneHandler/attach
+/vis/viewer/flush
+"""
+MACRO_EVENTS = """/vis/open DAWNFILE
+/vis/viewer/set/lineSegmentsPerCircle {segments}
+/vis/scene/create
+/vis/scene/add/volume
+/vis/sceneHandler/attach
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByCharge
+/vis/scene/add/hits
+/vis/scene/endOfEventAction accumulate
+/run/beamOn {events}
+"""
+
+
+def find_lineview():
+    for cand in (os.path.join(HERE, 'solid_lineview'), shutil.which('solid_lineview') or ''):
+        if cand and os.path.exists(cand):
+            return cand
+    sys.exit('make_solid_views: solid_lineview not found next to this script or on PATH')
+
+
+def make_prim(compact, workdir, events, segments, steering):
+    macro = os.path.join(workdir, 'dawnfile.mac')
+    with open(macro, 'w') as f:
+        f.write((MACRO_EVENTS if events > 0 else MACRO_GEOMETRY).format(events=events, segments=segments))
+    env = dict(os.environ, G4DAWNFILE_VIEWER='true', SOLID_OPTICAL='0')
+    cmd = ['ddsim', '--compactFile', compact, '--runType', 'vis', '--macroFile', macro,
+           '--outputFile', os.path.join(workdir, 'views_sim.edm4hep.root')]
+    if steering and os.path.exists(steering):
+        cmd[1:1] = ['--steeringFile', steering]
+    print('+', ' '.join(cmd), flush=True)
+    with open(os.path.join(workdir, 'ddsim.log'), 'w') as log:
+        # 'vis' starts an interactive session after the macro: feed it 'exit'
+        subprocess.run(cmd, input=b'exit\n', stdout=log, stderr=subprocess.STDOUT, env=env, cwd=workdir,
+                       timeout=3600, check=False)
+    prims = sorted(p for p in os.listdir(workdir) if p.endswith('.prim'))
+    if not prims:
+        sys.exit(f'make_solid_views: no .prim produced, see {workdir}/ddsim.log')
+    return os.path.join(workdir, prims[-1])
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('-c', '--config', default=os.environ.get('DETECTOR_CONFIG', 'solid'))
+    ap.add_argument('-o', '--outdir', default='views_out')
+    ap.add_argument('-n', '--events', type=int, default=0, help='events with trajectories (default 0 = geometry only)')
+    ap.add_argument('--prim', default=None, help='use an existing .prim file instead of running ddsim')
+    ap.add_argument('--views', default=DEFAULT_VIEWS, help='comma list; beam_<z_cm> for x-y sections')
+    ap.add_argument('--formats', default='svg,pdf,png')
+    ap.add_argument('--segments', type=int, default=72, help='/vis/viewer/set/lineSegmentsPerCircle')
+    ap.add_argument('--keep', action='store_true', help='keep the work directory with the .prim file')
+    ap.add_argument('lineview_args', nargs='*', help='extra arguments passed to solid_lineview (after --)')
+    a = ap.parse_args()
+
+    os.makedirs(a.outdir, exist_ok=True)
+    lineview = find_lineview()
+    path = os.environ.get('DETECTOR_PATH', '.')
+    compact = os.path.join(path, a.config + '.xml')
+    steering = os.path.join(path, 'steering', 'solid_sim.py')
+
+    workdir = tempfile.mkdtemp(prefix=f'views_{a.config}_', dir=os.path.abspath(a.outdir))
+    prim = os.path.abspath(a.prim) if a.prim else make_prim(compact, workdir, a.events, a.segments, steering)
+    print('prim file:', prim, flush=True)
+
+    status = 0
+    for view in [v.strip() for v in a.views.split(',') if v.strip()]:
+        if view.startswith('beam_'):
+            z_cm = float(view.split('_', 1)[1])
+            opts = ['--mode', 'section', '--section', f'z={z_cm}cm', '--view', 'beam', '--fill', '--scale-bar']
+        elif view in VIEWS:
+            opts = list(VIEWS[view])
+        else:
+            print(f'unknown view {view}, skipped', file=sys.stderr)
+            continue
+        outs = []
+        for fmt in a.formats.split(','):
+            outs += ['-o', os.path.join(a.outdir, f'{a.config}_{view}.{fmt.strip()}')]
+        cmd = [sys.executable, lineview, prim] + opts + outs + ['--title', f'{a.config}: {view}'] + a.lineview_args
+        print('+', ' '.join(cmd), flush=True)
+        r = subprocess.run(cmd)
+        status |= r.returncode
+    if not a.keep and not a.prim:
+        shutil.rmtree(workdir, ignore_errors=True)
+    return status
+
+
+if __name__ == '__main__':
+    sys.exit(main())
