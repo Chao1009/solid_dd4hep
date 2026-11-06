@@ -1,0 +1,65 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  CLEO-II solenoid: coil, coil support shell and cryostat (DetElement "MagnetCoil", passive). Included (inside
+  <detectors>, after magnet_materials.xml) by compact/magnet/solenoid_v4.xml, solenoid_nomod.xml and
+  solenoid_lite_sidis.xml. Do not include it directly in a top-level file.
+
+  Frame: hall frame = GEMC frame, origin at the coil centre, z along the beam. All parts are coaxial tubes.
+  Real hardware: Kubota et al., "The CLEO II detector", NIM A320 (1992) 66, sec. 2.7-2.8, Table 1, Fig. 4-5:
+    cryostat inner cylinder 10 mm, outer cylinder 12 mm ("extends radially to 1.74 m"), end flanges 20 mm,
+    length 3.8 m; coil 2 layers x 16 mm Al-stabilised conductor, 3.5 m long, wound inside an Al support shell;
+    cold mass 7000 kg (winding 2.9 t + shell 4.2 t here). The shell thickness is an ESTIMATE from NIM Fig. 5 (+-1 cm).
+  Deviations from GEMC (magnet_moved/solid_solenoid_cryo__geometry_Original.txt): walls 10/12 mm instead of
+  1.0/1.1 mm, outer wall at 172.8-174.0 instead of 176.48-176.59 (Poisson iron radius), flanges to r 174.0, Al support
+  shell added, conductor material instead of pure Al. GEMC numbers: cleo_coil_cryostat_gemc.xml.
+
+  Interface: clear bore r = Magnet_CryostatInner_r = 144.0 cm for |z| <= Magnet_Cryostat_zhalf = 189.0 cm.
+  Option (edit this file): Magnet_RadiationScreens = 1 adds the two Al radiation screens (estimates, 1.5 mm Al-eq.).
+-->
+<lccdd>
+  <define>
+    <constant name="Magnet_RadiationScreens"  value="0"/>
+    <constant name="Magnet_CryostatInner_r"   value="144.0*cm"/>
+    <constant name="Magnet_Cryostat_zhalf"    value="189.0*cm"/>
+  </define>
+
+  <detectors>
+    <detector id="MagnetCoil_ID" name="MagnetCoil" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>CLEO-II coil + Al support shell + stainless-steel cryostat (NIM A320), passive</comment>
+      <part name="CryostatInnerWall" material="Magnet_StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="-187.00*cm" rmin="Magnet_CryostatInner_r" rmax="145.00*cm"/>
+        <zplane z=" 187.00*cm" rmin="Magnet_CryostatInner_r" rmax="145.00*cm"/>
+      </part>
+      <part name="CryostatOuterWall" material="Magnet_StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="-187.00*cm" rmin="172.80*cm" rmax="174.00*cm"/>
+        <zplane z=" 187.00*cm" rmin="172.80*cm" rmax="174.00*cm"/>
+      </part>
+      <part name="CryostatFlangeUp" material="Magnet_StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="-Magnet_Cryostat_zhalf" rmin="Magnet_CryostatInner_r" rmax="174.00*cm"/>
+        <zplane z="-187.00*cm"             rmin="Magnet_CryostatInner_r" rmax="174.00*cm"/>
+      </part>
+      <part name="CryostatFlangeDown" material="Magnet_StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="187.00*cm"             rmin="Magnet_CryostatInner_r" rmax="174.00*cm"/>
+        <zplane z="Magnet_Cryostat_zhalf" rmin="Magnet_CryostatInner_r" rmax="174.00*cm"/>
+      </part>
+      <!-- winding: 2 layers x 16 mm (Poisson current sheets 152.3-152.7 and 153.9-154.3 cm), 3.475 m -->
+      <part name="CoilWinding" material="Magnet_CLEOCoilConductor" vis="Magnet_CoilVis">
+        <zplane z="-173.75*cm" rmin="151.70*cm" rmax="154.90*cm"/>
+        <zplane z=" 173.75*cm" rmin="151.70*cm" rmax="154.90*cm"/>
+      </part>
+      <!-- structural Al shell outside the winding (ESTIMATE; winding + shell = 7.06 t ~ NIM cold mass 7000 kg) -->
+      <part name="CoilShell" material="Aluminum" vis="Magnet_ShellVis">
+        <zplane z="-173.75*cm" rmin="155.00*cm" rmax="159.50*cm"/>
+        <zplane z=" 173.75*cm" rmin="155.00*cm" rmax="159.50*cm"/>
+      </part>
+      <part name="RadiationScreenInner" material="Aluminum" vis="Magnet_ShellVis" enable="Magnet_RadiationScreens">
+        <zplane z="-187.00*cm" rmin="149.00*cm" rmax="149.15*cm"/>
+        <zplane z=" 187.00*cm" rmin="149.00*cm" rmax="149.15*cm"/>
+      </part>
+      <part name="RadiationScreenOuter" material="Aluminum" vis="Magnet_ShellVis" enable="Magnet_RadiationScreens">
+        <zplane z="-187.00*cm" rmin="169.70*cm" rmax="169.85*cm"/>
+        <zplane z=" 187.00*cm" rmin="169.70*cm" rmax="169.85*cm"/>
+      </part>
+    </detector>
+  </detectors>
+</lccdd>

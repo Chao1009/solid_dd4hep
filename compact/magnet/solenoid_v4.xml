@@ -1,0 +1,131 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  Full SoLID magnet: CLEO-II coil + cryostat (cleo_coil_cryostat.xml, DetElement MagnetCoil) and the modified
+  CLEO-II iron yoke "v4c" (DetElement MagnetYoke) = GEMC magnet_moved variation v4 ("longer endcap", 6" endcap
+  plates; J. Benesch JLab-TN 22-011/014, 2022) with the octagon radii CORRECTED to the real CLEO-II flats.
+  Used by solid_SIDIS_He3, solid_SIDIS_NH3, solid_PVDIS, solid_JPsi, solid_DDVCS (field map: fields/field_CLEOv9.xml).
+
+  All radii of "oct" surfaces are APOTHEMS (distance to the flats); flats are normal to x, y and the diagonals
+  (Polyhedra phi0 = -22.5 deg), as on the real CLEO-II yoke (NIM A320 p.70: joints at 22.5 deg from vertical).
+
+  Deviations from GEMC v4 (magnet_moved/solid_solenoid__geometry_v4.txt; docs/geometry_comparison.md, section 3):
+    * GEMC enters the octagon CORNER radii 191.075/230.142/239.763/278.832 cm as Pgon apothems (+8.24 %).
+      Real flats (CAD v1/v2/v4 STL slices, NIM "36 cm layers, 9 cm gaps"): 176.53/212.62/221.51/257.61 cm.
+    * coil collars: round bore (144.14 up / 144.00->164.45 cone down) and octagonal outside, flat 180.34 cm
+      (CAD v1/v2/v4; NIM "octagonal outside and circular inside"); inner octagon counterbored to 180.34 over the collars.
+    * spacers: 8 discrete bars per end, 149.86 x 8.89 x 34.04 cm (CAD v1/v2), or (edit Magnet_SpacerBars = 0 below): octagonal
+      ring 25.5 cm long (CAD v4), downstream ring from 183.73 (GEMC typo 182.73).
+    * upstream plug round, bore = 25.0 deg cone from z = -350 cm: r_in 38.94 -> 63.32 (GEMC 66.19 is the old v2 end).
+    * endcap interface from z = 170.67 (GEMC 183.83), octagonal inside (257.61) and ROUND outside 285.24 (CAD v4;
+      GEMC: octagon with corners at 308.7 cm).
+    * round endcap parts, nose, endplates, cone plate, corrector ring and coil: as GEMC v4 (= CAD v4 within 0.3 cm).
+  GEMC v4 exactly as entered (validation only): solenoid_v4_gemc.xml.
+  Masses (Fe 7.87): v4c ~ 643 t, GEMC v4 as built by Geant4 715.6 t.
+-->
+<lccdd>
+  <define>
+    <!-- spacer representation: 1 = 8 discrete bars per end (CAD v1/v2, real), 0 = full octagonal ring (CAD v4 / GEMC) -->
+    <constant name="Magnet_SpacerBars" value="1"/>
+  </define>
+
+  <detectors>
+    <!-- materials/vis and the coil + cryostat (DetElement MagnetCoil): included inside <detectors> so that they are
+         converted BEFORE the yoke below (a top-level <include> would be processed after this file's detectors) -->
+    <include ref="${DETECTOR_PATH}/compact/magnet/magnet_materials.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/magnet/cleo_coil_cryostat.xml"/>
+    <detector id="MagnetYoke_ID" name="MagnetYoke" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>CLEO-II iron, full SoLID v4c (passive)</comment>
+      <octagon nsides="8" phi0="-22.5*deg"/>
+
+      <!-- ================= real CLEO-II iron, v4 modifications (v4c) ================= -->
+      <part name="InnerOctagon" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z="-189.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z="-189.23*cm" rmin="176.53*cm" rmax="212.62*cm"/>
+        <zplane z=" 189.23*cm" rmin="176.53*cm" rmax="212.62*cm"/>
+        <zplane z=" 189.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z=" 209.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z=" 224.79*cm" rmin="180.34*cm" rmax="200.17*cm"/>
+      </part>
+      <part name="OuterOctagon" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="221.51*cm" rmax="257.61*cm"/>
+        <zplane z=" 209.23*cm" rmin="221.51*cm" rmax="257.61*cm"/>
+      </part>
+      <!-- spacer bars: 8 per end, centred on the flats (phi = 0, 45, ...), 59.0" wide, 13.4" long -->
+      <bars name="SpacerBarsUp" n="8" phi0="0*deg" rmin="212.62*cm" rmax="221.51*cm" width="149.86*cm"
+            zmin="-266.70*cm" zmax="-232.66*cm" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="Magnet_SpacerBars"/>
+      <bars name="SpacerBarsDown" n="8" phi0="0*deg" rmin="212.62*cm" rmax="221.51*cm" width="149.86*cm"
+            zmin="175.19*cm" zmax="209.23*cm" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="Magnet_SpacerBars"/>
+      <part name="SpacerRingUp" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="1-Magnet_SpacerBars">
+        <zplane z="-266.70*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+        <zplane z="-241.20*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+      </part>
+      <part name="SpacerRingDown" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="1-Magnet_SpacerBars">
+        <zplane z="183.73*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+        <zplane z="209.23*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+      </part>
+      <part name="UpstreamCoilCollar" inner="round" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+        <zplane z="-189.23*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+      </part>
+      <!-- plug bore: 25.0 deg cone from the SIDIS target centre z = -350 cm: r_in = (z + 350 cm) tan 25 deg -->
+      <part name="UpstreamPlug" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis"
+           >
+        <zplane z="-266.70*cm" rmin="38.94*cm" rmax="144.14*cm"/>
+        <zplane z="-214.25*cm" rmin="63.32*cm" rmax="144.14*cm"/>
+      </part>
+      <!-- downstream collar bore: 144.00, then a cone r = 144 + 0.80008 (z - 199.23) (PVDIS acceptance, 37.3 deg from z = +10) -->
+      <part name="DownstreamCoilCollar" inner="round" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="189.23*cm" rmin="144.00*cm" rmax="180.34*cm"/>
+        <zplane z="199.23*cm" rmin="144.00*cm" rmax="180.34*cm"/>
+        <zplane z="224.79*cm" rmin="164.45*cm" rmax="180.34*cm"/>
+      </part>
+      <part name="EndcapInterface" inner="oct" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis"
+           >
+        <zplane z="170.67*cm" rmin="257.61*cm" rmax="285.24*cm"/>
+        <zplane z="209.23*cm" rmin="257.61*cm" rmax="285.24*cm"/>
+      </part>
+
+      <!-- ================= round endcap parts: identical in v4c and GEMC v4 (= CAD v4 within 0.3 cm) ================= -->
+      <part name="EndcapCylinder" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis">
+        <zplane z="209.23*cm" rmin="270.00*cm" rmax="285.24*cm"/>
+        <zplane z="529.59*cm" rmin="270.00*cm" rmax="285.24*cm"/>
+      </part>
+      <!-- nose outer surface: 6.5 deg cone from z = -330 cm (He3 downstream window) up to z = 416.04 -->
+      <part name="EndcapNoseCone" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis">
+        <zplane z="189.23*cm" rmin="19.00*cm" rmax="59.16*cm"/>
+        <zplane z="416.04*cm" rmin="28.31*cm" rmax="85.00*cm"/>
+        <zplane z="575.31*cm" rmin="35.00*cm" rmax="85.00*cm"/>
+      </part>
+      <part name="Endplate1" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis">
+        <zplane z="529.59*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+        <zplane z="544.83*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+      </part>
+      <part name="Endplate2" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis">
+        <zplane z="544.83*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+        <zplane z="560.07*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+      </part>
+      <part name="ConePlate" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_EndcapVis">
+        <zplane z="560.07*cm" rmin="85.00*cm" rmax="129.00*cm"/>
+        <zplane z="575.31*cm" rmin="85.00*cm" rmax="113.76*cm"/>
+      </part>
+      <!-- field corrector upstream of the plug (GEMC "CorretorRing" G4_Fe and "coilcorr" G4_Cu) -->
+      <part name="CorrectorRing" inner="round" outer="round" material="Magnet_YokeSteel" vis="Magnet_CorrectorVis">
+        <zplane z="-278.00*cm" rmin="50.800*cm" rmax="51.435*cm"/>
+        <zplane z="-266.70*cm" rmin="50.800*cm" rmax="51.435*cm"/>
+      </part>
+      <part name="CorrectionCoil" inner="round" outer="round" material="Copper" vis="Magnet_CorrectorVis">
+        <zplane z="-277.00*cm" rmin="40.00*cm" rmax="49.00*cm"/>
+        <zplane z="-268.00*cm" rmin="40.00*cm" rmax="49.00*cm"/>
+      </part>
+    </detector>
+  </detectors>
+</lccdd>

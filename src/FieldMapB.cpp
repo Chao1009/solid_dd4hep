@@ -1,313 +1,499 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
-// Copyright (C) 2023 Wouter Deconinck, Dhevan Gangadharan, Aranya Giri
+// Copyright (C) 2023 Wouter Deconinck, Dhevan Gangadharan, Aranya Giri; 2026 SoLID collaboration
+//
+// SoLID_FieldMapB: field map on a regular grid, bilinear (2D, BrBz) or trilinear (3D, BxByBz) interpolation.
+//
+//   <field type="SoLID_FieldMapB" name="SolenoidField" field_type="magnetic" coord_type="BrBz"
+//          field_map="fieldmaps/solenoid_CLEOv9.dat"            path read if it exists (env vars expanded), else
+//          cache="${DETECTOR_PATH}/fieldmaps"                    looked up (by file name or URL hash) in the cache
+//          url="https://raw.githubusercontent.com/..."           list, else downloaded into the first writable cache
+//          scale="1.0">                                          dimensionless multiplier (polarity, current scaling)
+//     <dimensions>                                               optional if the file has a GEMC <mfield> header
+//       <R step="1*cm" min="0*cm" max="500*cm"/>  <Z step="1*cm" min="-600*cm" max="600*cm"/>   (BrBz)
+//       <X .../> <Y .../> <Z .../>                                                             (BxByBz)
+//       <translationCoord x="0*cm" y="0*cm" z="0*cm"/>           position of the map origin in the hall
+//       <rotationCoord x="0*deg" y="0*deg" z="0*deg"/>           ACTIVE rotation of the map frame, Rz(z)Ry(y)Rx(x)
+//       <rotationField x="0" y="0" z="0"/>                       legacy: extra rotation of the B vector only (bare degrees)
+//     </dimensions>
+//   </field>
+//
+// File format: whitespace-separated rows "c1 c2 [c3] B1 B2 [B3]" (any row order), optionally preceded by the GEMC
+// ASCII header (<mfield> ... </mfield>): <first|second|third npoints min max units>, <field unit>, <symmetry type>.
+//   * grid: from <dimensions> and/or the header; if both are given they must agree (else an exception is thrown);
+//     every grid point must be present in the file (checked).
+//   * coordinate units: header "units" (default cm, the legacy behaviour); field unit: header <field unit>, or the
+//     XML attribute field_unit (default tesla, i.e. legacy maps in gauss need scale="1e-4" and no header).
+//     B = file value * unit * scale.
+//   * symmetry (BrBz): header type cylindrical-z|x|y or XML attribute axis="z|x|y" gives the map axis in the hall
+//     (GEMC: cylindrical-x maps "longitudinal" to hall x, e.g. the NH3 target field oxford_ptarget.dat).
+//     The <shift> line of the header is NOT applied (gemc 2.9 ignores it too): use translationCoord.
+//   * BxByBz with mirror_xy="true": map stored for x, y >= 0 only (first-quadrant TOSCA maps); (x, y) -> (|x|, |y|),
+//     Bx -> sign(x) Bx, By -> sign(y) By.
+// Position transformation: p_map = (T * R)^-1 p_hall, B_hall = R_field * R * B_map, R = R_user * R_axis.
+// Outside the grid the map contributes nothing. fieldComponents() only reads shared data (thread safe).
 
 #include <DD4hep/DetFactoryHelper.h>
 #include <DD4hep/FieldTypes.h>
 #include <DD4hep/Printout.h>
 #include <XML/Utilities.h>
 
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
+#include <map>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <tuple>
+#include <vector>
 namespace fs = std::filesystem;
 
 #include "FileLoaderHelper.h"
 
 using namespace dd4hep;
 
-//  Two coordinate options:
-//  coord_type="BrBz"
-//    expected fields contained within <dimensions>:
-//          <R step="" min="" max=""/>
-//          <Z step="" min="" max=""/>
-//  coord_type="BxByBz"
-//    expected fields contained within <dimensions>:
-//          <X step="" min="" max=""/>
-//          <Y step="" min="" max=""/>
-//          <Z step="" min="" max=""/>
+namespace {
 
-// In DD4hep 1.26, the name for the `field_type` enum changed (from `type`).
-#if DD4HEP_VERSION_GE(1, 26)
-#define DD4HEP_FIELD_TYPE field_type
-#else
-#define DD4HEP_FIELD_TYPE type
-#endif
+  struct GridAxis {
+    double min{0}, max{0}, step{0};
+    int    n{0};
+    bool   valid() const { return n >= 2 && step > 0; }
+  };
 
-// This allows us to specify the name of the variable by hand, when patching
-// the previous versions, by setting `DD4HEP_FIELD_TYPE_OVERRIDE`.
-// TODO remove after DD4hep 1.26 release
-#define XSTR(x) STR(x)
-#define STR(x) #x
-#ifdef DD4HEP_FIELD_TYPE_OVERRIDE
-#undef DD4HEP_FIELD_TYPE
-#define DD4HEP_FIELD_TYPE DD4HEP_FIELD_TYPE_OVERRIDE
-#pragma message("DD4HEP_FIELD_TYPE overridden as " XSTR(DD4HEP_FIELD_TYPE))
-#endif
-#pragma message("DD4HEP_FIELD_TYPE is " XSTR(DD4HEP_FIELD_TYPE))
+  double unit_value(std::string u, const std::string& what)
+  {
+    std::transform(u.begin(), u.end(), u.begin(), ::tolower);
+    static const std::map<std::string, double> units = {
+        {"mm", dd4hep::mm},       {"cm", dd4hep::cm},          {"m", dd4hep::m},
+        {"gauss", dd4hep::gauss}, {"g", dd4hep::gauss},        {"kilogauss", dd4hep::kilogauss},
+        {"kg", dd4hep::kilogauss}, {"tesla", dd4hep::tesla},   {"t", dd4hep::tesla},
+        {"mt", 1e-3 * dd4hep::tesla}};
+    auto it = units.find(u);
+    if (it == units.end()) {
+      throw std::runtime_error("FieldMapB: unknown " + what + " unit '" + u + "'");
+    }
+    return it->second;
+  }
+
+  std::string tag_attr(const std::string& tag, const std::string& attr)
+  {
+    std::smatch match;
+    std::regex  re(attr + R"(\s*=\s*\"([^\"]*)\")");
+    if (std::regex_search(tag, match, re))
+      return match[1];
+    return "";
+  }
+
+  // GEMC <mfield> header
+  struct MapHeader {
+    bool                     present{false};
+    std::vector<GridAxis>    axes;       // first, second, third (in dd4hep units)
+    std::vector<std::string> axis_names; // e.g. transverse, longitudinal
+    std::string              field_unit;
+    std::string              symmetry;
+    std::string              shift;
+  };
+
+  MapHeader parse_header(const std::string& text)
+  {
+    MapHeader h;
+    h.present = true;
+    for (const char* which : {"first", "second", "third"}) {
+      std::smatch match;
+      std::regex  re(std::string("<") + which + R"(\b[^>]*>)");
+      if (!std::regex_search(text, match, re))
+        break;
+      const std::string tag = match[0];
+      GridAxis          a;
+      a.n              = std::atoi(tag_attr(tag, "npoints").c_str());
+      std::string un   = tag_attr(tag, "units");
+      const double  cu = unit_value(un.empty() ? "cm" : un, "coordinate");
+      a.min            = std::atof(tag_attr(tag, "min").c_str()) * cu;
+      a.max            = std::atof(tag_attr(tag, "max").c_str()) * cu;
+      a.step           = (a.n > 1) ? (a.max - a.min) / (a.n - 1) : 0.0;
+      h.axes.push_back(a);
+      h.axis_names.push_back(tag_attr(tag, "name"));
+    }
+    std::smatch match;
+    if (std::regex_search(text, match, std::regex(R"(<field\b[^>]*>)")))
+      h.field_unit = tag_attr(match[0], "unit");
+    if (std::regex_search(text, match, std::regex(R"(<symmetry\b[^>]*>)")))
+      h.symmetry = tag_attr(match[0], "type");
+    if (std::regex_search(text, match, std::regex(R"(<shift\b[^>]*>)")))
+      h.shift = match[0];
+    return h;
+  }
+
+} // namespace
 
 // implementation of the field map
 class FieldMapB : public dd4hep::CartesianField::Object {
-
-  enum FieldCoord {
-    BrBz,
-    BxByBz
-  };
-
-
 public:
-  FieldMapB(const std::string& field_type_str = "magnetic", const std::string& coord_type_str = "BrBz");
-  void Configure(std::vector<xml_comp_t> dimensions);
-  void LoadMap(const std::string& map_file, float scale);
-  bool GetIndices(float R, float Z, int *idxR, int *idxZ, float *deltaR, float *deltaZ);
-  bool GetIndices(float X, float Y, float Z, int *idxX, int *idxY, int *idxZ, float *deltaX, float *deltaY, float *deltaZ);
-  void SetCoordTranslation(const Transform3D& tr)
+  enum class Coord { BrBz, BxByBz };
+
+  FieldMapB(const std::string& field_type_str, Coord coord) : m_coord(coord)
   {
-    coordTranslate     = tr;
-    coordTranslate_inv = tr.Inverse();
-  }
-  void SetFieldRotation(const Transform3D& tr)
-  {
-    fieldRot     = tr;
-    fieldRot_inv = tr.Inverse();
+    std::string ftype = field_type_str;
+    std::transform(ftype.begin(), ftype.end(), ftype.begin(), ::tolower);
+    if (ftype == "magnetic") {
+      field_type = CartesianField::MAGNETIC;
+    } else if (ftype == "electric") {
+      field_type = CartesianField::ELECTRIC;
+    } else {
+      field_type = CartesianField::UNKNOWN;
+      printout(ERROR, "FieldMapB", "Unknown field type " + ftype);
+    }
   }
 
-  virtual void fieldComponents(const double* pos, double* field);
+  // read the file: header (optional) + data; xml_axes may be empty (grid from header)
+  void Load(const std::string& map_file, std::vector<GridAxis> xml_axes, const std::string& xml_field_unit,
+            const std::string& xml_coord_unit, double scale, const std::string& xml_axis);
+
+  void SetTransforms(const Transform3D& placement_user, const RotationZYX& field_rot)
+  {
+    m_place_user = placement_user;
+    m_field_rot  = Rotation3D(field_rot);
+  }
+  void SetMirrorXY(bool on) { m_mirror_xy = on; }
+
+  void fieldComponents(const double* pos, double* field) override;
+
+  std::string Summary() const;
 
 private:
-  FieldCoord                                                    fieldCoord; // field coordinate type
-  Transform3D                                                   coordTranslate, coordTranslate_inv; // coord translation
-  Transform3D                                                   fieldRot, fieldRot_inv; // field rotation
-  std::vector<float>                                            steps, mins, maxs; // B map cell info
-  int                                                           ir, ix, iy, iz; // lookup indices
-  float                                                         idx_1_f, idx_2_f, idx_3_f; // transient float indicies
-  float                                                         dr, dx, dy, dz; // deltas for interpolation
-  std::vector<std::vector<std::array<float, 2>>>                Bvals_RZ; // B map values:  {R}, {Z}, {Br,Bz}
-  std::vector<std::vector<std::vector<std::array<float, 3>>>>   Bvals_XYZ; // B map values: {X}, {Y}, {Z}, {Bx,By,Bz}
+  void finalize_transforms();
+
+  Coord                 m_coord;
+  std::vector<GridAxis> m_axes;
+  std::vector<float>    m_B; // flattened [i0][i1]([i2])[component]
+  int                   m_ncomp{2};
+  bool                  m_mirror_xy{false};
+  Transform3D           m_place_user;          // T * R_user (from XML)
+  Rotation3D            m_axis_rot;            // map axis -> hall (symmetry)
+  Rotation3D            m_field_rot;           // legacy rotationField
+  Transform3D           m_hall_to_map;         // inverse of the full placement
+  Rotation3D            m_map_to_hall_B;       // rotation of B vectors map -> hall
+  bool                  m_identity{true};      // fast path: no transform at all
+  bool                  m_translate_only{true};
+  double                m_tx{0}, m_ty{0}, m_tz{0};
+  std::string           m_info;
 };
 
-// constructor
-FieldMapB::FieldMapB(const std::string& field_type_str, const std::string& coord_type_str)
+void FieldMapB::finalize_transforms()
 {
-  std::string ftype = field_type_str;
-  for (auto& c : ftype) {
-    c = tolower(c);
-  }
-
-  // set type
-  if (ftype == "magnetic") {
-    DD4HEP_FIELD_TYPE = CartesianField::MAGNETIC;
-  } else if (ftype == "electric") {
-    DD4HEP_FIELD_TYPE = CartesianField::ELECTRIC;
-  } else {
-    DD4HEP_FIELD_TYPE = CartesianField::UNKNOWN;
-    printout(ERROR, "FieldMap","Unknown field type " + ftype);
-  }
-
-  if( coord_type_str.compare("BrBz") == 0 ) { // BrBz
-    fieldCoord = FieldCoord::BrBz;
-  }
-  else { // BxByBz
-    fieldCoord = FieldCoord::BxByBz;
-  }
+  Transform3D placement = m_place_user * Transform3D(m_axis_rot);
+  m_hall_to_map         = placement.Inverse();
+  Rotation3D rot;
+  placement.GetRotation(rot);
+  m_map_to_hall_B = m_field_rot * rot;
+  Rotation3D ident;
+  m_translate_only = (rot == ident) && (m_field_rot == ident);
+  const Translation3D t = placement.Translation();
+  m_tx       = t.Vect().X();
+  m_ty       = t.Vect().Y();
+  m_tz       = t.Vect().Z();
+  m_identity = m_translate_only && m_tx == 0 && m_ty == 0 && m_tz == 0;
 }
 
-// fill field vector
-void FieldMapB::Configure(std::vector<xml_comp_t> dimensions)
+void FieldMapB::Load(const std::string& map_file, std::vector<GridAxis> xml_axes, const std::string& xml_field_unit,
+                     const std::string& xml_coord_unit, double scale, const std::string& xml_axis)
 {
-  // Fill vectors with step size, min, max for each dimension
-  for( auto el : dimensions ) {
-    steps.push_back( el.step() );
-    mins.push_back( getAttrOrDefault<float>(el, _Unicode(min), 0) );
-    maxs.push_back( getAttrOrDefault<float>(el, _Unicode(max), 0) );
-  }
+  const int ndim = (m_coord == Coord::BrBz) ? 2 : 3;
+  m_ncomp        = ndim;
 
-  if( fieldCoord == FieldCoord::BrBz ) {
-    // N bins increased by 1 beyond grid size to account for edge cases at upper limits
-    int nr = std::roundf( (maxs[0] - mins[0]) / steps[0] ) + 2;
-    int nz = std::roundf( (maxs[1] - mins[1]) / steps[1] ) + 2;
-
-    Bvals_RZ.resize(nr);
-    for (auto& B2 : Bvals_RZ) {
-      B2.resize(nz);
-    }
-  }
-  else {
-    // N bins increased by 1 beyond grid size to account for edge cases at upper limits
-    int nx = std::roundf( (maxs[0] - mins[0]) / steps[0] ) + 2;
-    int ny = std::roundf( (maxs[1] - mins[1]) / steps[1] ) + 2;
-    int nz = std::roundf( (maxs[2] - mins[2]) / steps[2] ) + 2;
-
-    Bvals_XYZ.resize(nx);
-    for (auto& B3 : Bvals_XYZ) {
-      B3.resize(ny);
-      for (auto& B2 : B3) {
-        B2.resize(nz);
-      }
-    }
-  }
-}
-
-// get RZ cell indices corresponding to point of interest
-bool FieldMapB::GetIndices(float R, float Z, int *idxR, int *idxZ, float *deltaR, float *deltaZ)
-{
-  // boundary check
-  if( R > maxs[0] || R < mins[0] || Z > maxs[1] || Z < mins[1] ) {
-    return false;
-  }
-
-  // get indices
-  *deltaR = std::modf( (R - mins[0]) / steps[0], &idx_1_f );
-  *deltaZ = std::modf( (Z - mins[1]) / steps[1], &idx_2_f );
-  *idxR = static_cast<int>(idx_1_f);
-  *idxZ = static_cast<int>(idx_2_f);
-
-  return true;
-}
-
-// get XYZ cell indices corresponding to point of interest
-bool FieldMapB::GetIndices(float X, float Y, float Z, int *idxX, int *idxY, int *idxZ, float *deltaX, float *deltaY, float *deltaZ)
-{
-  // boundary check
-  if( X > maxs[0] || X < mins[0] || Y > maxs[1] || Y < mins[1] || Z > maxs[2] || Z < mins[2] ) {
-    return false;
-  }
-
-  // get indices
-  *deltaX = std::modf( (X - mins[0]) / steps[0], &idx_1_f );
-  *deltaY = std::modf( (Y - mins[1]) / steps[1], &idx_2_f );
-  *deltaZ = std::modf( (Z - mins[2]) / steps[2], &idx_3_f );
-  *idxX = static_cast<int>(idx_1_f);
-  *idxY = static_cast<int>(idx_2_f);
-  *idxZ = static_cast<int>(idx_3_f);
-
-  return true;
-}
-
-// load data
-void FieldMapB::LoadMap(const std::string& map_file, float scale)
-{
-  std::string   line;
   std::ifstream input(map_file);
-  if( ! input ) {
-    printout(ERROR,"FieldMapB", "FieldMapB Error: file " + map_file + " cannot be read.");
+  if (!input) {
+    throw std::runtime_error("FieldMapB: file " + map_file + " cannot be read");
   }
 
-  std::vector<float> coord = {};
-  std::vector<float> Bcomp = {};
+  // ---- header
+  std::string line, header_text;
+  MapHeader   hdr;
+  std::streampos data_start = input.tellg();
+  while (std::getline(input, line)) {
+    auto first = line.find_first_not_of(" \t\r");
+    if (first == std::string::npos) {
+      data_start = input.tellg();
+      continue;
+    }
+    if (line[first] == '<' || !header_text.empty()) {
+      header_text += line + "\n";
+      data_start = input.tellg();
+      if (line.find("</mfield>") != std::string::npos)
+        break;
+      continue;
+    }
+    break; // first data line
+  }
+  if (!header_text.empty()) {
+    hdr = parse_header(header_text);
+  }
+  input.clear();
+  input.seekg(data_start);
 
-  while (std::getline(input, line).good()) {
-    std::istringstream iss(line);
-
-    coord.clear();
-    Bcomp.clear();
-
-    if( fieldCoord == FieldCoord::BrBz) {
-      coord.resize(2);
-      Bcomp.resize(2);
-      iss >> coord[0] >> coord[1] >> Bcomp[0] >> Bcomp[1];
-
-      if( ! GetIndices( coord[0], coord[1], &ir, &iz, &dr, &dz) ) {
-        printout(WARNING, "FieldMapB", "coordinates out of range, skipped it.");
-      }
-      else { // scale field
-        Bvals_RZ[ ir ][ iz ] =
-        { Bcomp[0] * scale * float(tesla),
-          Bcomp[1] * scale * float(tesla) };
+  // ---- grid
+  std::vector<GridAxis> axes;
+  if (!xml_axes.empty()) {
+    axes = xml_axes;
+    if (hdr.present && static_cast<int>(hdr.axes.size()) == ndim) {
+      for (int i = 0; i < ndim; ++i) {
+        const auto& a = axes[i];
+        const auto& b = hdr.axes[i];
+        const double tol = 1e-3 * dd4hep::cm;
+        if (std::fabs(a.min - b.min) > tol || std::fabs(a.max - b.max) > tol || a.n != b.n) {
+          throw std::runtime_error(fmt::format(
+              "FieldMapB: <dimensions> axis {} (min {} max {} n {}) does not match the header of {} (min {} max {} n {}) [cm]",
+              i, a.min / dd4hep::cm, a.max / dd4hep::cm, a.n, map_file, b.min / dd4hep::cm, b.max / dd4hep::cm, b.n));
+        }
       }
     }
-    else {
-      coord.resize(3);
-      Bcomp.resize(3);
-      iss >> coord[0] >> coord[1] >> coord[2] >> Bcomp[0] >> Bcomp[1] >> Bcomp[2];
+  } else if (hdr.present && static_cast<int>(hdr.axes.size()) == ndim) {
+    axes = hdr.axes;
+  } else {
+    throw std::runtime_error("FieldMapB: no grid for " + map_file + " (no <dimensions> and no usable <mfield> header)");
+  }
+  for (auto& a : axes) {
+    if (!a.valid())
+      throw std::runtime_error("FieldMapB: invalid grid axis (need step > 0 and >= 2 points)");
+  }
+  m_axes = axes;
 
-      if( ! GetIndices(coord[0], coord[1], coord[2], &ix, &iy, &iz, &dx, &dy, &dz) ) {
-        printout(WARNING, "FieldMap","coordinates out of range, skipped it.");
-      }
-      else { // scale and rotate B field vector
-        auto B = ROOT::Math::XYZPoint( Bcomp[0], Bcomp[1], Bcomp[2] );
-        B *= scale * float(tesla);
-        B = fieldRot * B;
-        Bvals_XYZ[ ix ][ iy ][ iz ] = { float(B.x()), float(B.y()), float(B.z()) };
-      }
+  // ---- units
+  std::string funit = hdr.field_unit;
+  if (!xml_field_unit.empty()) {
+    if (!funit.empty() && unit_value(funit, "field") != unit_value(xml_field_unit, "field")) {
+      throw std::runtime_error("FieldMapB: field_unit=\"" + xml_field_unit + "\" contradicts the header unit \"" +
+                               funit + "\" of " + map_file);
+    }
+    funit = xml_field_unit;
+  }
+  if (funit.empty())
+    funit = "tesla"; // legacy: headerless maps, unit conversion through `scale`
+  const double bunit = unit_value(funit, "field");
+  if (hdr.present && !hdr.field_unit.empty() && std::fabs(scale) < 1e-2) {
+    printout(WARNING, "FieldMapB",
+             "scale = %g with a map whose header gives the field unit (%s): the unit conversion is automatic, "
+             "scale is a dimensionless factor. Is scale=\"1e-4\" a leftover?",
+             scale, hdr.field_unit.c_str());
+  }
+  double cunit = dd4hep::cm;
+  if (!xml_coord_unit.empty())
+    cunit = unit_value(xml_coord_unit, "coordinate");
+  else if (hdr.present) {
+    // header coordinate units were already applied to the grid; data rows use the same units
+    std::smatch match;
+    if (std::regex_search(header_text, match, std::regex(R"(<first\b[^>]*>)"))) {
+      std::string un = tag_attr(match[0], "units");
+      if (!un.empty())
+        cunit = unit_value(un, "coordinate");
     }
   }
+
+  // ---- map axis (2D symmetry)
+  std::string axis = xml_axis;
+  if (axis.empty() && !hdr.symmetry.empty()) {
+    if (hdr.symmetry == "cylindrical-x")
+      axis = "x";
+    else if (hdr.symmetry == "cylindrical-y")
+      axis = "y";
+    else if (hdr.symmetry == "cylindrical-z")
+      axis = "z";
+  }
+  if (axis.empty())
+    axis = "z";
+  if (m_coord == Coord::BrBz) {
+    if (axis == "z")
+      m_axis_rot = Rotation3D(); // identity
+    else if (axis == "x")        // map z -> hall x, map x -> hall y, map y -> hall z
+      m_axis_rot = Rotation3D(0, 0, 1, 1, 0, 0, 0, 1, 0);
+    else if (axis == "y") // map z -> hall y, map x -> hall z, map y -> hall x
+      m_axis_rot = Rotation3D(0, 1, 0, 0, 0, 1, 1, 0, 0);
+    else
+      throw std::runtime_error("FieldMapB: axis must be x, y or z, got " + axis);
+  }
+  finalize_transforms();
+
+  // ---- data
+  std::size_t npts = 1;
+  for (auto& a : m_axes)
+    npts *= a.n;
+  m_B.assign(npts * m_ncomp, 0.f);
+  std::vector<char> filled(npts, 0);
+  const double      bfac = bunit * scale;
+
+  std::size_t nrows = 0, nout = 0, noffgrid = 0, ndup = 0, nbad = 0;
+  double      v[6];
+  while (std::getline(input, line)) {
+    const char* p = line.c_str();
+    int         k = 0;
+    char*       end;
+    for (; k < 2 * ndim; ++k) {
+      v[k] = std::strtod(p, &end);
+      if (end == p)
+        break;
+      p = end;
+    }
+    if (k == 0) {
+      if (line.find_first_not_of(" \t\r") != std::string::npos)
+        ++nbad;
+      continue;
+    }
+    if (k < 2 * ndim) {
+      ++nbad;
+      continue;
+    }
+    ++nrows;
+    std::size_t idx  = 0;
+    bool        skip = false;
+    for (int d = 0; d < ndim; ++d) {
+      const auto&  a = m_axes[d];
+      const double c = v[d] * cunit;
+      const double u = (c - a.min) / a.step;
+      const long   i = std::lround(u);
+      if (i < 0 || i >= a.n) {
+        skip = true;
+        ++nout;
+        break;
+      }
+      if (std::fabs(u - i) > 1e-3) {
+        ++noffgrid;
+        skip = true;
+        break;
+      }
+      idx = idx * a.n + i;
+    }
+    if (skip)
+      continue;
+    if (filled[idx])
+      ++ndup;
+    filled[idx] = 1;
+    for (int c = 0; c < m_ncomp; ++c)
+      m_B[idx * m_ncomp + c] = static_cast<float>(v[ndim + c] * bfac);
+  }
+  const std::size_t nfilled = std::count(filled.begin(), filled.end(), 1);
+  if (nbad > 0)
+    printout(WARNING, "FieldMapB", "%s: %zu unparsable lines skipped", map_file.c_str(), nbad);
+  if (nout > 0)
+    printout(INFO, "FieldMapB", "%s: %zu rows outside the requested grid skipped", map_file.c_str(), nout);
+  if (noffgrid > 0)
+    printout(WARNING, "FieldMapB", "%s: %zu rows not on the grid nodes skipped", map_file.c_str(), noffgrid);
+  if (ndup > 0)
+    printout(WARNING, "FieldMapB", "%s: %zu duplicated grid points", map_file.c_str(), ndup);
+  if (nfilled != npts) {
+    throw std::runtime_error(fmt::format("FieldMapB: {}: only {} of {} grid points found in the file ({} rows read); "
+                                         "check the <dimensions> / header grid",
+                                         map_file, nfilled, npts, nrows));
+  }
+
+  std::ostringstream os;
+  os << map_file << ": " << (m_coord == Coord::BrBz ? "BrBz" : "BxByBz") << " grid";
+  for (auto& a : m_axes)
+    os << " [" << a.min / dd4hep::cm << ", " << a.max / dd4hep::cm << "] cm x" << a.n;
+  os << ", field unit " << funit << ", scale " << scale << ", axis " << axis << (hdr.present ? ", GEMC header" : "")
+     << ", " << nfilled << " points";
+  if (!hdr.shift.empty())
+    os << " (header " << hdr.shift << " ignored, use translationCoord)";
+  m_info = os.str();
 }
 
-// get field components
+std::string FieldMapB::Summary() const { return m_info; }
+
+// get field components (thread safe: only local state is modified)
 void FieldMapB::fieldComponents(const double* pos, double* field)
 {
-  // coordinate conversion
-  auto p = coordTranslate_inv * ROOT::Math::XYZPoint(pos[0], pos[1], pos[2]);
+  double px = pos[0], py = pos[1], pz = pos[2];
+  if (!m_identity) {
+    if (m_translate_only) {
+      px -= m_tx;
+      py -= m_ty;
+      pz -= m_tz;
+    } else {
+      auto p = m_hall_to_map * ROOT::Math::XYZPoint(px, py, pz);
+      px     = p.x();
+      py     = p.y();
+      pz     = p.z();
+    }
+  }
 
-  if( fieldCoord == FieldCoord::BrBz ) {
-    // coordinates conversion
-    const float r   = sqrt(p.x() * p.x() + p.y() * p.y());
-    const float z   = p.z();
-    const float phi = atan2(p.y(), p.x());
+  // locate a coordinate on an axis: index i (0..n-2) and fraction d; false if outside
+  auto locate = [](const GridAxis& a, double c, int& i, double& d) {
+    const double u = (c - a.min) / a.step;
+    if (u < 0.0 || u > a.n - 1)
+      return false;
+    i = static_cast<int>(u);
+    if (i >= a.n - 1)
+      i = a.n - 2;
+    d = u - i;
+    return true;
+  };
 
-    if( ! GetIndices(r, z, &ir, &iz, &dr, &dz) ) {
-      // out of range
+  double bx = 0, by = 0, bz = 0;
+  if (m_coord == Coord::BrBz) {
+    const double r = std::sqrt(px * px + py * py);
+    int          ir, iz;
+    double       dr, dz;
+    if (!locate(m_axes[0], r, ir, dr) || !locate(m_axes[1], pz, iz, dz))
       return;
+    const int    nz  = m_axes[1].n;
+    const float* p00 = &m_B[(static_cast<std::size_t>(ir) * nz + iz) * 2];
+    const float* p01 = p00 + 2;          // iz + 1
+    const float* p10 = p00 + 2 * nz;     // ir + 1
+    const float* p11 = p10 + 2;
+    const double w00 = (1 - dr) * (1 - dz), w01 = (1 - dr) * dz, w10 = dr * (1 - dz), w11 = dr * dz;
+    const double Br  = p00[0] * w00 + p01[0] * w01 + p10[0] * w10 + p11[0] * w11;
+    const double Bz  = p00[1] * w00 + p01[1] * w01 + p10[1] * w10 + p11[1] * w11;
+    if (r > 0) {
+      bx = Br * px / r;
+      by = Br * py / r;
     }
-
-    // p1    p3
-    //    p
-    // p0    p2
-    auto& p0 = Bvals_RZ[ ir     ][ iz     ];
-    auto& p1 = Bvals_RZ[ ir     ][ iz + 1 ];
-    auto& p2 = Bvals_RZ[ ir + 1 ][ iz     ];
-    auto& p3 = Bvals_RZ[ ir + 1 ][ iz + 1 ];
-
-    // Bilinear interpolation
-    float Br = p0[0] * (1 - dr) * (1 - dz) + p1[0] * (1 - dr) * dz
-             + p2[0] *    dr    * (1 - dz) + p3[0] *    dr    * dz;
-
-    float Bz = p0[1] * (1 - dr) * (1 - dz) + p1[1] * (1 - dr) * dz
-             + p2[1] *    dr    * (1 - dz) + p3[1] *    dr    * dz;
-
-    // convert Br Bz to Bx By Bz and rotate field
-    auto B = fieldRot * ROOT::Math::XYZPoint(Br * cos(phi), Br * sin(phi), Bz);
-    field[0] += B.x();
-    field[1] += B.y();
-    field[2] += B.z();
-  }
-  else { // BxByBz
-
-    if( ! GetIndices(p.x(), p.y(), p.z(), &ix, &iy, &iz, &dx, &dy, &dz) ) {
-      return; // out of range
+    bz = Bz;
+  } else {
+    double sx = 1, sy = 1;
+    if (m_mirror_xy) {
+      if (px < 0) {
+        px = -px;
+        sx = -1;
+      }
+      if (py < 0) {
+        py = -py;
+        sy = -1;
+      }
     }
-
-    float b[3] = {0};
-    for(int comp = 0; comp < 3; comp++) { // field component loop
-      // Trilinear interpolation
-      // First along X, along 4 lines
-      float b00 = Bvals_XYZ[ ix      ][ iy      ][ iz      ][comp] * (1 - dx)
-                + Bvals_XYZ[ ix  + 1 ][ iy      ][ iz      ][comp] * dx;
-      float b01 = Bvals_XYZ[ ix      ][ iy      ][ iz  + 1 ][comp] * (1 - dx)
-                + Bvals_XYZ[ ix  + 1 ][ iy      ][ iz  + 1 ][comp] * dx;
-      float b10 = Bvals_XYZ[ ix      ][ iy  + 1 ][ iz      ][comp] * (1 - dx)
-                + Bvals_XYZ[ ix  + 1 ][ iy  + 1 ][ iz      ][comp] * dx;
-      float b11 = Bvals_XYZ[ ix      ][ iy  + 1 ][ iz  + 1 ][comp] * (1 - dx)
-                + Bvals_XYZ[ ix  + 1 ][ iy  + 1 ][ iz  + 1 ][comp] * dx;
-      // Next along Y, along 2 lines
-      float b0 = b00 * (1 - dy) + b10 * dy;
-      float b1 = b01 * (1 - dy) + b11 * dy;
-      // Finally along Z
-      b[comp] = b0 * (1 - dz) + b1 * dz;
+    int    ix, iy, iz;
+    double dx, dy, dz;
+    if (!locate(m_axes[0], px, ix, dx) || !locate(m_axes[1], py, iy, dy) || !locate(m_axes[2], pz, iz, dz))
+      return;
+    const std::size_t ny = m_axes[1].n, nz = m_axes[2].n;
+    auto at = [&](int a, int b, int c, int comp) {
+      return m_B[(((static_cast<std::size_t>(ix + a) * ny) + (iy + b)) * nz + (iz + c)) * 3 + comp];
+    };
+    double b[3];
+    for (int comp = 0; comp < 3; ++comp) {
+      const double b00 = at(0, 0, 0, comp) * (1 - dx) + at(1, 0, 0, comp) * dx;
+      const double b01 = at(0, 0, 1, comp) * (1 - dx) + at(1, 0, 1, comp) * dx;
+      const double b10 = at(0, 1, 0, comp) * (1 - dx) + at(1, 1, 0, comp) * dx;
+      const double b11 = at(0, 1, 1, comp) * (1 - dx) + at(1, 1, 1, comp) * dx;
+      const double b0  = b00 * (1 - dy) + b10 * dy;
+      const double b1  = b01 * (1 - dy) + b11 * dy;
+      b[comp]          = b0 * (1 - dz) + b1 * dz;
     }
-
-    // field rotation done in LoadMap()
-    field[0] += b[0];
-    field[1] += b[1];
-    field[2] += b[2];
+    bx = sx * b[0];
+    by = sy * b[1];
+    bz = b[2];
   }
 
-  return;
+  if (!m_translate_only) {
+    auto B = m_map_to_hall_B * ROOT::Math::XYZVector(bx, by, bz);
+    bx     = B.x();
+    by     = B.y();
+    bz     = B.z();
+  }
+  field[0] += bx;
+  field[1] += by;
+  field[2] += bz;
 }
 
 // assign the field map to CartesianField
@@ -319,67 +505,82 @@ static Ref_t create_field_map_b(Detector& /*lcdd*/, xml::Handle_t handle)
     throw std::runtime_error("FieldMapB Error: must have an xml attribute \"field_map\" for the field map.");
   }
 
+  const std::string field_type = getAttrOrDefault<std::string>(x_par, _Unicode(field_type), "magnetic");
+  const std::string coord_type = getAttrOrDefault<std::string>(x_par, _Unicode(coord_type), "BrBz");
+  FieldMapB::Coord  coord;
+  if (coord_type == "BrBz")
+    coord = FieldMapB::Coord::BrBz;
+  else if (coord_type == "BxByBz")
+    coord = FieldMapB::Coord::BxByBz;
+  else
+    throw std::runtime_error("FieldMapB: coord_type " + coord_type + " is neither BrBz nor BxByBz");
+
+  // grid from <dimensions> (optional when the file has a GEMC header)
+  std::vector<GridAxis> axes;
+  Transform3D           placement; // T * R_user
+  RotationZYX           field_rot(0., 0., 0.);
+  if (x_par.hasChild(_Unicode(dimensions))) {
+    xml_comp_t x_dim = x_par.child(_Unicode(dimensions));
+    std::vector<const char*> names =
+        (coord == FieldMapB::Coord::BrBz) ? std::vector<const char*>{"R", "Z"} : std::vector<const char*>{"X", "Y", "Z"};
+    int nfound = 0;
+    for (auto axis_name : names) {
+      if (x_dim.hasChild(xml::Strng_t(axis_name)))
+        ++nfound;
+    }
+    if (nfound == static_cast<int>(names.size())) {
+      for (auto axis_name : names) {
+        xml_comp_t el = x_dim.child(xml::Strng_t(axis_name));
+        GridAxis   a;
+        a.step = el.step();
+        a.min  = getAttrOrDefault<double>(el, _Unicode(min), 0.);
+        a.max  = getAttrOrDefault<double>(el, _Unicode(max), 0.);
+        a.n    = (a.step > 0) ? static_cast<int>(std::lround((a.max - a.min) / a.step)) + 1 : 0;
+        axes.push_back(a);
+      }
+    } else if (nfound > 0) {
+      throw std::runtime_error("FieldMapB: incomplete <dimensions> for coord_type " + coord_type);
+    }
+    Position t(0, 0, 0);
+    if (x_dim.hasChild(_Unicode(translationCoord))) {
+      xml_comp_t tr = x_dim.child(_Unicode(translationCoord));
+      t = Position(getAttrOrDefault<double>(tr, _Unicode(x), 0.), getAttrOrDefault<double>(tr, _Unicode(y), 0.),
+                   getAttrOrDefault<double>(tr, _Unicode(z), 0.));
+    }
+    RotationZYX rot_user(0., 0., 0.);
+    if (x_dim.hasChild(_Unicode(rotationCoord))) {
+      xml_comp_t rc = x_dim.child(_Unicode(rotationCoord));
+      rot_user = RotationZYX(getAttrOrDefault<double>(rc, _Unicode(z), 0.), getAttrOrDefault<double>(rc, _Unicode(y), 0.),
+                             getAttrOrDefault<double>(rc, _Unicode(x), 0.));
+    }
+    placement = Transform3D(Rotation3D(rot_user), t);
+    if (x_dim.hasChild(_Unicode(rotationField))) { // legacy: bare numbers in degrees
+      xml_comp_t   rf    = x_dim.child(_Unicode(rotationField));
+      const double deg2r = M_PI / 180.;
+      field_rot = RotationZYX(getAttrOrDefault<double>(rf, _Unicode(z), 0.) * deg2r,
+                              getAttrOrDefault<double>(rf, _Unicode(y), 0.) * deg2r,
+                              getAttrOrDefault<double>(rf, _Unicode(x), 0.) * deg2r);
+    }
+  }
+
+  const std::string field_map_file  = x_par.attr<std::string>(_Unicode(field_map));
+  const std::string field_map_url   = getAttrOrDefault<std::string>(x_par, _Unicode(url), "");
+  const std::string field_map_cache = getAttrOrDefault<std::string>(x_par, _Unicode(cache), "");
+  const std::string path = EnsureFileFromURLExists(field_map_url, field_map_file, field_map_cache, false);
+
+  const double      scale      = getAttrOrDefault<double>(x_par, _Unicode(scale), 1.0);
+  const std::string field_unit = getAttrOrDefault<std::string>(x_par, _Unicode(field_unit), "");
+  const std::string coord_unit = getAttrOrDefault<std::string>(x_par, _Unicode(coord_unit), "");
+  const std::string axis       = getAttrOrDefault<std::string>(x_par, _Unicode(axis), "");
+
+  auto map = new FieldMapB(field_type, coord);
+  map->SetTransforms(placement, field_rot);
+  map->SetMirrorXY(getAttrOrDefault<bool>(x_par, _Unicode(mirror_xy), false));
+  map->Load(path, axes, field_unit, coord_unit, scale, axis);
+  printout(INFO, "FieldMapB", "%s: %s", x_par.nameStr().c_str(), map->Summary().c_str());
+
   CartesianField field;
-  std::string    field_type = x_par.attr<std::string>(_Unicode(field_type));
-
-  std::string    coord_type = x_par.attr<std::string>(_Unicode(coord_type));
-
-  // dimensions
-  xml_comp_t x_dim = x_par.dimensions();
-
-  // vector of dimension parameters: step, min, max
-  std::vector<xml_comp_t> dimensions;
-
-  if( coord_type.compare("BrBz") == 0 ) {
-     dimensions.push_back( x_dim.child(_Unicode(R)) );
-     dimensions.push_back( x_dim.child(_Unicode(Z)) );
-  }
-  else if( coord_type.compare("BxByBz") == 0 ) {
-     dimensions.push_back( x_dim.child(_Unicode(X)) );
-     dimensions.push_back( x_dim.child(_Unicode(Y)) );
-     dimensions.push_back( x_dim.child(_Unicode(Z)) );
-  }
-  else {
-    printout(ERROR, "FieldMapB", "Coordinate type: " + coord_type + ", is not BrBz nor BxByBz");
-    std::_Exit(EXIT_FAILURE);
-  }
-
-  std::string field_map_file  = x_par.attr<std::string>(_Unicode(field_map));
-  std::string field_map_url   = x_par.attr<std::string>(_Unicode(url));
-  std::string field_map_cache = getAttrOrDefault<std::string>(x_par, _Unicode(cache), "");
-
-  EnsureFileFromURLExists(field_map_url, field_map_file, field_map_cache);
-
-  float field_map_scale = x_par.attr<float>(_Unicode(scale));
-
-  if (!fs::exists(fs::path(field_map_file))) {
-    printout(ERROR, "FieldMapB", "file " + field_map_file + " does not exist");
-    printout(ERROR, "FieldMapB", "use a FileLoader plugin before the field element");
-    std::_Exit(EXIT_FAILURE);
-  }
-
-  auto map = new FieldMapB(field_type, coord_type);
-  map->Configure( dimensions );
-
-  // translation, rotation
-  static float deg2r = ROOT::Math::Pi() / 180.;
-  RotationZYX   rot(0., 0., 0.);
-  if (x_dim.hasChild(_Unicode(rotationField))) {
-    xml_comp_t rot_dim = x_dim.child(_Unicode(rotationField));
-    rot                = RotationZYX(rot_dim.z() * deg2r, rot_dim.y() * deg2r, rot_dim.x() * deg2r);
-  }
-
-  Translation3D trans(0., 0., 0.);
-  if (x_dim.hasChild(_Unicode(translationCoord))) {
-    xml_comp_t trans_dim = x_dim.child(_Unicode(translationCoord));
-    trans                = Translation3D(trans_dim.x(), trans_dim.y(), trans_dim.z());
-  }
-  map->SetCoordTranslation( Transform3D(trans) );
-  map->SetFieldRotation( Transform3D(rot) );
-
-  map->LoadMap(field_map_file, field_map_scale);
   field.assign(map, x_par.nameStr(), "FieldMapB");
-
   return field;
 }
 

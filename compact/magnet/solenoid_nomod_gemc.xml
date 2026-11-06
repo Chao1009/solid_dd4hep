@@ -1,0 +1,49 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  VALIDATION ONLY: SoLID-Lite stage-1 magnet exactly as GEMC builds it = magnet_moved/solid_solenoid__geometry_nomod.txt
+  (numbers as entered, G4_Fe = Iron, Pgon radii used as apothems -> octagon 8.24 % too large, iron 585 t)
+  + solid_solenoid_cryo__geometry_Original.txt (cleo_coil_cryostat_gemc.xml). Use instead of solenoid_nomod.xml to
+  compare with GEMC. The physics geometry is solenoid_nomod.xml.
+-->
+<lccdd>
+  <detectors>
+    <include ref="${DETECTOR_PATH}/compact/magnet/magnet_materials.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/magnet/cleo_coil_cryostat_gemc.xml"/>
+    <detector id="MagnetYoke_ID" name="MagnetYoke" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>GEMC parity: magnet_moved nomod (passive)</comment>
+      <octagon nsides="8" phi0="-22.5*deg"/>
+      <!-- ================= GEMC nomod parity (solid_solenoid__geometry_nomod.txt, numbers as entered) ================= -->
+      <part name="InnerOctagon_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="191.075*cm" rmax="230.142*cm"/>
+        <zplane z=" 266.70*cm" rmin="191.075*cm" rmax="230.142*cm"/>
+      </part>
+      <part name="OuterOctagon_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="239.763*cm" rmax="278.832*cm"/>
+        <zplane z=" 266.70*cm" rmin="239.763*cm" rmax="278.832*cm"/>
+      </part>
+      <part name="SpacerBarUpstream_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+        <zplane z="-241.20*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+      </part>
+      <part name="SpacerBarDownstream_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="241.20*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+        <zplane z="266.70*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+      </part>
+      <!-- GEMC: (Pgon 0-191.075) - (Tube r 144) -->
+      <part name="UpstreamCoilCollar_GEMC" inner="round" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="144.000*cm" rmax="191.075*cm"/>
+        <zplane z="-189.23*cm" rmin="144.000*cm" rmax="191.075*cm"/>
+      </part>
+      <part name="DownstreamCoilCollar_GEMC" inner="round" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="189.23*cm" rmin="144.000*cm" rmax="191.075*cm"/>
+        <zplane z="266.70*cm" rmin="144.000*cm" rmax="191.075*cm"/>
+      </part>
+    </detector>
+  </detectors>
+</lccdd>

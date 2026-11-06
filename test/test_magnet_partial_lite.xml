@@ -1,0 +1,39 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- magnet integration test (lite): stage fragments of test_partial_lite.xml + solenoid_nomod + CLEOv10 map (no GEM/target/beamline yet) -->
+<lccdd>
+  <info name="test_magnet_partial_lite" title="magnet integration test: SoLID-Lite J/psi stage fragments + solenoid_nomod + CLEOv10" author="SoLID collaboration" url="https://github.com/JeffersonLab/solid_dd4hep" status="development" version="v0.3 2026-11">
+    <comment>overlap check of the magnet against the other subsystems, field read-back</comment>
+  </info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="1"/>
+    <constant name="TargetCenter_z" value="-315*cm"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+  </limits>
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001">
+      <limitsetref name="world_limits"/>
+    </region>
+  </regions>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/fields/field_CLEOv10.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_nomod.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/cherenkov_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_lite_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/mrpc_FA.xml"/>
+</lccdd>

@@ -1,0 +1,94 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  VALIDATION ONLY: full-SoLID magnet exactly as GEMC builds it = magnet_moved/solid_solenoid__geometry_v4.txt
+  (numbers as entered, G4_Fe = Iron, Pgon radii used as apothems -> octagon 8.24 % too large, iron 715.6 t)
+  + solid_solenoid_cryo__geometry_Original.txt (cleo_coil_cryostat_gemc.xml). Use instead of solenoid_v4.xml to
+  compare with GEMC (extents, masses, material scans). The physics geometry is solenoid_v4.xml ("v4c").
+  GEMC "Pgon" with rot "0 0 22.5deg" = Polyhedra phi0 = -22.5 deg (ACTIVE RotationZ(-22.5 deg)).
+-->
+<lccdd>
+  <detectors>
+    <include ref="${DETECTOR_PATH}/compact/magnet/magnet_materials.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/magnet/cleo_coil_cryostat_gemc.xml"/>
+    <detector id="MagnetYoke_ID" name="MagnetYoke" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>GEMC parity: magnet_moved v4 (passive)</comment>
+      <octagon nsides="8" phi0="-22.5*deg"/>
+      <!-- ================= GEMC v4 parity (solid_solenoid__geometry_v4.txt, numbers as entered) ================= -->
+      <part name="InnerOctagon_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="191.075*cm" rmax="230.142*cm"/>
+        <zplane z=" 209.23*cm" rmin="191.075*cm" rmax="230.142*cm"/>
+        <zplane z=" 224.79*cm" rmin="191.075*cm" rmax="217.692*cm"/>
+      </part>
+      <part name="OuterOctagon_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="239.763*cm" rmax="278.832*cm"/>
+        <zplane z=" 209.23*cm" rmin="239.763*cm" rmax="278.832*cm"/>
+      </part>
+      <part name="SpacerBarUpstream_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+        <zplane z="-241.20*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+      </part>
+      <part name="SpacerBarDownstream_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="182.73*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+        <zplane z="209.23*cm" rmin="230.142*cm" rmax="239.763*cm"/>
+      </part>
+      <part name="UpstreamCoilCollar_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="144.145*cm" rmax="191.075*cm"/>
+        <zplane z="-189.23*cm" rmin="144.145*cm" rmax="191.075*cm"/>
+      </part>
+      <part name="UpstreamPlug_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_EndcapVis"
+           >
+        <zplane z="-266.70*cm" rmin="38.94*cm" rmax="144.145*cm"/>
+        <zplane z="-214.25*cm" rmin="66.19*cm" rmax="144.145*cm"/>
+      </part>
+      <part name="DownstreamCoilCollar_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_YokeVis"
+           >
+        <zplane z="189.23*cm" rmin="144.000*cm" rmax="191.075*cm"/>
+        <zplane z="199.23*cm" rmin="144.000*cm" rmax="191.075*cm"/>
+        <zplane z="224.79*cm" rmin="164.447*cm" rmax="191.075*cm"/>
+      </part>
+      <part name="EndcapInterface_GEMC" inner="oct" outer="oct" material="Iron" vis="Magnet_EndcapVis"
+           >
+        <zplane z="183.83*cm" rmin="278.832*cm" rmax="285.24*cm"/>
+        <zplane z="209.23*cm" rmin="278.832*cm" rmax="285.24*cm"/>
+      </part>
+
+      <!-- ================= round endcap parts: identical in v4c and GEMC v4 (= CAD v4 within 0.3 cm) ================= -->
+      <part name="EndcapCylinder" inner="round" outer="round" material="Iron" vis="Magnet_EndcapVis">
+        <zplane z="209.23*cm" rmin="270.00*cm" rmax="285.24*cm"/>
+        <zplane z="529.59*cm" rmin="270.00*cm" rmax="285.24*cm"/>
+      </part>
+      <!-- nose outer surface: 6.5 deg cone from z = -330 cm (He3 downstream window) up to z = 416.04 -->
+      <part name="EndcapNoseCone" inner="round" outer="round" material="Iron" vis="Magnet_EndcapVis">
+        <zplane z="189.23*cm" rmin="19.00*cm" rmax="59.16*cm"/>
+        <zplane z="416.04*cm" rmin="28.31*cm" rmax="85.00*cm"/>
+        <zplane z="575.31*cm" rmin="35.00*cm" rmax="85.00*cm"/>
+      </part>
+      <part name="Endplate1" inner="round" outer="round" material="Iron" vis="Magnet_EndcapVis">
+        <zplane z="529.59*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+        <zplane z="544.83*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+      </part>
+      <part name="Endplate2" inner="round" outer="round" material="Iron" vis="Magnet_EndcapVis">
+        <zplane z="544.83*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+        <zplane z="560.07*cm" rmin="85.00*cm" rmax="285.24*cm"/>
+      </part>
+      <part name="ConePlate" inner="round" outer="round" material="Iron" vis="Magnet_EndcapVis">
+        <zplane z="560.07*cm" rmin="85.00*cm" rmax="129.00*cm"/>
+        <zplane z="575.31*cm" rmin="85.00*cm" rmax="113.76*cm"/>
+      </part>
+      <!-- field corrector upstream of the plug (GEMC "CorretorRing" G4_Fe and "coilcorr" G4_Cu) -->
+      <part name="CorrectorRing" inner="round" outer="round" material="Iron" vis="Magnet_CorrectorVis">
+        <zplane z="-278.00*cm" rmin="50.800*cm" rmax="51.435*cm"/>
+        <zplane z="-266.70*cm" rmin="50.800*cm" rmax="51.435*cm"/>
+      </part>
+      <part name="CorrectionCoil" inner="round" outer="round" material="Copper" vis="Magnet_CorrectorVis">
+        <zplane z="-277.00*cm" rmin="40.00*cm" rmax="49.00*cm"/>
+        <zplane z="-268.00*cm" rmin="40.00*cm" rmax="49.00*cm"/>
+      </part>
+    </detector>
+  </detectors>
+</lccdd>

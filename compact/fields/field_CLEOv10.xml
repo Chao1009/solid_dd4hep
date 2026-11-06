@@ -1,0 +1,29 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite stage-1 solenoid field: 2D POISSON map solenoid_CLEOv10 (CLEOv10.am, 9-30-2026: unmodified CLEO-II
+  iron, no endcap, no plug; 1282 turns x 3266 A), used by the GEMC lite gcards (FIELD solenoid_CLEOv10); consistent
+  with compact/magnet/solenoid_nomod.xml. Reference values (map; workshop C068 p.11 "1.38 T -> 1.32 T"):
+  Bz(0,0) = 13208 G, Bz(0,-315 cm) = 1188.5 G, Bz(0,-350 cm) = 669.7 G, |B|(r 215, z 344 cm) = 117 G,
+  integral Bz dz on axis 5.220 T m. Also the provisional stage-2 (SIDIS-lite) magnet uses it until a map exists.
+  File: GEMC ASCII map with <mfield> header (R 0..500 cm x Z -500..700 cm, 1 cm, gauss, cylindrical-z); grid and
+  unit are read from the header and cross-checked against <dimensions>. scale is dimensionless (e.g. -1 to flip
+  the polarity, 3300/3266 = 1.0104 for the NIM current, ignoring saturation).
+  The map is looked up in ./fieldmaps, then in ${DETECTOR_PATH}/fieldmaps, else downloaded there once from the
+  solid_gemc repository (pinned commit 6826f84, 26 153 826 bytes). Offline: copy solenoid_CLEOv10.dat into
+  ${DETECTOR_PATH}/fieldmaps/ (e.g. from a solid_gemc checkout: field/solenoid_CLEOv10.dat).
+-->
+<lccdd>
+  <fields>
+    <field type="SoLID_FieldMapB" name="SolenoidField" field_type="magnetic" coord_type="BrBz"
+           field_map="fieldmaps/solenoid_CLEOv10.dat"
+           cache="${DETECTOR_PATH}/fieldmaps"
+           url="https://raw.githubusercontent.com/JeffersonLab/solid_gemc/6826f84fc9a9d561c82c655d970fe00e584399dd/field/solenoid_CLEOv10.dat"
+           scale="1.0">
+      <dimensions>
+        <R step="1.0*cm" min="0*cm"    max="500*cm"/>
+        <Z step="1.0*cm" min="-500*cm" max="700*cm"/>
+        <translationCoord x="0*cm" y="0*cm" z="0*cm"/>
+      </dimensions>
+    </field>
+  </fields>
+</lccdd>

@@ -1,0 +1,78 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite stage-1 magnet (J/psi-lite, DDVCS-lite): CLEO-II coil + cryostat (cleo_coil_cryostat.xml, DetElement
+  MagnetCoil) and the UNMODIFIED CLEO-II iron as delivered to JLab (DetElement MagnetYoke): the inner two octagonal
+  return-yoke layers (210" = 533.4 cm slabs, |z| <= 266.70 cm), 8 spacer bars per end and the two coil collars.
+  No endcap, no plug, no corrector (CLEO layer 3 is not on the magnet; 13 of its slabs form the DDVCS muon absorber).
+  Field map: fields/field_CLEOv10.xml (POISSON CLEOv10.am, same iron).
+  GEMC reference: magnet_moved/solid_solenoid__geometry_nomod.txt (2026-10-24) + solid_solenoid_cryo.
+
+  "oct" radii are APOTHEMS (flats), flats normal to x, y and the diagonals (Polyhedra phi0 = -22.5 deg).
+  Deviations from GEMC nomod (docs/geometry_comparison.md, section 3):
+    * GEMC enters the octagon CORNER radii 191.075/230.142/239.763/278.832 cm as apothems (+8.24 %, +20 % iron
+      mass: 585 t vs ~489 t). Real flats: 176.53/212.62/221.51/257.61 cm (CAD v1/v2/v4, NIM A320 p.70).
+    * coil collars: round bore 144.14 cm, octagonal outside 180.34 cm (GEMC: bore 144.0, outside 191.075);
+      inner octagon counterbored to 180.34 over the collars (CAD v1).
+    * spacers: 8 discrete bars per end (CAD v1/v2) or (edit Magnet_SpacerBars = 0 below): octagonal ring |z| 241.20-266.70 (GEMC).
+  GEMC nomod exactly as entered (validation only): solenoid_nomod_gemc.xml.
+-->
+<lccdd>
+  <define>
+    <!-- spacer representation: 1 = 8 discrete bars per end (CAD v1/v2, real), 0 = full octagonal ring (GEMC) -->
+    <constant name="Magnet_SpacerBars" value="1"/>
+  </define>
+
+  <detectors>
+    <!-- materials/vis and the coil + cryostat (DetElement MagnetCoil): included inside <detectors> so that they are
+         converted BEFORE the yoke below (a top-level <include> would be processed after this file's detectors) -->
+    <include ref="${DETECTOR_PATH}/compact/magnet/magnet_materials.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/magnet/cleo_coil_cryostat.xml"/>
+    <detector id="MagnetYoke_ID" name="MagnetYoke" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>CLEO-II iron, unmodified (SoLID-Lite stage 1, passive)</comment>
+      <octagon nsides="8" phi0="-22.5*deg"/>
+
+      <!-- ================= real CLEO-II iron ================= -->
+      <part name="InnerOctagon" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z="-189.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z="-189.23*cm" rmin="176.53*cm" rmax="212.62*cm"/>
+        <zplane z=" 189.23*cm" rmin="176.53*cm" rmax="212.62*cm"/>
+        <zplane z=" 189.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z=" 266.70*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+      </part>
+      <part name="OuterOctagon" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="221.51*cm" rmax="257.61*cm"/>
+        <zplane z=" 266.70*cm" rmin="221.51*cm" rmax="257.61*cm"/>
+      </part>
+      <bars name="SpacerBarsUp" n="8" phi0="0*deg" rmin="212.62*cm" rmax="221.51*cm" width="149.86*cm"
+            zmin="-266.70*cm" zmax="-232.66*cm" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="Magnet_SpacerBars"/>
+      <bars name="SpacerBarsDown" n="8" phi0="0*deg" rmin="212.62*cm" rmax="221.51*cm" width="149.86*cm"
+            zmin="232.66*cm" zmax="266.70*cm" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="Magnet_SpacerBars"/>
+      <part name="SpacerRingUp" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="1-Magnet_SpacerBars">
+        <zplane z="-266.70*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+        <zplane z="-241.20*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+      </part>
+      <part name="SpacerRingDown" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="1-Magnet_SpacerBars">
+        <zplane z="241.20*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+        <zplane z="266.70*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+      </part>
+      <part name="UpstreamCoilCollar" inner="round" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="-266.70*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+        <zplane z="-189.23*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+      </part>
+      <part name="DownstreamCoilCollar" inner="round" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+           >
+        <zplane z="189.23*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+        <zplane z="266.70*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+      </part>
+
+    </detector>
+  </detectors>
+</lccdd>
