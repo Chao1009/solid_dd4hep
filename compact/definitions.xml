@@ -1,0 +1,66 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID global definitions: world, coordinate conventions and the system-ID table.
+  Included inside the <define> block of every top-level configuration (solid_*.xml).
+
+  Coordinate frame ("hall frame", identical to solid_gemc):
+    right-handed, z along the beam, origin at the center of the CLEO-II solenoid coil.
+    Target centers: SIDIS 3He/NH3 z = -350 cm, J/psi & DDVCS LH2 z = -315 cm, PVDIS z = +10 cm.
+
+  Rules for compact fragments (see docs/design.md):
+    * every constant, vis attribute and readout defined in a fragment carries a subsystem prefix
+      (DD4hep throws on duplicate vis names and silently IGNORES duplicate constants);
+    * a detector refers to its system id through the constants below, never a literal number;
+    * readout names end in "Hits"; the first id field is always system:8.
+-->
+<define>
+  <!-- world: DD4hep world_x/y/z are half lengths; +-10 m matches the GEMC 20 m hall cube -->
+  <constant name="world_side"           value="10*m"/>
+  <constant name="world_x"              value="world_side"/>
+  <constant name="world_y"              value="world_side"/>
+  <constant name="world_z"              value="world_side"/>
+
+  <!-- tracking region (ACTS / EICrecon geometry service): covers all GEM planes (PVDIS r up to 244 cm) and the target -->
+  <constant name="tracker_region_zmax"  value="3.5*m"/>
+  <constant name="tracker_region_rmax"  value="2.6*m"/>
+
+  <!-- photon energy <-> wavelength conversion used by the optical tables (E[eV] = 1239.84/lambda[nm]) -->
+  <constant name="PhotMomWaveConv"      value="1239.84*eV"/>
+
+  <!-- ===================================================================================== -->
+  <!-- System IDs (8 bits). Blocks: 1-9 passive, 10-19 tracking, 20-29 Cherenkov,             -->
+  <!-- 30-39 calorimetry, 40-49 timing/scintillators, 50-59 muon, 90-99 virtual planes,       -->
+  <!-- 100-119 beam tests.  An id is used by at most one detector in any configuration.       -->
+  <!-- ===================================================================================== -->
+  <!-- passive -->
+  <constant name="Beamline_ID"          value="1"/>   <!-- entrance/exit beam pipes, windows -->
+  <constant name="Target_ID"            value="2"/>   <!-- He3 / NH3 / LH2 / LD2 target incl. its coils, collimators -->
+  <constant name="MagnetYoke_ID"        value="3"/>   <!-- CLEO-II iron (v4, nomod, lite-SIDIS stage) -->
+  <constant name="MagnetCoil_ID"        value="4"/>   <!-- coil + cryostat -->
+  <constant name="Baffle_ID"            value="5"/>   <!-- PVDIS baffles, photon blocker, shielding -->
+  <constant name="MuonIron_ID"          value="6"/>   <!-- DDVCS muon absorber (CLEO iron) -->
+  <!-- tracking -->
+  <constant name="GEM_ID"               value="10"/>  <!-- full SoLID GEM (SIDIS/J/psi 6 planes, PVDIS 5 planes) -->
+  <constant name="GEMLA_ID"             value="11"/>  <!-- SoLID-lite large-angle GEM (4 planes) -->
+  <constant name="GEMFA_ID"             value="12"/>  <!-- SoLID-lite forward-angle GEM (5 planes) -->
+  <constant name="MuonGEM_ID"           value="13"/>  <!-- DDVCS muon GEM (3 planes) -->
+  <constant name="GEMAssembly_ID"       value="14"/>  <!-- optional ACTS helper assemblies (15-19 reserved) -->
+  <!-- Cherenkov -->
+  <constant name="LGC_ID"               value="20"/>  <!-- light gas Cherenkov, full SoLID (SIDIS / PVDIS) -->
+  <constant name="HGC_ID"               value="21"/>  <!-- heavy gas Cherenkov, full SoLID SIDIS -->
+  <constant name="LiteCherenkov_ID"     value="22"/>  <!-- SoLID-lite CO2 Cherenkov (hgc_moved_ext) -->
+  <!-- calorimetry -->
+  <constant name="FAECPreShower_ID"     value="30"/>
+  <constant name="FAECShower_ID"        value="31"/>
+  <constant name="LAECPreShower_ID"     value="32"/>
+  <constant name="LAECShower_ID"        value="33"/>
+  <!-- timing / scintillators -->
+  <constant name="SPDFA_ID"             value="40"/>
+  <constant name="SPDLA_ID"             value="41"/>
+  <constant name="MRPCFA_ID"            value="42"/>
+  <constant name="MuonScint_ID"         value="43"/>
+  <!-- virtual (flux) planes for acceptance / rate studies (optional fragments) -->
+  <constant name="VirtualPlane_ID"      value="90"/>  <!-- 90-99 -->
+  <!-- beam tests -->
+  <constant name="BeamTest_ID"          value="100"/> <!-- 100-119 -->
+</define>

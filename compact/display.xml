@@ -1,61 +1,22 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
-<!-- Copyright (C) 2024 Chao Peng -->
+<!--
+  Common visualization attributes. Named colors are in compact/colors.xml (CSS names, use them via ref="...").
+  Subsystem-specific vis attributes live in the subsystem fragments and MUST carry the subsystem prefix
+  (e.g. LGC_TankVis, FAEC_ModuleVis): DD4hep throws on duplicate vis names.
+-->
+<display>
+  <vis name="InvisibleNoDaughters"   showDaughters="false" visible="false"/>
+  <vis name="InvisibleWithDaughters" showDaughters="true"  visible="false"/>
 
-  <display>
-
-    <comment>
-      See compact/colors.xml for list of colors.
-    </comment>
-
-    <vis name="InvisibleNoDaughters"      showDaughters="false" visible="false"/>
-    <vis name="InvisibleWithDaughters"    showDaughters="true" visible="false"/>
-
-    <comment>
-      Light Gas Cherenkov Visualizations
-    </comment>
-    <vis name="LGC_TankVis"   ref="forestgreen"   visible="true" showDaughters="true" alpha="0.4" />
-    <vis name="LGC_GasVis"    ref="InvisibleWithDaughters" />
-    <vis name="LGC_MirrorVis" ref="silver"        visible="true" showDaughters="true" alpha="1" />
-    <vis name="LGC_ConeVis"   ref="silver"        visible="true" showDaughters="true" alpha="1" />
-    <vis name="LGC_PMTVis"    ref="saddlebrown"   visible="true" showDaughters="true" alpha="1" />
-    <vis name="LGC_ShieldVis" ref="darkslategray" visible="true" showDaughters="true" alpha="1" />
-
-    <comment>
-      Heavy Gas Cherenkov Visualizations
-    </comment>
-    <vis name="HGC_TankVis"   ref="orange"   visible="true" showDaughters="true" alpha="0.4" />
-    <vis name="HGC_GasVis"    ref="InvisibleWithDaughters" />
-    <vis name="HGC_MirrorVis" ref="silver"        visible="true" showDaughters="true" alpha="1" />
-    <vis name="HGC_ConeVis"   ref="silver"        visible="true" showDaughters="true" alpha="1" />
-    <vis name="HGC_PMTVis"    ref="saddlebrown"   visible="true" showDaughters="true" alpha="1" />
-    <vis name="HGC_ShieldVis" ref="darkslategray" visible="true" showDaughters="true" alpha="1" />
-
-
-    <comment>
-      Forward Agnle Electromagnetic Calorimeter
-    </comment>
-    <vis name="FAEC_PrShVis"        ref="skyblue"   visible="true" showDaughters="false" alpha="0.6" />
-    <vis name="FAEC_ShVis"          ref="royalblue" visible="true" showDaughters="false" alpha="0.6" />
-    <vis name="FAEC_PrshLayerVis"   ref="InvisibleNoDaughters" />
-    <vis name="FAEC_ShLayerVis"     ref="InvisibleNoDaughters" />
-
-    <comment>
-      Large Agnle Electromagnetic Calorimeter
-    </comment>
-    <vis name="LAEC_PrShVis"        ref="violet"      visible="true" showDaughters="false" alpha="0.6" />
-    <vis name="LAEC_ShVis"          ref="darkmagenta" visible="true" showDaughters="false" alpha="0.6" />
-    <vis name="LAEC_PrshLayerVis"   ref="InvisibleNoDaughters" />
-    <vis name="LAEC_ShLayerVis"     ref="InvisibleNoDaughters" />
-
-    <comment>
-      GEM Trakcers
-    </comment>
-    <vis name="GEM_TrackerDiscVis"  ref="teal" visible="true" showDaughters="true" alpha="0.6" />
-
-    <comment>
-      Common material layer vis
-    </comment>
-    <vis name="MatLayerVis_Lead"  ref="darkgray" alpha="0.6" />
-    <vis name="MatLayerVis_EJ204" ref="lightyellow" alpha="0.6" />
-    <vis name="MatLayerVis_Air"   ref="InvisibleNoDaughters" />
-  </display>
+  <!-- generic material-layer looks, usable by any subsystem -->
+  <vis name="MatLayerVis_Lead"      ref="darkgray"    alpha="0.6"/>
+  <vis name="MatLayerVis_Tungsten"  ref="dimgray"     alpha="0.6"/>
+  <vis name="MatLayerVis_Iron"      ref="slategray"   alpha="0.8"/>
+  <vis name="MatLayerVis_Aluminum"  ref="lightgray"   alpha="0.6"/>
+  <vis name="MatLayerVis_Copper"    ref="chocolate"   alpha="0.8"/>
+  <vis name="MatLayerVis_EJ204"     ref="lightyellow" alpha="0.6"/>
+  <vis name="MatLayerVis_Scint"     ref="lightyellow" alpha="0.6"/>
+  <vis name="MatLayerVis_Kapton"    ref="orange"      alpha="0.6"/>
+  <vis name="MatLayerVis_Gas"       ref="InvisibleNoDaughters"/>
+  <vis name="MatLayerVis_Air"       ref="InvisibleNoDaughters"/>
+</display>
