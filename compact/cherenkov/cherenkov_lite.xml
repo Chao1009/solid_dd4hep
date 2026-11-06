@@ -1,0 +1,202 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite CO2 gas Cherenkov (one Cherenkov, U. Regina; "HGC full tank filled with CO2", workshop Oct 2026).
+  Geometry: solid_gemc/geometry/hgc_moved_ext (2026-10-25), variation 4seg2sec = sectors 4,5,11,12,19,20,26,27
+  ("4seg24degFA": four 24-deg segments centred at phi = 42, 138, 222, 318 deg). Same optics, mirrors, funnels,
+  shields, photosensors and support wedges as the full-SoLID HGC (compact/cherenkov/hgc_SIDIS.xml), but:
+    * radiator CO2 at 1 atm, 20 degC (GEMC SL_LGCCgas_SIDIS);
+    * tank with a front section through the yoke bore: z 205-270 r 60/70-140 (1 cm walls), conical transition to the
+      main chamber (z 316/317-426, r 77/87-240); 1 mm (0.04") Al front window at z 205 inside the radiator; no nose.
+  Hall frame; all rotations ACTIVE. Plugin SoLID_SectorGasCherenkov.
+
+  Options: define the constant in the top-level <define> BEFORE this file is included. The plugin uses the first
+  definition of a constant that an attribute names directly (DD4hep keeps the first <constant> object, while its
+  expression evaluator keeps the last value, so overrides do NOT propagate into composite expressions or the readout):
+    LiteCherenkov_Sectors  sector list (phi_s = 96 + 12 (s-1) deg), "all" = GEMC variation Original. The FA segment phi
+                           placement is undecided (GEMC 42/138/222/318 deg vs talks 0/90/180/270 deg; the latter is not
+                           realizable with whole 12-deg tank sectors) -> keep it a parameter.
+    LiteCherenkov_zshift   0 = hgc_moved_ext (default); -40*cm = hgc_moved_extshift (whole chamber + optics moved 40 cm
+                           upstream, front section kept at hall z 205-270 cm).
+    LiteCherenkov_Gas      LiteCherenkov_CO2_1atm (default); any gas material with RINDEX (heavy-gas studies).
+  Deviations from GEMC: duplicate polycone planes (z 317 / 317.1016) dropped; mirrors of sectors 1 and 16 trimmed at
+  the support wedges (only relevant for "all"); back shield 1 mm shorter; sensitive layer made of the radiator gas
+  (GEMC kept C4F8O in the photosensor container); Al absorber instead of "Kryptonite"; flux virtual plane (z 190) not built.
+-->
+<lccdd>
+  <!-- BEGIN optics: tables copied verbatim (by script) from solid_gemc/geometry/hgc_moved{,_ext} *__materials_*.txt,
+       *__mirrors_Original.txt (identical tables in all hgc_moved* directories). -->
+  <properties>
+    <!-- CO2 1 atm, 20 degC (GEMC SL_LGCCgas_SIDIS); last ABSLENGTH point 0 m replaced by 1 mm -->
+    <matrix name="RINDEX__LiteCherenkov_CO2" coldim="2" values="
+      2.04358*eV 1.000418   2.0664*eV 1.000418   2.09046*eV 1.000418   2.14023*eV 1.000419
+      2.16601*eV 1.000419   2.20587*eV 1.000419   2.23327*eV 1.000419   2.26137*eV 1.000419
+      2.31972*eV 1.000420   2.35005*eV 1.000420   2.38116*eV 1.000421   2.41313*eV 1.000421
+      2.44598*eV 1.000421   2.47968*eV 1.000421   2.53081*eV 1.000422   2.58354*eV 1.000422
+      2.6194*eV 1.000423   2.69589*eV 1.000423   2.73515*eV 1.000424   2.79685*eV 1.000425
+      2.86139*eV 1.000425   2.95271*eV 1.000426   3.04884*eV 1.000427   3.12665*eV 1.000428
+      3.2393*eV 1.000429   3.39218*eV 1.000431   3.52508*eV 1.000433   3.66893*eV 1.000435
+      3.82396*eV 1.000437   3.99949*eV 1.000440   4.13281*eV 1.000442   4.27679*eV 1.000445
+      4.48244*eV 1.000448   4.65057*eV 1.000451   4.89476*eV 1.000456   5.02774*eV 1.000459
+      5.16816*eV 1.000462   5.31437*eV 1.000466   5.63821*eV 1.000473   5.90401*eV 1.000481
+      6.19921*eV 1.000489   6.5254848*eV 1.000489   6.8927794367*eV 1.000489
+      "/>
+    <matrix name="ABSLENGTH__LiteCherenkov_CO2" coldim="2" values="
+      2.04358*eV 70316.5*m   2.0664*eV 66796.2*m   2.09046*eV 63314.0*m   2.14023*eV 56785.7*m
+      2.16601*eV 53726.5*m   2.20587*eV 49381.2*m   2.23327*eV 46640.7*m   2.26137*eV 44020.0*m
+      2.31972*eV 39127.2*m   2.35005*eV 36845.7*m   2.38116*eV 34671.4*m   2.41313*eV 32597.4*m
+      2.44598*eV 30621.3*m   2.47968*eV 28743.4*m   2.53081*eV 26154.3*m   2.58354*eV 23775.1*m
+      2.6194*eV 22306.7*m   2.69589*eV 19526.3*m   2.73515*eV 18263.4*m   2.79685*eV 16473.0*m
+      2.86139*eV 14823.5*m   2.95271*eV 12818.8*m   3.04884*eV 11053.4*m   3.12665*eV 9837.32*m
+      3.2393*eV 8351.83*m   3.39218*eV 6747.67*m   3.52508*eV 5648.87*m   3.66893*eV 4694.87*m
+      3.82396*eV 3876.99*m   3.99949*eV 3150.27*m   4.13281*eV 2706.97*m   4.27679*eV 2310.46*m
+      4.48244*eV 1859.36*m   4.65057*eV 1568.2*m   4.89476*eV 1237.69*m   5.02774*eV 1093.38*m
+      5.16816*eV 962.586*m   5.31437*eV 846.065*m   5.63821*eV 643.562*m   5.90401*eV 80.0*m
+      6.19921*eV 4.0*m   6.5254848*eV 0.7465970*m   6.8927794367*eV 0.001*m
+      "/>
+    <!-- mirror and cone reflectivity (GEMC SL_HGC_mirror) -->
+    <matrix name="REFLECTIVITY__LiteCherenkov_Mirror" coldim="2" values="
+      2.04358*eV 0.8678125   2.0664*eV 0.8651562   2.09046*eV 0.8639063   2.14023*eV 0.8637500
+      2.16601*eV 0.8640625   2.20587*eV 0.8645313   2.23327*eV 0.8643750   2.26137*eV 0.8656250
+      2.31972*eV 0.8653125   2.35005*eV 0.8650000   2.38116*eV 0.8648437   2.41313*eV 0.8638281
+      2.44598*eV 0.8635156   2.47968*eV 0.8631250   2.53081*eV 0.8621875   2.58354*eV 0.8617188
+      2.6194*eV 0.8613281   2.69589*eV 0.8610156   2.73515*eV 0.8610938   2.79685*eV 0.8616016
+      2.86139*eV 0.8623047   2.95271*eV 0.8637500   3.04884*eV 0.8655859   3.12665*eV 0.8673828
+      3.2393*eV 0.8700586   3.39218*eV 0.8741992   3.52508*eV 0.8781055   3.66893*eV 0.8825195
+      3.82396*eV 0.8876172   3.99949*eV 0.8937207   4.13281*eV 0.8981836   4.27679*eV 0.9027441
+      4.48244*eV 0.9078369   4.65057*eV 0.9102002   4.89476*eV 0.9093164   5.02774*eV 0.9061743
+      5.16816*eV 0.9004223   5.31437*eV 0.8915210   5.63821*eV 0.8599536   5.90401*eV 0.8208313
+      6.19921*eV 0.7625024
+      "/>
+  </properties>
+
+  <materials>
+    <!-- GEMC SL_LGCCgas_SIDIS: CO2 (G4_CARBON_DIOXIDE) at 1 atm, 20 degC -->
+    <material name="LiteCherenkov_CO2_1atm" state="gas">
+      <D type="density" value="1.84212e-3" unit="g/cm3"/>
+      <composite n="1" ref="C"/>
+      <composite n="2" ref="O"/>
+      <property name="RINDEX" ref="RINDEX__LiteCherenkov_CO2"/>
+      <property name="ABSLENGTH" ref="ABSLENGTH__LiteCherenkov_CO2"/>
+    </material>
+    <!-- mirror substrate, GEMC SL_HGC_CFRP (mass fractions as in GEMC; H 0.33 looks like an atom fraction) -->
+    <material name="LiteCherenkov_MirrorCFRP">
+      <D type="density" value="1.8" unit="g/cm3"/>
+      <fraction n="0.42" ref="C"/>
+      <fraction n="0.17" ref="N"/>
+      <fraction n="0.08" ref="O"/>
+      <fraction n="0.33" ref="H"/>
+    </material>
+  </materials>
+
+  <surfaces>
+    <!-- GEMC SL_HGC_mirror (SkinSurface on the mirrors and on the light-collection cones) -->
+    <opticalsurface name="LiteCherenkov_MirrorSurface" type="dielectric_metal" finish="polished" model="unified" value="0">
+      <property name="REFLECTIVITY" ref="REFLECTIVITY__LiteCherenkov_Mirror"/>
+    </opticalsurface>
+  </surfaces>
+  <!-- END optics -->
+
+  <define>
+    <constant name="LiteCherenkov_Gas"      value="LiteCherenkov_CO2_1atm" type="string"/>
+    <constant name="LiteCherenkov_Sectors"  value="4 5 11 12 19 20 26 27" type="string"/>
+    <constant name="LiteCherenkov_zshift"   value="0*cm"/>     <!-- -40*cm for hgc_moved_extshift -->
+    <!-- hall-frame z of the front section (independent of the shift) -->
+    <constant name="LiteCherenkov_zFront"    value="205*cm"/>
+    <constant name="LiteCherenkov_zFrontEnd" value="270*cm"/>
+    <!-- photosensor granularity. Level 0 (GEMC equivalent, default): one 21.3 cm tile, 32x32 cells of 6.65625 mm.
+         Level 1 (4x4 H12700 MaPMT): LiteCherenkov_pmt_n 4, pitch 5.325 cm, tile (photocathode) 4.85 cm, pixel 6.0625 mm (8x8). -->
+    <constant name="LiteCherenkov_pmt_n"        value="1"/>
+    <constant name="LiteCherenkov_pmt_pitch"    value="21.3*cm"/>
+    <constant name="LiteCherenkov_pmt_tile"     value="21.3*cm"/>
+    <constant name="LiteCherenkov_pixel"        value="6.65625*mm"/>
+    <constant name="LiteCherenkov_nsectors" value="30"/>
+    <constant name="LiteCherenkov_phi0"     value="96*degree"/>
+    <constant name="LiteCherenkov_dphi"     value="12*degree"/>
+    <!-- optics: identical to hgc_moved (detector frame) -->
+    <constant name="LiteCherenkov_image_r"  value="215.478967*cm"/>
+    <constant name="LiteCherenkov_image_z"  value="343.740704*cm"/>
+    <constant name="LiteCherenkov_tilt"     value="39*degree"/>
+    <constant name="LiteCherenkov_mirror_R"     value="210*cm"/>
+    <constant name="LiteCherenkov_mirror_thick" value="0.3*cm"/>
+    <constant name="LiteCherenkov_mirror_cr"    value="199.226343*cm"/>
+    <constant name="LiteCherenkov_mirror_cz"    value="210.119873*cm"/>
+  </define>
+
+  <display>
+    <vis name="LiteCherenkov_TankVis"   ref="khaki"      alpha="0.15" showDaughters="true" visible="true" drawingStyle="wireframe"/>
+    <vis name="LiteCherenkov_WindowVis" ref="khaki"      alpha="0.3"  showDaughters="false" visible="true"/>
+    <vis name="LiteCherenkov_BlockVis"  ref="olivedrab"  alpha="0.5"  showDaughters="false" visible="true"/>
+    <vis name="LiteCherenkov_MirrorVis" ref="silver"     alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="LiteCherenkov_ConeVis"   ref="lightgreen" alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="LiteCherenkov_ShieldVis" ref="seagreen"   alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="LiteCherenkov_PMTVis"    ref="InvisibleWithDaughters"/>
+    <vis name="LiteCherenkov_SensorVis" ref="teal"       alpha="1.0"  showDaughters="false" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="LiteCherenkov_ID" name="LiteCherenkov" type="SoLID_SectorGasCherenkov"
+              readout="LiteCherenkovHits" vis="LiteCherenkov_TankVis">
+      <placement z="LiteCherenkov_zshift"/>
+      <!-- z planes in the detector frame (= hall frame - LiteCherenkov_zshift), except frame="hall" (front section) -->
+      <tank material="Aluminum" vis="LiteCherenkov_TankVis">
+        <zplane frame="hall" z="LiteCherenkov_zFront"    rmin="60*cm"  rmax="140*cm"/>
+        <zplane frame="hall" z="LiteCherenkov_zFrontEnd" rmin="70*cm"  rmax="140*cm"/>
+        <zplane z="316*cm" rmin="77*cm"  rmax="187*cm"/>
+        <zplane z="317*cm" rmin="77*cm"  rmax="240*cm"/>
+        <zplane z="416*cm" rmin="87*cm"  rmax="240*cm"/>
+        <zplane z="426*cm" rmin="225*cm" rmax="240*cm"/>
+      </tank>
+      <radiator material="LiteCherenkov_Gas" vis="InvisibleWithDaughters">
+        <zplane frame="hall" z="LiteCherenkov_zFront"    rmin="61*cm"     rmax="139*cm"/>
+        <zplane frame="hall" z="LiteCherenkov_zFrontEnd" rmin="71*cm"     rmax="139*cm"/>
+        <zplane z="317*cm"      rmin="80.175*cm"  rmax="184.46*cm"/>
+        <zplane z="317.1016*cm" rmin="80.175*cm"  rmax="237.46*cm"/>
+        <zplane z="416*cm"      rmin="90.175*cm"  rmax="237.46*cm"/>
+        <zplane z="425.365*cm"  rmin="228.175*cm" rmax="237.46*cm"/>
+      </radiator>
+      <!-- 0.04" Al front window inside the radiator, z = upstream face (GEMC window_front_1) -->
+      <window material="Aluminum" mother="radiator" rmin="61.02*cm" rmax="139*cm"
+              frame="hall" z="LiteCherenkov_zFront" thickness="0.1016*cm" vis="LiteCherenkov_WindowVis"/>
+      <!-- half-tank separators, main chamber only -->
+      <block material="Aluminum" phi="90*degree" dphi="0.5*degree" vis="LiteCherenkov_BlockVis">
+        <zplane z="317*cm"      rmin="80.175*cm"  rmax="184.46*cm"/>
+        <zplane z="317.1016*cm" rmin="80.175*cm"  rmax="237.46*cm"/>
+        <zplane z="416*cm"      rmin="90.175*cm"  rmax="237.46*cm"/>
+        <zplane z="425.365*cm"  rmin="228.175*cm" rmax="237.46*cm"/>
+      </block>
+      <block material="Aluminum" phi="270*degree" dphi="0.5*degree" vis="LiteCherenkov_BlockVis">
+        <zplane z="317*cm"      rmin="80.175*cm"  rmax="184.46*cm"/>
+        <zplane z="317.1016*cm" rmin="80.175*cm"  rmax="237.46*cm"/>
+        <zplane z="416*cm"      rmin="90.175*cm"  rmax="237.46*cm"/>
+        <zplane z="425.365*cm"  rmin="228.175*cm" rmax="237.46*cm"/>
+      </block>
+
+      <sectors count="LiteCherenkov_nsectors" phi0="LiteCherenkov_phi0" dphi="LiteCherenkov_dphi"
+               list="LiteCherenkov_Sectors"/>
+      <image r="LiteCherenkov_image_r" z="LiteCherenkov_image_z" tilt="LiteCherenkov_tilt"/>
+      <!-- GEMC hgc_moved_ext cone segment (dz 54.5 at z 371.5); the resulting mirror equals the HGC one -->
+      <mirror material="LiteCherenkov_MirrorCFRP" surface="LiteCherenkov_MirrorSurface" vis="LiteCherenkov_MirrorVis"
+              R="LiteCherenkov_mirror_R" thickness="LiteCherenkov_mirror_thick"
+              center_r="LiteCherenkov_mirror_cr" center_z="LiteCherenkov_mirror_cz"
+              z="371.5*cm" dz="54.5*cm" rmin1="79.5349333443844*cm" rmax1="191.2591688626*cm"
+              rmin2="92.532396214756*cm" rmax2="222.514415348393*cm" dphi="LiteCherenkov_dphi"
+              block_clearance="0.01*degree"/>
+      <cone material="Iron" surface="LiteCherenkov_MirrorSurface" vis="LiteCherenkov_ConeVis"
+            x1="11.15*cm" x2="22.41*cm" y1="11.15*cm" y2="16.0*cm" dz="8.09*cm" thickness="0.5*cm" offset="8.09*cm"/>
+      <shield material="Iron" vis="LiteCherenkov_ShieldVis" dx="11.15*cm" dy="11.15*cm" dz="9.95*cm" thickness="0.5*cm"
+              offset="-10.05*cm"/>
+      <pmt_array dx="21.3*cm" dy="21.3*cm" thickness="0.004*cm" nx="LiteCherenkov_pmt_n" ny="LiteCherenkov_pmt_n"
+                 pitch_x="LiteCherenkov_pmt_pitch" pitch_y="LiteCherenkov_pmt_pitch" tile_x="LiteCherenkov_pmt_tile" tile_y="LiteCherenkov_pmt_tile"
+                 absorber_material="Aluminum" vis="LiteCherenkov_PMTVis" sensitive_vis="LiteCherenkov_SensorVis"/>
+    </detector>
+  </detectors>
+
+  <readouts>
+    <!-- same field layout as HeavyGasCherenkovHits -->
+    <readout name="LiteCherenkovHits">
+      <segmentation type="CartesianGridXY" grid_size_x="LiteCherenkov_pixel" grid_size_y="LiteCherenkov_pixel"
+                    offset_x="LiteCherenkov_pixel/2" offset_y="LiteCherenkov_pixel/2"/>
+      <id>system:8,sector:5,pmt:4,x:32:-16,y:-16</id>
+    </readout>
+  </readouts>
+</lccdd>
