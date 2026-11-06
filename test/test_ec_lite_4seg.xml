@@ -1,0 +1,31 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- EC-only test configuration (SoLID-Lite FAEC 4 x 24 deg mask + LAEC) -->
+<lccdd>
+  <info name="test_ec_lite_4seg" title="EC test: SoLID-Lite FAEC 4 x 24 deg mask + LAEC" author="SoLID collaboration" status="development" version="v0.3 2026-11"/>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="11"/>
+    <constant name="TargetCenter_z" value="-315*cm"/>
+    <!-- SoLID-Lite 4 x 24 deg FA option: override the documented fragment constants -->
+    <constant name="FAEC_PhiMask_enable" value="1"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+    <limitset name="cal_limits">
+      <limit name="step_length_max" particles="*" value="5.0" unit="mm"/>
+    </limitset>
+  </limits>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_lite_FA.xml"/>
+</lccdd>
