@@ -1,0 +1,32 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- GEM-only test configuration (DDVCS muon GEM, 3 planes), no magnetic field -->
+<lccdd>
+  <info name="test_gem_muon" title="SoLID GEM test (DDVCS muon GEM, 3 planes)" author="SoLID collaboration" url="https://github.com/JeffersonLab/solid_dd4hep" status="development" version="v0.3 2026-11">
+    <comment>GEM only, for overlap checks, extents, hits and ACTS conversion tests</comment>
+  </info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="1"/>
+    <constant name="TargetCenter_z" value="-350*cm"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+  </limits>
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001">
+      <limitsetref name="world_limits"/>
+    </region>
+  </regions>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/muon/muon_gem_DDVCS.xml"/>
+</lccdd>

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
-// Copyright (C) 2022 Wouter Deconinck
+// Copyright (C) 2022 Wouter Deconinck; 2026 SoLID collaboration
 
 #include <DD4hep/DetFactoryHelper.h>
 #include <DD4hep/Factories.h>
@@ -24,13 +24,14 @@ void usage(int argc, char** argv)
                "     cache:<string>           cache location (may be read-only)                    \n"
                "     file:<string>            file location                                        \n"
                "     url:<string>             url location                                         \n"
-               "     cmd:<string>             download command with {0} for url, {1} for output    \n"
                "\tArguments given: "
             << arguments(argc, argv) << std::endl;
   std::exit(EINVAL);
 }
 
-// Plugin to download files
+// Plugin to download files (see FileLoaderHelper.h for the cache / download logic).
+// Example: <plugin name="epic_FileLoader"><arg value="file:fieldmaps/x.dat"/><arg value="url:https://..."/>
+//          <arg value="cache:${DETECTOR_PATH}/fieldmaps"/></plugin>
 long load_file(Detector& /* desc */, int argc, char** argv)
 {
   // argument parsing
@@ -59,9 +60,11 @@ long load_file(Detector& /* desc */, int argc, char** argv)
     printout(WARNING, "FileLoader", "no url specified");
   }
 
-  EnsureFileFromURLExists(url, file, cache);
+  const std::string path = EnsureFileFromURLExists(url, file, cache, true);
+  printout(INFO, "FileLoader", "file " + file + " available as " + path);
 
   return 1;
 }
 
 DECLARE_APPLY(epic_FileLoader, load_file)
+DECLARE_APPLY(SoLID_FileLoader, load_file)

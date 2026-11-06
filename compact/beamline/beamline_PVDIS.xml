@@ -1,0 +1,58 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  PVDIS beamline (GEMC geometry/beamline_moved/solid_PVDIS_beamline, 2026-10-25). Requires: TargetCenter_z (+10 cm).
+  * entrance "pipe": Al r_out 30 cm / vacuum 29.95 cm, z -687..-27 cm. It stands in for the upstream section of the
+    cryotarget insulating vacuum and ends on the r = 30 cm opening of the target enclosure (z = TargetCenter_z - 37 cm).
+  * exit pipe: Al polycone r_out 5 -> 19 cm (z 47 -> 110 cm), 19 cm to z = 550 cm, wall 0.5 mm; it starts on the
+    r = 5 cm downstream opening of the enclosure (z = TargetCenter_z + 37 cm). No windows (vacuum continues into the
+    enclosure). Kill disk z 549.9..550 cm (GEMC Kryptonite B3DM).
+  The enclosure half length (37 cm) is repeated here: keep it equal to Target_Enclosure_halfz of target_PVDIS.xml.
+-->
+<lccdd>
+  <define>
+    <constant name="Beamline_EntrancePipe_zmin"  value="TargetCenter_z - 697*cm"/>   <!-- -687 cm -->
+    <constant name="Beamline_EntrancePipe_zmax"  value="TargetCenter_z - 37*cm"/>    <!-- -27 cm -->
+    <constant name="Beamline_EntrancePipe_rout"  value="30*cm"/>
+    <constant name="Beamline_EntrancePipe_rvac"  value="29.95*cm"/>
+    <constant name="Beamline_ExitPipe_z0"        value="TargetCenter_z + 37*cm"/>    <!-- 47 cm -->
+    <constant name="Beamline_ExitPipe_z1"        value="110*cm"/>
+    <constant name="Beamline_ExitPipe_z2"        value="550*cm"/>
+    <constant name="Beamline_ExitPipe_rout0"     value="5*cm"/>
+    <constant name="Beamline_ExitPipe_rout1"     value="19*cm"/>
+    <constant name="Beamline_ExitPipe_wall"      value="0.05*cm"/>
+    <constant name="Beamline_Kill_t"             value="0.1*cm"/>
+  </define>
+
+  <display>
+    <vis name="Beamline_PipeVis"   ref="silver"     alpha="0.5" showDaughters="true" visible="true"/>
+    <vis name="Beamline_WindowVis" ref="lightcoral" alpha="0.8" visible="true"/>
+    <vis name="Beamline_KillVis"   ref="black"      alpha="0.5" visible="true"/>
+  </display>
+
+  <!-- Kill disk = replacement of the GEMC "Kryptonite" disk (gemc 2.9 MSteppingAction kills every track whose
+       material is Kryptonite). A zero maximum track length makes G4UserSpecialCuts (registered for all particles
+       by G4StepLimiterPhysics, which ddsim always adds) stop every track that takes a step in the disk.
+       Its remaining kinetic energy is deposited locally (G4UserSpecialCuts uses fStopButAlive, so a stopped e+
+       may still annihilate at rest; GEMC uses fStopAndKill). -->
+  <limits>
+    <limitset name="Beamline_KillLimits">
+      <limit name="track_length_max" particles="*" value="0.0" unit="mm"/>
+    </limitset>
+  </limits>
+
+  <detectors>
+    <detector id="Beamline_ID" name="Beamline" type="SoLID_Beamline">
+      <pipe name="EntrancePipe" material="Aluminum" fill="Vacuum">
+        <zplane z="Beamline_EntrancePipe_zmin" rout="Beamline_EntrancePipe_rout" rvac="Beamline_EntrancePipe_rvac"/>
+        <zplane z="Beamline_EntrancePipe_zmax" rout="Beamline_EntrancePipe_rout" rvac="Beamline_EntrancePipe_rvac"/>
+      </pipe>
+      <pipe name="ExitPipe" material="Aluminum" fill="Vacuum">
+        <zplane z="Beamline_ExitPipe_z0" rout="Beamline_ExitPipe_rout0" rvac="Beamline_ExitPipe_rout0 - Beamline_ExitPipe_wall"/>
+        <zplane z="Beamline_ExitPipe_z1" rout="Beamline_ExitPipe_rout1" rvac="Beamline_ExitPipe_rout1 - Beamline_ExitPipe_wall"/>
+        <zplane z="Beamline_ExitPipe_z2" rout="Beamline_ExitPipe_rout1" rvac="Beamline_ExitPipe_rout1 - Beamline_ExitPipe_wall"/>
+        <kill name="KillDisk" zmin="Beamline_ExitPipe_z2 - Beamline_Kill_t" zmax="Beamline_ExitPipe_z2"
+              limits="Beamline_KillLimits"/>
+      </pipe>
+    </detector>
+  </detectors>
+</lccdd>

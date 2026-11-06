@@ -1,0 +1,167 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite forward-angle EM calorimeter (FAEC), J/psi-lite and DDVCS-lite.
+  GEMC reference: solid_gemc/geometry/ec_segmented_separated/solid_SIDIS_ec_forwardangle__{parameters,geometry}_Original.txt
+  (2026-10-25; gcards script/solid_JPsi_LH2_lite_full.gcard, solid_JPsi_DDVCS_LH2_lite_full.gcard): identical to the
+  full-SoLID SIDIS FAEC except the module-centre Rmax 240 -> 220 cm.
+  Module stack, materials and lattice identical to compact/ecal/ec_SIDIS_FA.xml (see there):
+    preshower = 1.12 cm Pb sheet + 2 cm polystyrene tile (sensitive) + 2 cm Al support tile per module;
+    shower    = 194 x (paint 0.05, Pb 0.5, paint 0.05, Mylar 0.12, polystyrene 1.5, Mylar 0.12 mm) = 45.396 cm.
+  module id = ANL id (1..1748, stable across configurations), sector = floor(phi/12 deg) + 1.
+
+  Hall-frame z (cm): Pb 439.182-440.302, PS scint 440.302-442.302, Al 442.302-444.302, shower 444.302-489.698.
+  Counts: 1145 modules (centre R 95.12-219.98 cm; hexagon edges 89.26-225.76 cm).
+
+  SoLID-Lite option (High-Lumi workshop Oct 2026, "4seg24degFA"): set FAEC_PhiMask_enable = 1 to keep only the
+  modules whose centre lies in one of FAEC_PhiMask_nseg windows of width FAEC_PhiMask_dphi centred at
+  FAEC_PhiMask_centers (default 42/138/222/318 deg = the lite CO2 Cherenkov segments), or
+  FAEC_PhiMask_overlap = 1 to keep every module touching a window. The Pb radiator becomes one tube segment
+  per window. Talk alternative: centres 0,90,180,270 deg. Default 0 = GEMC parity (full ring).
+
+  Overridable constants (define them BEFORE including this file; DD4hep keeps the first definition):
+    FAEC_z_shower, FAEC_rsel_min, FAEC_rsel_max, FAEC_paint_thick (0 = preCDR/short-endcap 0.224 cm layer),
+    FAEC_rods_enable, FAEC_PhiMask_* (azimuthal segments, default off = GEMC parity).
+  Requires from the top level: nothing (system ids from compact/definitions.xml).
+-->
+<lccdd>
+  <define>
+    <include ref="${DETECTOR_PATH}/compact/ecal/anl_lattice.xml"/>  <!-- EC_ANL_* lattice constants -->
+
+    <!-- ===== position / selection (GEMC ec_segmented_separated SIDIS FA (lite)) ===== -->
+    <constant name="FAEC_z_shower"        value="467*cm"/>    <!-- centre of the 194-layer shower stack -->
+    <constant name="FAEC_rsel_min"        value="95*cm"/>     <!-- module-centre selection window -->
+    <constant name="FAEC_rsel_max"        value="220*cm"/>
+
+    <!-- ===== optional azimuthal mask (SoLID-Lite "4seg24degFA"); 0 = full ring = GEMC parity ===== -->
+    <constant name="FAEC_PhiMask_enable"  value="0"/>
+    <constant name="FAEC_PhiMask_overlap" value="0"/>         <!-- 0: module centre inside a window; 1: any overlap -->
+    <constant name="FAEC_PhiMask_nseg"    value="4"/>
+    <constant name="FAEC_PhiMask_dphi"    value="24*deg"/>
+    <constant name="FAEC_PhiMask_phi0"    value="0*deg"/>     <!-- used only if fewer centres than nseg are given -->
+    <!-- centres of the lite CO2 Cherenkov segments (hgc_moved_ext 4seg2sec sectors {4,5},{11,12},{19,20},{26,27}) -->
+    <constant name="FAEC_PhiMask_centers" type="string" value="42*deg,138*deg,222*deg,318*deg"/>
+
+    <!-- ===== shashlik module (ANL drawing 200318; GEMC moved) ===== -->
+    <constant name="FAEC_module_apothem"  value="5.413*cm"/>  <!-- side 6.25 cm -->
+    <constant name="FAEC_module_phi0"     value="30*deg"/>    <!-- vertices at 30+60k deg: two sides parallel to y -->
+    <constant name="FAEC_nlayers"         value="194"/>
+    <constant name="FAEC_paint_thick"     value="0.005*cm"/>  <!-- per side (GEMC Thickness_paint 0.01 total) -->
+    <constant name="FAEC_Pb_thick"        value="0.05*cm"/>
+    <constant name="FAEC_gap_thick"       value="0.012*cm"/>  <!-- per side (GEMC Thickness_gap 0.024 total) -->
+    <constant name="FAEC_scint_thick"     value="0.15*cm"/>
+    <constant name="FAEC_layer_thick"     value="2*FAEC_paint_thick+FAEC_Pb_thick+2*FAEC_gap_thick+FAEC_scint_thick"/>
+    <constant name="FAEC_shower_length"   value="FAEC_nlayers*FAEC_layer_thick"/>          <!-- 45.396 cm -->
+    <constant name="FAEC_shower_zfront"   value="FAEC_z_shower-FAEC_shower_length/2"/>    <!-- 444.302 cm -->
+    <constant name="FAEC_rods_enable"     value="1"/>
+    <constant name="FAEC_rod_radius"      value="0.3*cm"/>
+    <constant name="FAEC_rod_r"           value="5.6255*cm"/> <!-- rod axis distance from module axis (towards corners) -->
+
+    <!-- ===== preshower + support ===== -->
+    <constant name="FAEC_ps_Pb_thick"     value="1.12*cm"/>   <!-- 2 X0 -->
+    <constant name="FAEC_ps_scint_thick"  value="2.0*cm"/>
+    <constant name="FAEC_support_thick"   value="2.0*cm"/>
+    <constant name="FAEC_ps_zfront"       value="FAEC_shower_zfront-FAEC_support_thick-FAEC_ps_scint_thick"/>  <!-- 440.302 -->
+    <constant name="FAEC_ps_Pb_zfront"    value="FAEC_ps_zfront-FAEC_ps_Pb_thick"/>                             <!-- 439.182 -->
+  </define>
+
+  <!-- EC materials (identical in every compact/ecal fragment; GEMC/Geant4 NIST values) -->
+  <materials>
+    <material name="EC_Polystyrene">   <!-- G4_POLYSTYRENE -->
+      <D type="density" value="1.06" unit="g/cm3"/>
+      <composite n="8" ref="C"/>
+      <composite n="8" ref="H"/>
+      <constant name="BirksConstant" value="0.126*mm/MeV"/>
+    </material>
+    <material name="EC_Paint_TiO2">
+      <D type="density" value="4.26" unit="g/cm3"/>
+      <composite n="1" ref="Ti"/>
+      <composite n="2" ref="O"/>
+    </material>
+    <material name="EC_Paint_BaSO4">
+      <D type="density" value="4.5" unit="g/cm3"/>
+      <composite n="1" ref="Ba"/>
+      <composite n="1" ref="S"/>
+      <composite n="4" ref="O"/>
+    </material>
+    <material name="EC_Paint">         <!-- GEMC SL_EC_paint (TiO2 powder paint, SDU4 module) -->
+      <D type="density" value="1.5" unit="g/cm3"/>
+      <fraction n="0.45" ref="EC_Polystyrene"/>
+      <fraction n="0.35" ref="EC_Paint_TiO2"/>
+      <fraction n="0.20" ref="EC_Paint_BaSO4"/>
+    </material>
+    <material name="EC_StainlessSteel"> <!-- G4_STAINLESS-STEEL -->
+      <D type="density" value="8.0" unit="g/cm3"/>
+      <fraction n="0.7462" ref="Fe"/>
+      <fraction n="0.1690" ref="Cr"/>
+      <fraction n="0.0848" ref="Ni"/>
+    </material>
+  </materials>
+
+  <display>
+    <vis name="FAEC_EnvelopeVis"          ref="InvisibleWithDaughters"/>
+    <vis name="FAEC_ShowerModuleVis"      ref="steelblue" alpha="0.5" showDaughters="false" visible="true"/>
+    <vis name="FAEC_PreShowerModuleVis"   ref="gold"      alpha="0.5" showDaughters="false" visible="true"/>
+    <vis name="FAEC_RadiatorVis"          ref="dimgray"   alpha="0.4" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="FAECPreShower_ID" name="FAECPreShower" type="SoLID_HexShashlykEMCal"
+              readout="FAECPreShowerHits" vis="FAEC_EnvelopeVis">
+      <comment>FAEC preshower: Pb radiator sheet + 2 cm scintillator tile (sensitive) + 2 cm Al support tile per module</comment>
+      <lattice type="anl_hex_rows" rows="EC_ANL_rows" pitch="EC_ANL_pitch" row_pitch="EC_ANL_row_pitch"
+               row_center="EC_ANL_row_center" sector_dphi="EC_ANL_sector_dphi"/>
+      <selection rmin="FAEC_rsel_min" rmax="FAEC_rsel_max"/>
+      <phi_mask enable="FAEC_PhiMask_enable" overlap="FAEC_PhiMask_overlap" nseg="FAEC_PhiMask_nseg"
+                dphi="FAEC_PhiMask_dphi" phi0="FAEC_PhiMask_phi0" centers="FAEC_PhiMask_centers"/>
+      <envelope type="tube" margin="0.1*mm" material="Air"/>
+      <module type="hex_stack" nsides="6" apothem="FAEC_module_apothem" phi0="FAEC_module_phi0"
+              z_front="FAEC_ps_zfront" material="Air" vis="FAEC_PreShowerModuleVis">
+        <layer repeat="1">
+          <slice name="PSScint"  material="EC_Polystyrene" thickness="FAEC_ps_scint_thick" sensitive="true"/>
+          <slice name="Support"  material="Aluminum"       thickness="FAEC_support_thick"/>
+        </layer>
+      </module>
+      <sheet name="Radiator" material="Lead" rmin="FAEC_rsel_min" rmax="FAEC_rsel_max"
+             z_front="FAEC_ps_Pb_zfront" thickness="FAEC_ps_Pb_thick" vis="FAEC_RadiatorVis"/>
+    </detector>
+
+    <detector id="FAECShower_ID" name="FAECShower" type="SoLID_HexShashlykEMCal"
+              readout="FAECShowerHits" vis="FAEC_EnvelopeVis">
+      <comment>FAEC shower: 194-layer shashlik modules, scintillator slices sensitive (layer 1..194, slice 5)</comment>
+      <lattice type="anl_hex_rows" rows="EC_ANL_rows" pitch="EC_ANL_pitch" row_pitch="EC_ANL_row_pitch"
+               row_center="EC_ANL_row_center" sector_dphi="EC_ANL_sector_dphi"/>
+      <selection rmin="FAEC_rsel_min" rmax="FAEC_rsel_max"/>
+      <phi_mask enable="FAEC_PhiMask_enable" overlap="FAEC_PhiMask_overlap" nseg="FAEC_PhiMask_nseg"
+                dphi="FAEC_PhiMask_dphi" phi0="FAEC_PhiMask_phi0" centers="FAEC_PhiMask_centers"/>
+      <envelope type="tube" margin="0.1*mm" material="Air"/>
+      <module type="hex_stack" nsides="6" apothem="FAEC_module_apothem" phi0="FAEC_module_phi0"
+              z_front="FAEC_shower_zfront" material="Air" vis="FAEC_ShowerModuleVis">
+        <layer repeat="FAEC_nlayers">
+          <slice name="PaintF"   material="EC_Paint"       thickness="FAEC_paint_thick"/>
+          <slice name="Absorber" material="Lead"           thickness="FAEC_Pb_thick">
+            <rods enable="FAEC_rods_enable" n="6" radius="FAEC_rod_radius" r="FAEC_rod_r" phi0="FAEC_module_phi0"
+                  material="EC_StainlessSteel"/>
+          </slice>
+          <slice name="PaintB"   material="EC_Paint"       thickness="FAEC_paint_thick"/>
+          <slice name="GapF"     material="Mylar"          thickness="FAEC_gap_thick"/>
+          <slice name="Scint"    material="EC_Polystyrene" thickness="FAEC_scint_thick" sensitive="true">
+            <rods enable="FAEC_rods_enable" n="6" radius="FAEC_rod_radius" r="FAEC_rod_r" phi0="FAEC_module_phi0"
+                  material="EC_StainlessSteel"/>
+          </slice>
+          <slice name="GapB"     material="Mylar"          thickness="FAEC_gap_thick"/>
+        </layer>
+      </module>
+    </detector>
+  </detectors>
+
+  <readouts>
+    <readout name="FAECPreShowerHits">
+      <segmentation type="NoSegmentation"/>
+      <id>system:8,sector:5,module:11,layer:8,slice:4</id>
+    </readout>
+    <readout name="FAECShowerHits">
+      <segmentation type="NoSegmentation"/>
+      <id>system:8,sector:5,module:11,layer:8,slice:4</id>
+    </readout>
+  </readouts>
+</lccdd>

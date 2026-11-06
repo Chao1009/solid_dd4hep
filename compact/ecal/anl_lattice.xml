@@ -1,0 +1,29 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  ANL 2013 module lattice of the SoLID shashlik EC (shared by FAEC and LAEC in every configuration).
+
+  Source: ANL "SOLID Tube Coordinates" (T. O'Connor, 2013-06-28) =
+    solid_gemc/analysis/ec_layout/map_FAEC_ANL_20130628.txt (54 rows) -> the id<i>_{idy,idx,x,y,sector} block
+    (1748 entries) that is identical in every solid_gemc/geometry/ec_segmented*/ *__parameters_Original.txt.
+
+  Encoding (exact reproduction of the 1748 GEMC centres, max deviation 4.5 um; GEMC id 1748 has the typo
+  x = 55.8 cm, the lattice value 55.88 cm is used here):
+    row k = 1..54:   y_k = (k - EC_ANL_row_center) * EC_ANL_row_pitch        (k = 1 at the bottom, y < 0)
+    column n:        x   = n * EC_ANL_pitch / 2                               (odd rows odd n, even rows even n)
+    EC_ANL_rows:     "k:a:b[,a:b];..." = for row k, n runs a, a+2, ..., b
+    module id:       1..1748, increasing along +x within a row, then row by row from k = 1  (GEMC/ANL id,
+                     stable across configurations: GEMC hit id = 3100000 + id (FA), 3200000 + id (LA))
+    sector:          floor(phi_centre / EC_ANL_sector_dphi) + 1, phi = atan2(y, x) in [0, 360) deg
+                     (reproduces all 1748 GEMC id<i>_sector values; ANL: "matches baffle for FAEC")
+  The pitch is 11.176 cm = 4.4 in, i.e. 3.5 mm between the 10.826 cm flat-to-flat modules.
+
+  This file is included inside the <define> block of every compact/ecal/ec_*.xml fragment; repeated inclusion is
+  harmless (DD4hep keeps the first definition of a constant, all definitions are identical).
+-->
+<define>
+  <constant name="EC_ANL_pitch"       value="11.176*cm"/>
+  <constant name="EC_ANL_row_pitch"   value="EC_ANL_pitch*sqrt(3.)/2."/>  <!-- 9.6787 cm -->
+  <constant name="EC_ANL_row_center"  value="27.5"/>
+  <constant name="EC_ANL_sector_dphi" value="12*deg"/>
+  <constant name="EC_ANL_rows" type="string" value="1:-9:9;2:-16:16;3:-19:19;4:-20:20;5:-21:21;6:-28:28;7:-31:31;8:-32:32;9:-33:33;10:-36:36;11:-37:37;12:-36:36;13:-37:37;14:-38:38;15:-39:39;16:-40:40;17:-43:43;18:-44:44;19:-43:-9,9:43;20:-44:-10,10:44;21:-45:-13,13:45;22:-46:-14,14:46;23:-45:-15,15:45;24:-46:-16,16:46;25:-45:-15,15:45;26:-44:-16,16:44;27:-45:-17,17:45;28:-46:-18,18:46;29:-45:-17,17:45;30:-46:-16,16:46;31:-45:-17,17:45;32:-46:-16,16:46;33:-45:-15,15:45;34:-44:-12,12:44;35:-45:-11,11:45;36:-44:-8,8:44;37:-43:-3,3:43;38:-42:42;39:-41:41;40:-40:40;41:-39:39;42:-38:38;43:-37:37;44:-36:36;45:-35:35;46:-34:34;47:-33:33;48:-30:30;49:-29:29;50:-24:24;51:-21:21;52:-18:18;53:-15:15;54:-10:10"/>
+</define>

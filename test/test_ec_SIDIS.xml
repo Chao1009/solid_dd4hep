@@ -1,0 +1,29 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- EC-only test configuration (SIDIS 3He/NH3, J/psi, DDVCS: FAEC 95-240 + LAEC) -->
+<lccdd>
+  <info name="test_ec_SIDIS" title="EC test: SIDIS 3He/NH3, J/psi, DDVCS: FAEC 95-240 + LAEC" author="SoLID collaboration" status="development" version="v0.3 2026-11"/>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="1"/>
+    <constant name="TargetCenter_z" value="-350*cm"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+    <limitset name="cal_limits">
+      <limit name="step_length_max" particles="*" value="5.0" unit="mm"/>
+    </limitset>
+  </limits>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_FA.xml"/>
+</lccdd>

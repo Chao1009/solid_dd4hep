@@ -1,0 +1,26 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- test configuration for SoLID_SectorGasCherenkov (lite_extshift) -->
+<lccdd>
+  <info name="test_hgc_lite_lite_extshift" title="SoLID gas Cherenkov test: lite_extshift" author="SoLID collaboration" status="development" version="v0.3"/>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="TargetCenter_z" value="-315*cm"/>
+    <constant name="LiteCherenkov_zshift" value="-40*cm"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+  <limits><limitset name="world_limits"/></limits>
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001"><limitsetref name="world_limits"/></region>
+  </regions>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/cherenkov_lite.xml"/>
+</lccdd>

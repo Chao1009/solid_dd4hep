@@ -1,0 +1,197 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID Heavy Gas Cherenkov (HGC), full SoLID SIDIS (3He, NH3), J/psi and J/psi-DDVCS configurations.
+  Geometry: solid_gemc/geometry/hgc_moved, variation Original (2026-01-14, longer-endcap magnet v4), see
+  solid_SIDIS_hgc_geometry.pl (optics: Bo Yu, Z. Zhao 2018). Radiator: C4F8 at 1.7 atm (preCDR p103, white paper p27) by default;
+  the GEMC radiator C4F8O at 1.5 atm is selected by defining, in the top-level <define> before this file is included,
+      <constant name="HGC_Gas" value="HGC_C4F8O_1p5atm" type="string"/>
+  Other options overridable the same way (the plugin uses the first definition of a constant named directly by an
+  attribute): HGC_Sectors ("all" or e.g. "1 2 3"), HGC_zshift, HGC_pmt_n/_pitch/_tile. HGC_pixel (readout grid) is
+  evaluated by DD4hep itself (last definition wins): for the 4x4 MaPMT level edit the constants in this file.
+  Hall frame (z along the beam, origin at the coil centre); all rotations ACTIVE.
+
+  Construction (plugin SoLID_SectorGasCherenkov):
+    * tank: 5-plane Al polycone, readout "nose" z 316-326 r 190-240, main volume z 326-426 r 77/87-240, conical back
+      wall to r 225 at z 426; radiator gas polycone inside (walls: inner 1.25", outer 1", front 0.04", back ~0.25").
+    * 0.04" Al front window (r 80.175-187, z 326-326.1016, daughter of the tank as in GEMC).
+    * two 0.5 deg Al wedges (half-tank separators) at phi 90-90.5 and 270-270.5 deg.
+    * 30 sectors, sector s centred at phi_s = 96 + 12 (s-1) deg (sector 1 = 90-102 deg).
+    * per sector: spherical mirror (R 210 cm, 0.3 cm CFRP, centre (r, z) = (199.226343, 210.119873)) cut by the
+      projective cone segment of the GEMC file; Fe Trd light-collection funnel; Fe square back shield; 21.3 x 21.3 cm
+      photosensor plane (4 x 4 MaPMT area) whose front face is the image point (r, z) = (215.478967, 343.740704),
+      optical axis tilted by 39 deg (ACTIVE RotationZ(phi_s) * RotationY(-39 deg)).
+  Deliberate deviations from GEMC (documented in docs/geometry_comparison.md):
+    1. mirrors of sectors 1 and 16 start at phi_s - 5.5 deg + 0.01 deg (GEMC: phi_s - 6 deg, overlapping the Al
+       wedges block_1/block_16 by 4.3 % of the mirror volume);
+    2. back shield 19.9 cm long instead of 20 cm (back end 1 mm shorter): the GEMC shield corners extrude 80 um out of
+       the radiator into the outer tank wall;
+    3. boolean inner solids of funnel and shield made 0.01 cm longer (no coincident faces; wall planes unchanged);
+    4. the sensitive layer is followed by an Al absorber layer instead of the GEMC "Kryptonite";
+    5. radiator C4F8 1.7 atm (GEMC: C4F8O 1.5 atm, same refractive-index table);
+    6. GEMC flux virtual plane (z 313) not built.
+-->
+<lccdd>
+  <!-- BEGIN optics: tables copied verbatim (by script) from solid_gemc/geometry/hgc_moved{,_ext} *__materials_*.txt,
+       *__mirrors_Original.txt (identical tables in all hgc_moved* directories). -->
+  <properties>
+    <!-- C4F8O 1.5 atm refractive index (GEMC SL_HGC_C4F8O), also used for C4F8 1.7 atm (preCDR p109) -->
+    <matrix name="RINDEX__HGC_C4F8" coldim="2" values="
+      2.04358*eV 1.00205   2.0664*eV 1.00205   2.09046*eV 1.00205   2.14023*eV 1.00206
+      2.16601*eV 1.00206   2.20587*eV 1.00206   2.23327*eV 1.00206   2.26137*eV 1.00206
+      2.31972*eV 1.00206   2.35005*eV 1.00206   2.38116*eV 1.00206   2.41313*eV 1.00207
+      2.44598*eV 1.00207   2.47968*eV 1.00207   2.53081*eV 1.00207   2.58354*eV 1.00207
+      2.6194*eV 1.00207   2.69589*eV 1.00208   2.73515*eV 1.00208   2.79685*eV 1.00208
+      2.86139*eV 1.00209   2.95271*eV 1.00209   3.04884*eV 1.00209   3.12665*eV 1.0021
+      3.2393*eV 1.00211   3.39218*eV 1.00211   3.52508*eV 1.00212   3.66893*eV 1.00213
+      3.82396*eV 1.00214   3.99949*eV 1.00215   4.13281*eV 1.00216   4.27679*eV 1.00217
+      4.48244*eV 1.00219   4.65057*eV 1.0022   4.89476*eV 1.00222   5.02774*eV 1.00223
+      5.16816*eV 1.00224   5.31437*eV 1.00225   5.63821*eV 1.00228   5.90401*eV 1.00231
+      6.19921*eV 1.00234
+      "/>
+    <!-- mirror and cone reflectivity (GEMC SL_HGC_mirror) -->
+    <matrix name="REFLECTIVITY__HGC_Mirror" coldim="2" values="
+      2.04358*eV 0.8678125   2.0664*eV 0.8651562   2.09046*eV 0.8639063   2.14023*eV 0.8637500
+      2.16601*eV 0.8640625   2.20587*eV 0.8645313   2.23327*eV 0.8643750   2.26137*eV 0.8656250
+      2.31972*eV 0.8653125   2.35005*eV 0.8650000   2.38116*eV 0.8648437   2.41313*eV 0.8638281
+      2.44598*eV 0.8635156   2.47968*eV 0.8631250   2.53081*eV 0.8621875   2.58354*eV 0.8617188
+      2.6194*eV 0.8613281   2.69589*eV 0.8610156   2.73515*eV 0.8610938   2.79685*eV 0.8616016
+      2.86139*eV 0.8623047   2.95271*eV 0.8637500   3.04884*eV 0.8655859   3.12665*eV 0.8673828
+      3.2393*eV 0.8700586   3.39218*eV 0.8741992   3.52508*eV 0.8781055   3.66893*eV 0.8825195
+      3.82396*eV 0.8876172   3.99949*eV 0.8937207   4.13281*eV 0.8981836   4.27679*eV 0.9027441
+      4.48244*eV 0.9078369   4.65057*eV 0.9102002   4.89476*eV 0.9093164   5.02774*eV 0.9061743
+      5.16816*eV 0.9004223   5.31437*eV 0.8915210   5.63821*eV 0.8599536   5.90401*eV 0.8208313
+      6.19921*eV 0.7625024
+      "/>
+  </properties>
+
+  <materials>
+    <!-- default: C4F8 at 1.7 atm abs, 20 degC (preCDR p103, WP p27); density = 1.7 x GEMC SL_HGC_C4F8_oneatm (8.82e-3) -->
+    <material name="HGC_C4F8_1p7atm" state="gas">
+      <D type="density" value="14.994e-3" unit="g/cm3"/>
+      <composite n="4" ref="C"/>
+      <composite n="8" ref="F"/>
+      <property name="RINDEX" ref="RINDEX__HGC_C4F8"/>
+    </material>
+    <!-- GEMC parity: SL_HGC_C4F8O, C4F8O at 1.5 atm -->
+    <material name="HGC_C4F8O_1p5atm" state="gas">
+      <D type="density" value="13.47255e-3" unit="g/cm3"/>
+      <composite n="4" ref="C"/>
+      <composite n="8" ref="F"/>
+      <composite n="1" ref="O"/>
+      <property name="RINDEX" ref="RINDEX__HGC_C4F8"/>
+    </material>
+    <!-- mirror substrate, GEMC SL_HGC_CFRP (mass fractions as in GEMC; H 0.33 looks like an atom fraction) -->
+    <material name="HGC_MirrorCFRP">
+      <D type="density" value="1.8" unit="g/cm3"/>
+      <fraction n="0.42" ref="C"/>
+      <fraction n="0.17" ref="N"/>
+      <fraction n="0.08" ref="O"/>
+      <fraction n="0.33" ref="H"/>
+    </material>
+  </materials>
+
+  <surfaces>
+    <!-- GEMC SL_HGC_mirror (SkinSurface on the mirrors and on the light-collection cones) -->
+    <opticalsurface name="HGC_MirrorSurface" type="dielectric_metal" finish="polished" model="unified" value="0">
+      <property name="REFLECTIVITY" ref="REFLECTIVITY__HGC_Mirror"/>
+    </opticalsurface>
+  </surfaces>
+  <!-- END optics -->
+
+  <define>
+    <constant name="HGC_Gas"          value="HGC_C4F8_1p7atm" type="string"/>  <!-- or HGC_C4F8O_1p5atm (GEMC) -->
+    <constant name="HGC_Sectors"      value="all" type="string"/>              <!-- list of sectors 1..30, or "all" -->
+    <constant name="HGC_zshift"       value="0*cm"/>         <!-- global z offset of the whole detector -->
+    <!-- photosensor granularity. Level 0 (GEMC equivalent, default): one 21.3 cm tile, 32x32 cells of 6.65625 mm.
+         Level 1 (4x4 H12700 MaPMT): HGC_pmt_n 4, pitch 5.325 cm, tile (photocathode) 4.85 cm, pixel 6.0625 mm (8x8). -->
+    <constant name="HGC_pmt_n"        value="1"/>
+    <constant name="HGC_pmt_pitch"    value="21.3*cm"/>
+    <constant name="HGC_pmt_tile"     value="21.3*cm"/>
+    <constant name="HGC_pixel"        value="6.65625*mm"/>
+    <constant name="HGC_nsectors"     value="30"/>
+    <constant name="HGC_phi0"         value="96*degree"/>    <!-- centre of sector 1 -->
+    <constant name="HGC_dphi"         value="12*degree"/>
+    <!-- optics (Bo Yu, Z. Zhao 2018): image point, optical-axis tilt, mirror sphere -->
+    <constant name="HGC_image_r"      value="215.478967*cm"/>
+    <constant name="HGC_image_z"      value="343.740704*cm"/>
+    <constant name="HGC_tilt"         value="39*degree"/>
+    <constant name="HGC_mirror_R"     value="210*cm"/>
+    <constant name="HGC_mirror_thick" value="0.3*cm"/>
+    <constant name="HGC_mirror_cr"    value="199.226343*cm"/>
+    <constant name="HGC_mirror_cz"    value="210.119873*cm"/>
+  </define>
+
+  <display>
+    <vis name="HGC_TankVis"     ref="khaki"     alpha="0.15" showDaughters="true" visible="true" drawingStyle="wireframe"/>
+    <vis name="HGC_WindowVis"   ref="khaki"     alpha="0.3"  showDaughters="false" visible="true"/>
+    <vis name="HGC_BlockVis"    ref="olivedrab" alpha="0.5"  showDaughters="false" visible="true"/>
+    <vis name="HGC_MirrorVis"   ref="silver"    alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="HGC_ConeVis"     ref="lightgreen" alpha="0.8" showDaughters="false" visible="true"/>
+    <vis name="HGC_ShieldVis"   ref="seagreen"  alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="HGC_PMTVis"      ref="InvisibleWithDaughters"/>
+    <vis name="HGC_SensorVis"   ref="teal"      alpha="1.0"  showDaughters="false" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="HGC_ID" name="HeavyGasCherenkov" type="SoLID_SectorGasCherenkov"
+              readout="HeavyGasCherenkovHits" vis="HGC_TankVis">
+      <placement z="HGC_zshift"/>
+      <!-- tank (hall-frame z planes) -->
+      <tank material="Aluminum" vis="HGC_TankVis">
+        <zplane z="316*cm" rmin="190*cm" rmax="240*cm"/>
+        <zplane z="326*cm" rmin="190*cm" rmax="240*cm"/>
+        <zplane z="326*cm" rmin="77*cm"  rmax="240*cm"/>
+        <zplane z="416*cm" rmin="87*cm"  rmax="240*cm"/>
+        <zplane z="426*cm" rmin="225*cm" rmax="240*cm"/>
+      </tank>
+      <!-- radiator: rmin = tank rmin + 1.25", rmax = tank rmax - 1", nose plate 1 cm, front window 0.04", back 0.25" -->
+      <radiator material="HGC_Gas" vis="InvisibleWithDaughters">
+        <zplane z="317*cm"      rmin="193.175*cm" rmax="237.46*cm"/>
+        <zplane z="326.1016*cm" rmin="193.175*cm" rmax="237.46*cm"/>
+        <zplane z="326.1016*cm" rmin="80.175*cm"  rmax="237.46*cm"/>
+        <zplane z="416*cm"      rmin="90.175*cm"  rmax="237.46*cm"/>
+        <zplane z="425.365*cm"  rmin="228.175*cm" rmax="237.46*cm"/>
+      </radiator>
+      <!-- front window: z = upstream face; mother = tank (GEMC solid_SIDIS_hgc_window_front_1) -->
+      <window material="Aluminum" mother="tank" rmin="80.175*cm" rmax="187*cm" z="326*cm" thickness="0.1016*cm"
+              vis="HGC_WindowVis"/>
+      <!-- half-tank separators (GEMC block_1, block_16); z planes = radiator planes -->
+      <block material="Aluminum" phi="90*degree"  dphi="0.5*degree" vis="HGC_BlockVis"/>
+      <block material="Aluminum" phi="270*degree" dphi="0.5*degree" vis="HGC_BlockVis"/>
+
+      <sectors count="HGC_nsectors" phi0="HGC_phi0" dphi="HGC_dphi" list="HGC_Sectors"/>
+      <image r="HGC_image_r" z="HGC_image_z" tilt="HGC_tilt"/>
+
+      <!-- mirror = ConeSegment(phi_s +- 6 deg) at z 376 (dz 50; radii = (350+z) tan(6.8 deg / 16 deg)) ∩ sphere shell -->
+      <mirror material="HGC_MirrorCFRP" surface="HGC_MirrorSurface" vis="HGC_MirrorVis"
+              R="HGC_mirror_R" thickness="HGC_mirror_thick" center_r="HGC_mirror_cr" center_z="HGC_mirror_cz"
+              z="376*cm" dz="50*cm" rmin1="80.6081183520297*cm" rmax1="193.839877288033*cm"
+              rmin2="92.532396214756*cm" rmax2="222.514415348393*cm" dphi="HGC_dphi" block_clearance="0.01*degree"/>
+      <!-- light-collection funnel: INNER half sizes (GEMC conein_s), wall 0.5 cm added to every half size
+           (GEMC coneout_s = Trd(11.65, 22.91, 11.65, 16.5, 8.09)); starts at the image point -->
+      <cone material="Iron" surface="HGC_MirrorSurface" vis="HGC_ConeVis"
+            x1="11.15*cm" x2="22.41*cm" y1="11.15*cm" y2="16.0*cm" dz="8.09*cm" thickness="0.5*cm" offset="8.09*cm"/>
+      <!-- back shield (GEMC shieldback_s): inner half size 11.15, wall 0.5; GEMC dz 10 at offset -10.1 cm from the image
+           point, here dz 9.95 at offset -10.05 (front end unchanged, back end 1 mm shorter, see header) -->
+      <shield material="Iron" vis="HGC_ShieldVis" dx="11.15*cm" dy="11.15*cm" dz="9.95*cm" thickness="0.5*cm"
+              offset="-10.05*cm"/>
+      <!-- photosensor plane: 21.3 x 21.3 cm, 40 um thick container (GEMC pmt_s); front 20 um sensitive (radiator gas), back 20 um
+           absorber. Level 0 (GEMC equivalent): one tile. Level 1 (4x4 MaPMT): nx="4" ny="4" pitch_x="5.325*cm"
+           pitch_y="5.325*cm" tile_x="4.85*cm" tile_y="4.85*cm" (and grid 6.0625 mm in the readout). -->
+      <pmt_array dx="21.3*cm" dy="21.3*cm" thickness="0.004*cm" nx="HGC_pmt_n" ny="HGC_pmt_n"
+                 pitch_x="HGC_pmt_pitch" pitch_y="HGC_pmt_pitch" tile_x="HGC_pmt_tile" tile_y="HGC_pmt_tile"
+                 absorber_material="Aluminum" vis="HGC_PMTVis" sensitive_vis="HGC_SensorVis"/>
+    </detector>
+  </detectors>
+
+  <readouts>
+    <!-- one hit per optical photon (Geant4OpticalTrackerAction, steering/solid_sim.py); 32 x 32 cells of
+         6.65625 mm per sector, cell index -16..15; MaPMT (4x4) = ((x+16)/8, (y+16)/8). Local x lies in the r-z
+         plane (toward larger r and larger z), local y is azimuthal. -->
+    <readout name="HeavyGasCherenkovHits">
+      <segmentation type="CartesianGridXY" grid_size_x="HGC_pixel" grid_size_y="HGC_pixel"
+                    offset_x="HGC_pixel/2" offset_y="HGC_pixel/2"/>
+      <id>system:8,sector:5,pmt:4,x:32:-16,y:-16</id>
+    </readout>
+  </readouts>
+</lccdd>

@@ -1,0 +1,139 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  DDVCS muon system (full SoLID solid_DDVCS.xml and SoLID-Lite solid_DDVCS_lite.xml).
+
+  Reference: GEMC muon_moved (2026-10-14) solid_DDVCS_muon_{forwardangle,gem_forwardangle,largeangle}, loaded by
+  script/solid_JPsi_DDVCS_LH2_{moved,lite}_full.gcard; cleo_iron_layout.md; magnet spec 4.8; lite digest 3.5.
+
+  Forward-angle (FA) stack, 3 identical layers L = 1..3, pitch 46 cm, iron centre z_L = 638 + 46(L-1) cm:
+    iron    z_L -18 ... z_L +18   (620-656, 666-702, 712-748) : 2 side blocks 250 x 534 x 36 cm at x = +-164.4 cm
+                                  (one 62" + one 37" CLEO-II layer-3 slab each) + 2 fillers 78.8 x 177.8 x 36 cm at
+                                  y = +-177.8 cm; beam opening |x| < 39.4, |y| < 88.9 cm (corner r = 97.2 cm)
+    GEM     z_L +20.5 +- 0.8      (657.7-659.3, ...)        : delivered by the GEM implementer (muon_gem_DDVCS.xml,
+                                  SoLID_GEMTracker, MuonGEMTracker / MuonGEM_ID); this file leaves the gap empty
+    scint   z_L +25 +- 2.5        (660.5-665.5, 706.5-711.5, 752.5-757.5), r 100-285 cm, PVT
+  Observer (virtual, vacuum) planes, optional:
+    FA  planes 0-4 at z 619, 657, 703, 749, 758 (r 100-285, 0.2 mm), as GEMC (ids 6100000 + 10000 n)
+    LA  plane 11 = barrel octagon outside the yoke, plane 10 = endcap cylinder r 286 cm up to the muon iron.
+
+  Deviations from GEMC (see the report / docs/geometry_comparison.md):
+    * scintillators are cut into MuonScint_Nphi = 60 azimuthal paddles (FAMD design, workshop C040 p16-21:
+      "3 planes x 60 azimuthal segments, 10 -> 30 cm wide, 185 cm long, 5 cm thick"); GEMC: one disk
+      (MuonScint_Nphi = 1 reproduces it). Paddle m covers [90 + 6(m-1), 90 + 6m] deg (same grid as the SPD).
+    * LA observers follow the magnet spec 4.8 recommendation for the corrected CLEO yoke (octagon flats, outer flat
+      257.61 cm): barrel at flat + 1 cm = 258.61 cm, z -266.7 ... 170.0 cm (stops before the full-SoLID endcap
+      interface at 170.67), endcap cylinder r 286 cm from z 170.0 to 619 cm. One set valid for both the full (v4c)
+      and lite (nomod) yokes. GEMC: barrel apothem 280 at z -266 ... 182, cylinder z 209 ... 620 - these intersect
+      the GEMC nomod outer-octagon corners (z 209-266.7) and the v4 endcap-interface corners (z 209-209.23).
+      If the yoke is built with the GEMC (corner-as-flat) radii, set MuonObs_Barrel_apothem = 280*cm.
+    * iron material Iron (7.874 g/cm3 = G4_Fe as GEMC); real slab steel unknown (magnet spec: AISI 1010-like).
+    * iron blocks keep the GEMC sizes (250 x 534 x 36 cm); the real slabs are 251.46 x 533.4 x 35.56 cm (14").
+
+  Requires from the top level: nothing (hall-frame z). Field maps (CLEOv9 z <= 600, CLEOv10 z <= 700) do not cover
+  the muon iron; it is not magnetized here.
+  Readouts: MuonScintHits system:8, layer:3, module:12 (paddle); MuonObserverHits system:8, plane:5
+  (FA 0-4, LA endcap 10, LA barrel 11). Observer planes are vacuum (zero deposit): steering/solid_sim.py
+  (SIM.filter.tracker = 'edep0') keeps their hits; with ddsim's default 'edep1kev' filter set
+  SIM.filter.mapDetFilter['MuonObserver'] = ''. Override any constant above by defining it in the top-level <define>
+  before the include (the plugin resolves constants with first-definition-wins semantics).
+-->
+<lccdd>
+  <define>
+    <!-- layer structure -->
+    <constant name="Muon_Nlayers"            value="3"/>
+    <constant name="Muon_pitch"              value="46.0*cm"/>
+    <constant name="MuonIron_z1"             value="638.0*cm"/>   <!-- centre of iron layer 1 (620-656) -->
+    <constant name="MuonIron_halfz"          value="18.0*cm"/>    <!-- 36 cm thick (real 14" = 35.56 cm) -->
+    <!-- iron blocks (half lengths) -->
+    <constant name="MuonIron_side_xc"        value="164.4*cm"/>
+    <constant name="MuonIron_side_halfx"     value="125.0*cm"/>
+    <constant name="MuonIron_side_halfy"     value="267.0*cm"/>
+    <constant name="MuonIron_filler_yc"      value="177.8*cm"/>
+    <constant name="MuonIron_filler_halfx"   value="39.4*cm"/>
+    <constant name="MuonIron_filler_halfy"   value="88.9*cm"/>
+    <!-- GEM plane (GEM implementer), for reference only: centre z_L + 20.5 cm, 1.6005 cm thick, r 100-285 -->
+    <constant name="MuonGEM_dz"              value="20.5*cm"/>
+    <!-- scintillators -->
+    <constant name="MuonScint_dz"            value="25.0*cm"/>    <!-- centre offset from the iron centre -->
+    <constant name="MuonScint_thickness"     value="5.0*cm"/>
+    <constant name="MuonScint_rmin"          value="100.0*cm"/>
+    <constant name="MuonScint_rmax"          value="285.0*cm"/>
+    <constant name="MuonScint_Nphi"          value="60"/>         <!-- GEMC: 1 (unsegmented) -->
+    <constant name="MuonScint_phi0"          value="90.0*deg"/>
+    <!-- observer (virtual) planes -->
+    <constant name="MuonObs_UseFA"           value="1"/>
+    <constant name="MuonObs_UseLA"           value="1"/>
+    <constant name="MuonObs_thickness"       value="0.02*cm"/>    <!-- FA disks, GEMC half 0.01 cm -->
+    <constant name="MuonObs_FA_rmin"         value="100.0*cm"/>
+    <constant name="MuonObs_FA_rmax"         value="285.0*cm"/>
+    <constant name="MuonObs_FA_z0"           value="MuonIron_z1 - MuonIron_halfz - 1.0*cm"/>   <!-- 619 -->
+    <constant name="MuonObs_FA_dz"           value="MuonIron_halfz + 1.0*cm"/>                 <!-- 657 = 638 + 19 -->
+    <constant name="MuonObs_FA_z4"           value="MuonIron_z1 + (Muon_Nlayers - 1)*Muon_pitch + MuonScint_dz + 0.5*MuonScint_thickness + 0.5*cm"/>
+    <constant name="MuonObs_LA_thickness"    value="0.1*cm"/>
+    <constant name="MuonObs_Barrel_apothem"  value="258.61*cm"/>  <!-- GEMC 280 (yoke corner 278.83 + 1.2) -->
+    <constant name="MuonObs_Barrel_nsides"   value="8"/>
+    <constant name="MuonObs_Barrel_phi0"     value="-22.5*deg"/>  <!-- flats normal to x, y (as the CLEO yoke) -->
+    <constant name="MuonObs_Barrel_zmin"     value="-266.7*cm"/>  <!-- GEMC -266 -->
+    <constant name="MuonObs_Barrel_zmax"     value="170.0*cm"/>   <!-- GEMC 182 -->
+    <constant name="MuonObs_Endcap_r"        value="286.0*cm"/>
+    <constant name="MuonObs_Endcap_zmin"     value="MuonObs_Barrel_zmax"/>   <!-- GEMC 209 -->
+    <constant name="MuonObs_Endcap_zmax"     value="619.0*cm"/>   <!-- GEMC 620 -->
+  </define>
+
+  <display>
+    <vis name="MuonIron_Vis"      ref="slategray"  alpha="0.8" visible="true"/>
+    <vis name="MuonScint_Vis"     ref="tomato"     alpha="0.6" visible="true"/>
+    <vis name="MuonObserver_Vis"  ref="peru"       alpha="0.2" visible="false"/>
+  </display>
+
+  <detectors>
+    <!-- ======== CLEO-II layer-3 iron absorber (passive) ======== -->
+    <detector id="MuonIron_ID" name="MuonIron" type="SoLID_MuonDetector" vis="InvisibleWithDaughters">
+      <layers count="Muon_Nlayers" z0="MuonIron_z1" pitch="Muon_pitch"/>
+      <block name="side_px"   x="MuonIron_side_xc"  y="0*cm"                dx="MuonIron_side_halfx"   dy="MuonIron_side_halfy"   dz="MuonIron_halfz" material="Iron" vis="MuonIron_Vis"/>
+      <block name="side_nx"   x="-MuonIron_side_xc" y="0*cm"                dx="MuonIron_side_halfx"   dy="MuonIron_side_halfy"   dz="MuonIron_halfz" material="Iron" vis="MuonIron_Vis"/>
+      <block name="filler_py" x="0*cm"              y="MuonIron_filler_yc"  dx="MuonIron_filler_halfx" dy="MuonIron_filler_halfy" dz="MuonIron_halfz" material="Iron" vis="MuonIron_Vis"/>
+      <block name="filler_ny" x="0*cm"              y="-MuonIron_filler_yc" dx="MuonIron_filler_halfx" dy="MuonIron_filler_halfy" dz="MuonIron_halfz" material="Iron" vis="MuonIron_Vis"/>
+    </detector>
+
+    <!-- ======== scintillator planes behind each GEM plane ======== -->
+    <detector id="MuonScint_ID" name="MuonScint" type="SoLID_MuonDetector" readout="MuonScintHits" vis="InvisibleWithDaughters">
+      <layers count="Muon_Nlayers" z0="MuonIron_z1" pitch="Muon_pitch"/>
+      <disk z="MuonScint_dz" rmin="MuonScint_rmin" rmax="MuonScint_rmax" thickness="MuonScint_thickness"
+            nphi="MuonScint_Nphi" phi0="MuonScint_phi0" material="PlasticScint" vis="MuonScint_Vis" sensitive="true"/>
+    </detector>
+
+    <!-- ======== observer (virtual, vacuum) planes, FA and LA ======== -->
+    <detector id="VirtualPlane_ID" name="MuonObserver" type="SoLID_MuonDetector" readout="MuonObserverHits" vis="InvisibleWithDaughters">
+      <plane id="0"  enable="MuonObs_UseFA" type="disk" z="MuonObs_FA_z0" rmin="MuonObs_FA_rmin" rmax="MuonObs_FA_rmax"
+             thickness="MuonObs_thickness" material="Vacuum" vis="MuonObserver_Vis"/>
+      <plane id="1"  enable="MuonObs_UseFA" type="disk" z="MuonIron_z1 + MuonObs_FA_dz" rmin="MuonObs_FA_rmin" rmax="MuonObs_FA_rmax"
+             thickness="MuonObs_thickness" material="Vacuum" vis="MuonObserver_Vis"/>
+      <plane id="2"  enable="MuonObs_UseFA" type="disk" z="MuonIron_z1 + Muon_pitch + MuonObs_FA_dz" rmin="MuonObs_FA_rmin" rmax="MuonObs_FA_rmax"
+             thickness="MuonObs_thickness" material="Vacuum" vis="MuonObserver_Vis"/>
+      <plane id="3"  enable="MuonObs_UseFA" type="disk" z="MuonIron_z1 + 2*Muon_pitch + MuonObs_FA_dz" rmin="MuonObs_FA_rmin" rmax="MuonObs_FA_rmax"
+             thickness="MuonObs_thickness" material="Vacuum" vis="MuonObserver_Vis"/>
+      <plane id="4"  enable="MuonObs_UseFA" type="disk" z="MuonObs_FA_z4" rmin="MuonObs_FA_rmin" rmax="MuonObs_FA_rmax"
+             thickness="MuonObs_thickness" material="Vacuum" vis="MuonObserver_Vis"/>
+      <plane id="10" enable="MuonObs_UseLA" type="cylinder" r="MuonObs_Endcap_r" thickness="MuonObs_LA_thickness"
+             zmin="MuonObs_Endcap_zmin" zmax="MuonObs_Endcap_zmax" material="Vacuum" vis="MuonObserver_Vis"/>
+      <plane id="11" enable="MuonObs_UseLA" type="polygon" nsides="MuonObs_Barrel_nsides" phi0="MuonObs_Barrel_phi0"
+             apothem="MuonObs_Barrel_apothem" thickness="MuonObs_LA_thickness"
+             zmin="MuonObs_Barrel_zmin" zmax="MuonObs_Barrel_zmax" material="Vacuum" vis="MuonObserver_Vis"/>
+    </detector>
+  </detectors>
+
+  <!-- muon GEM planes (3 planes at z_L + 20.5 cm, r 100-285 cm, 30 sectors; MuonGEMTracker, MuonGEM_ID,
+       MuonGEMTrackerHits), built by SoLID_GEMTracker. The gaps z 657.7-659.3 / 703.7-705.3 / 749.7-751.3 cm
+       are kept free of material above. -->
+  <include ref="${DETECTOR_PATH}/compact/muon/muon_gem_DDVCS.xml"/>
+
+  <readouts>
+    <readout name="MuonScintHits">
+      <id>system:8,layer:3,module:12</id>
+    </readout>
+    <readout name="MuonObserverHits">
+      <id>system:8,plane:5</id>
+    </readout>
+  </readouts>
+</lccdd>

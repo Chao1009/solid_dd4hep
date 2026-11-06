@@ -1,0 +1,151 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID Light Gas Cherenkov (LGC), PVDIS configuration (full SoLID, longer endcap).
+
+  Reference: solid_gemc/geometry/lgc_moved, variation PVDIS (lg_cherenkov__geometry_PVDIS.txt, regenerated 2025-04-28 from
+  configs/pvdis_CLEO_extZ_smallAng.pl), used by solid_PVDIS_LD2_moved_full.gcard.
+  Same optics, mirrors M2 and PMT assembly as lgc_SIDIS.xml (see the documentation there); differences:
+    * no snout: the tank starts at z = 194 cm (the PVDIS baffles occupy z < 194);
+    * mirror M1 is rigidly tilted by RotationX(-8 deg) about the pivot (0, 73.537, 235.0) of the design sector
+      (GEMC mirrorRot with the my_vars.pl default pivot z = Z_M1 - 40 = 235; the configs' $zmirrRotPoint1 is a typo).
+      The tilted wedge shrinks by 0.04-0.28 deg per side (gap <= 0.9 cm to the neighbour, as in GEMC), so it is not
+      clipped (tilt attribute clip="true" would intersect it with the untilted sector wedge).
+  Readout, DetElements and numbering as in lgc_SIDIS.xml. Requires from the top level: nothing.
+-->
+<lccdd>
+  <includes>
+    <file ref="${DETECTOR_PATH}/compact/cherenkov/lgc_optics.xml"/>
+  </includes>
+
+  <define>
+    <!-- ===== sectors (GEMC lgc_moved: initRot = -12 deg, sec(n) = 31 - n => sector s at 90 + 12 s deg) ===== -->
+    <constant name="LGC_nsec"            value="30"/>
+    <constant name="LGC_dphi"            value="360*deg/LGC_nsec"/>
+    <constant name="LGC_phi_sec1"        value="102*deg"/>
+    <!-- ===== tank (GEMC cher_lg_Tank, PVDIS): Polycone planes, no snout ===== -->
+    <constant name="LGC_z1"   value="194*cm"/>  <constant name="LGC_rmin1" value="63.2*cm"/> <constant name="LGC_rmax1" value="135*cm"/>
+    <constant name="LGC_z2"   value="210*cm"/>  <constant name="LGC_rmin2" value="69.3*cm"/> <constant name="LGC_rmax2" value="150*cm"/>
+    <constant name="LGC_z3"   value="226*cm"/>  <constant name="LGC_rmin3" value="71*cm"/>   <constant name="LGC_rmax3" value="163*cm"/>
+    <constant name="LGC_z4"   value="226*cm"/>  <constant name="LGC_rmin4" value="71*cm"/>   <constant name="LGC_rmax4" value="263*cm"/>
+    <constant name="LGC_z5"   value="312*cm"/>  <constant name="LGC_rmin5" value="83*cm"/>   <constant name="LGC_rmax5" value="263*cm"/>
+    <!-- PVF windows (preCDR p96: 0.05 mm entrance, 0.1 mm exit); they cover the full tank face -->
+    <constant name="LGC_win_front_thickness" value="0.05*mm"/>
+    <constant name="LGC_win_back_thickness"  value="0.10*mm"/>
+
+    <!-- ===== mirrors (GEMC extZ_smallAng design, buildSPmirror; design frame = sector centred on +y) ===== -->
+    <constant name="LGC_mirror_thickness" value="3.0*mm"/>
+    <constant name="LGC_mirror_theta0"    value="0*deg"/>    <!-- sphere theta range (GEMC: 0-90 deg) -->
+    <constant name="LGC_mirror_theta1"    value="90*deg"/>
+    <!-- cut cone: centre z 260.5, half length 55.5 (z 205-316); its lines point to apex_z = design target + 5 cm (GEMC 2025) -->
+    <constant name="LGC_cut_z"            value="260.5*cm"/>
+    <constant name="LGC_cut_dz"           value="55.5*cm"/>
+    <!-- M1 (inner): design target z=-350, alpha 9.0 deg, Z_M 255, image point (0,245,250) -->
+    <constant name="LGC_M1_R"             value="362.535*cm"/>
+    <constant name="LGC_M1_Cy"            value="326.619*cm"/>
+    <constant name="LGC_M1_Cz"            value="-24.579*cm"/>
+    <constant name="LGC_M1_apex_z"        value="-345*cm"/>
+    <constant name="LGC_M1_theta_min"     value="7.6*deg"/>
+    <constant name="LGC_M1_theta_max"     value="15.0*deg"/>
+    <constant name="LGC_M1_tilt"          value="-8*deg"/>   <!-- PVDIS: M1 tilted inward (SIDIS: 0) -->
+    <constant name="LGC_M1_pivot_y"       value="73.5373*cm"/>  <!-- on the M1 sphere at z = 235 (GEMC mirrorRot) -->
+    <constant name="LGC_M1_pivot_z"       value="235.0*cm"/>
+    <!-- M2 (outer): design target z=+10, alpha 33.5 deg, Z_M 303 (PVDIS large-angle part) -->
+    <constant name="LGC_M2_R"             value="155.987*cm"/>
+    <constant name="LGC_M2_Cy"            value="208.119*cm"/>
+    <constant name="LGC_M2_Cz"            value="147.660*cm"/>
+    <constant name="LGC_M2_apex_z"        value="15*cm"/>
+    <constant name="LGC_M2_theta_min"     value="32.5*deg"/>
+    <constant name="LGC_M2_theta_max"     value="38.0*deg"/>
+
+    <!-- ===== PMT assembly (identical for SIDIS and PVDIS) ===== -->
+    <constant name="LGC_img_y"            value="245*cm"/>    <!-- image point = centre of the PMT array face -->
+    <constant name="LGC_img_z"            value="250*cm"/>
+    <constant name="LGC_pmt_rotx"         value="63*deg"/>    <!-- local z points to the mirrors -->
+    <constant name="LGC_pmt_dphi"         value="1.8*deg"/>   <!-- extra azimuthal rotation (GEMC ang_zrot) -->
+    <!-- straight Winston cone (GEMC Cons): inner r 7.8 -> 21.0, wall 0.5 cm, length 30 cm, narrow end at local z=0 -->
+    <constant name="LGC_cone_length"      value="30*cm"/>
+    <constant name="LGC_cone_rmin1"       value="7.8*cm"/>
+    <constant name="LGC_cone_rmax1"       value="8.3*cm"/>
+    <constant name="LGC_cone_rmin2"       value="21.0*cm"/>
+    <constant name="LGC_cone_rmax2"       value="21.5*cm"/>
+    <!-- mu-metal shields (GEMC r = sqrt(2)*7.8 + 0.5 = 11.5309; z -11.5208 .. 8.4792 in GEMC; ends here at
+         z = 7.34 cm, where the cone outer surface reaches the shield radius, to remove the GEMC overlap) -->
+    <constant name="LGC_shield_r0"        value="11.5308657865*cm"/>
+    <constant name="LGC_shield_r1"        value="11.6308657865*cm"/>
+    <constant name="LGC_shield_r2"        value="11.9308657865*cm"/>
+    <constant name="LGC_shield_zmin"      value="-11.5208*cm"/>
+    <constant name="LGC_shield_zmax"      value="7.34*cm"/>
+    <!-- H12700 array: 3x3 PMTs at 5.2 cm pitch, 8x8 pixels (GEMC: 6.48 mm pixels at 6.5 mm pitch) -->
+    <constant name="LGC_pmt_n"            value="3"/>
+    <constant name="LGC_pmt_pitch"        value="5.2*cm"/>
+    <constant name="LGC_pmt_size"         value="5.1998*cm"/>
+    <constant name="LGC_pmt_win_thickness" value="1.5*mm"/>
+    <constant name="LGC_pix_n"            value="8"/>
+    <constant name="LGC_pix_pitch"        value="6.5*mm"/>
+    <constant name="LGC_pix_size"         value="6.48*mm"/>
+    <constant name="LGC_pix_thickness"    value="0.2*um"/>
+    <constant name="LGC_pix_z"            value="-1.6*mm"/>   <!-- pixel centre; 0.1 mm gas gap behind the window -->
+    <constant name="LGC_stop_thickness"   value="0.2*mm"/>
+    <constant name="LGC_stop_z"           value="-20.85*mm"/> <!-- light-stop centre -->
+  </define>
+
+  <display>
+    <vis name="LGC_TankVis"      ref="lightskyblue" alpha="0.08" showDaughters="true"  visible="true"/>
+    <vis name="LGC_WindowVis"    ref="lightskyblue" alpha="0.2"  showDaughters="false" visible="true"/>
+    <vis name="LGC_SectorVis"    ref="InvisibleWithDaughters"/>
+    <vis name="LGC_Mirror1Vis"   ref="steelblue"    alpha="0.7"  showDaughters="false" visible="true"/>
+    <vis name="LGC_Mirror2Vis"   ref="royalblue"    alpha="0.7"  showDaughters="false" visible="true"/>
+    <vis name="LGC_ConeVis"      ref="silver"       alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="LGC_ShieldVis"    ref="dimgray"      alpha="0.8"  showDaughters="false" visible="true"/>
+    <vis name="LGC_PMTVis"       ref="limegreen"    alpha="0.9"  showDaughters="false" visible="true"/>
+    <vis name="LGC_PixelVis"     ref="green"                     showDaughters="false" visible="false"/>
+  </display>
+
+  <readouts>
+    <!-- one cell per photocathode pixel volume; ids = GEMC solid_lgc identifiers -->
+    <readout name="LightGasCherenkovHits">
+      <segmentation type="NoSegmentation"/>  <!-- explicit: lets CellIDPositionConverter return the pixel centre -->
+      <id>system:8,sector:5,pmt:4,pixel:7</id>
+    </readout>
+  </readouts>
+
+  <detectors>
+    <detector id="LGC_ID" name="LightGasCherenkov" type="SoLID_LightGasCherenkov" readout="LightGasCherenkovHits">
+      <sectors number="LGC_nsec" phi1="LGC_phi_sec1" dphi="LGC_dphi" vis="LGC_SectorVis"/>
+      <tank material="LGC_CO2" vis="LGC_TankVis">
+        <zplane z="LGC_z1" rmin="LGC_rmin1" rmax="LGC_rmax1"/>
+        <zplane z="LGC_z2" rmin="LGC_rmin2" rmax="LGC_rmax2"/>
+        <zplane z="LGC_z3" rmin="LGC_rmin3" rmax="LGC_rmax3"/>
+        <zplane z="LGC_z4" rmin="LGC_rmin4" rmax="LGC_rmax4"/>
+        <zplane z="LGC_z5" rmin="LGC_rmin5" rmax="LGC_rmax5"/>
+        <window name="window_front" side="front" thickness="LGC_win_front_thickness" material="LGC_PVF" vis="LGC_WindowVis"/>
+        <window name="window_back"  side="back"  thickness="LGC_win_back_thickness"  material="LGC_PVF" vis="LGC_WindowVis"/>
+      </tank>
+      <mirror id="1" name="mirror1" material="LGC_CFRP" surface="LGC_MirrorSurface" vis="LGC_Mirror1Vis">
+        <sphere rmin="LGC_M1_R" thickness="LGC_mirror_thickness" x="0" y="LGC_M1_Cy" z="LGC_M1_Cz"
+                theta0="LGC_mirror_theta0" theta1="LGC_mirror_theta1"/>
+        <cut z="LGC_cut_z" dz="LGC_cut_dz" apex_z="LGC_M1_apex_z" theta_min="LGC_M1_theta_min" theta_max="LGC_M1_theta_max"/>
+        <tilt angle="LGC_M1_tilt" y="LGC_M1_pivot_y" z="LGC_M1_pivot_z"/>
+      </mirror>
+      <mirror id="2" name="mirror2" material="LGC_CFRP" surface="LGC_MirrorSurface" vis="LGC_Mirror2Vis">
+        <sphere rmin="LGC_M2_R" thickness="LGC_mirror_thickness" x="0" y="LGC_M2_Cy" z="LGC_M2_Cz"
+                theta0="LGC_mirror_theta0" theta1="LGC_mirror_theta1"/>
+        <cut z="LGC_cut_z" dz="LGC_cut_dz" apex_z="LGC_M2_apex_z" theta_min="LGC_M2_theta_min" theta_max="LGC_M2_theta_max"/>
+      </mirror>
+      <pmt_assembly x="0" y="LGC_img_y" z="LGC_img_z" rotx="LGC_pmt_rotx" dphi="LGC_pmt_dphi">
+        <cone length="LGC_cone_length" rmin1="LGC_cone_rmin1" rmax1="LGC_cone_rmax1" rmin2="LGC_cone_rmin2" rmax2="LGC_cone_rmax2"
+              material="LGC_ConeGlass" surface="LGC_ConeSurface" vis="LGC_ConeVis"/>
+        <shield name="shield_in"  rmin="LGC_shield_r0" rmax="LGC_shield_r1" zmin="LGC_shield_zmin" zmax="LGC_shield_zmax"
+                material="LGC_MuMetal" vis="LGC_ShieldVis"/>
+        <shield name="shield_out" rmin="LGC_shield_r1" rmax="LGC_shield_r2" zmin="LGC_shield_zmin" zmax="LGC_shield_zmax"
+                material="LGC_MuMetal" vis="LGC_ShieldVis"/>
+        <pmt nx="LGC_pmt_n" ny="LGC_pmt_n" pitch="LGC_pmt_pitch" size="LGC_pmt_size" vis="LGC_PMTVis">
+          <window thickness="LGC_pmt_win_thickness" material="LGC_UVGlass"/>
+          <pixel nx="LGC_pix_n" ny="LGC_pix_n" pitch="LGC_pix_pitch" size="LGC_pix_size" thickness="LGC_pix_thickness"
+                 z="LGC_pix_z" material="LGC_Photocathode" vis="LGC_PixelVis" sensitive="true"/>
+          <lightstop thickness="LGC_stop_thickness" z="LGC_stop_z" material="LGC_UVGlass" surface="LGC_LightStopSurface"/>
+        </pmt>
+      </pmt_assembly>
+    </detector>
+  </detectors>
+</lccdd>

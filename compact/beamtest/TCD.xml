@@ -1,9 +1,14 @@
 <lccdd>
 
+<display>
+  <vis name="AnlLightGray" ref="lightgray" alpha="0.4" visible="true" showDaughters="true"/>
+  <vis name="AnlTeal"      ref="teal"      alpha="1.0" visible="true" showDaughters="true"/>
+</display>
+
 <readouts>
   <readout name="TelescopeCherenkovHits">
     <segmentation type="CartesianGridXY" grid_size_x="25*mm" grid_size_y="25*mm" />
-    <id>system:6,pmt:12,x:32:-16,y:-16</id>
+    <id>system:8,pmt:12,x:32:-16,y:-16</id>
   </readout>
 </readouts>
 
@@ -12,7 +17,7 @@
   Light Gas Cherenkov Begin
 </comment>
 <detector
-  id="7"
+  id="BeamTest_ID"
   name="TelescopeCherenkov"
   type="SoLID_TelescopeCherenkov"
   readout="TelescopeCherenkovHits">

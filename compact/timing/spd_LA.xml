@@ -1,0 +1,60 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  Large-angle scintillator pad detector (LASPD), immediately upstream of the LAEC preshower; also the LA TOF.
+  Used by full SoLID (SIDIS He3/NH3, J/psi, DDVCS) and SoLID-Lite (J/psi-lite, DDVCS-lite).
+
+  Reference: GEMC spd_moved/solid_SIDIS_spd_largeangle (= spd, unchanged since 2018): one un-segmented PVT annulus
+  Tube(80, 135, 1.0) cm at z = -65 cm (z -66 ... -64).
+  This implementation: same envelope, 2.0 cm PVT, physically segmented in 60 wedge pads of
+  6 deg ("the LASPD has only azimuthal segmentation, with each covering 6 degrees", preCDR 10.8 p132, PDF138; WP p27
+  "2-cm thick long, wedge shape scintillators"); sector s covers [90 + 6(s-1), 90 + 6s] deg (GEMC analysis
+  convention). The PMTs / light guides at the outer edge (r > 135 cm) are not modelled (no dimensions available).
+  Optional azimuthal mask (SoLID-Lite SIDIS "S2" LA segmentation, workshop digest 6.2), default off.
+
+  Any constant below can be overridden by defining it in the top-level <define> before the include (the plugin
+  resolves its attributes with first-definition-wins semantics).
+  Requires from the top level: nothing (hall-frame z).
+  Readout LASPDHits: system:8, sector:6 (1-60); sensitive type tracker (Edep + time for TOF).
+-->
+<lccdd>
+  <define>
+    <constant name="LASPD_z"              value="-65.0*cm"/>  <!-- pad centre; GEMC -65 -->
+    <constant name="LASPD_thickness"      value="2.0*cm"/>
+    <constant name="LASPD_Nphi"           value="60"/>
+    <constant name="LASPD_phi0"           value="90.0*deg"/>
+    <constant name="LASPD_Rmin"           value="80.0*cm"/>
+    <constant name="LASPD_Rmax"           value="135.0*cm"/>
+    <!-- optional LA phi mask (default off = full ring) -->
+    <constant name="LASPD_UsePhiMask"     value="0"/>
+    <constant name="LASPD_PhiMask_N"      value="4"/>
+    <constant name="LASPD_PhiMask_Width"  value="24.0*deg"/>
+    <constant name="LASPD_PhiMask_Phi1"   value="42.0*deg"/>
+    <constant name="LASPD_PhiMask_Phi2"   value="138.0*deg"/>
+    <constant name="LASPD_PhiMask_Phi3"   value="222.0*deg"/>
+    <constant name="LASPD_PhiMask_Phi4"   value="318.0*deg"/>
+  </define>
+
+  <display>
+    <vis name="LASPD_PadVis" ref="gold" alpha="0.5" showDaughters="false" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="SPDLA_ID" name="LASPD" type="SoLID_ScintPadDisk" readout="LASPDHits" vis="InvisibleWithDaughters">
+      <dimensions z="LASPD_z" thickness="LASPD_thickness"/>
+      <pads nphi="LASPD_Nphi" phi0="LASPD_phi0" material="PlasticScint" vis="LASPD_PadVis"/>
+      <ring id="1" rmin="LASPD_Rmin" rmax="LASPD_Rmax"/>
+      <phi_mask enable="LASPD_UsePhiMask" count="LASPD_PhiMask_N" width="LASPD_PhiMask_Width">
+        <window center="LASPD_PhiMask_Phi1"/>
+        <window center="LASPD_PhiMask_Phi2"/>
+        <window center="LASPD_PhiMask_Phi3"/>
+        <window center="LASPD_PhiMask_Phi4"/>
+      </phi_mask>
+    </detector>
+  </detectors>
+
+  <readouts>
+    <readout name="LASPDHits">
+      <id>system:8,sector:6</id>
+    </readout>
+  </readouts>
+</lccdd>

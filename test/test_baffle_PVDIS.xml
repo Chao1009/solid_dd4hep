@@ -1,0 +1,22 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- TEST: baffle default (exact polygons, photon blocker, shielding, observers off; slot without enclosure) -->
+<lccdd>
+  <info name="test_baffle_PVDIS" title="baffle default (exact polygons, photon blocker, shielding, observers off; slot without enclosure)" author="SoLID" url="https://github.com/JeffersonLab/solid_dd4hep"
+        status="development" version="v0.3 2026-11"><comment>baffle default (exact polygons, photon blocker, shielding, observers off; slot without enclosure)</comment></info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="3"/>
+    <constant name="TargetCenter_z" value="10*cm"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+  </includes>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/baffle/baffle_PVDIS.xml"/>
+</lccdd>

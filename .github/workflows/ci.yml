@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# Build the SoLID geometry in the EIC container (via CVMFS, as ePIC does), check every configuration for load
+# errors and overlaps, compare its envelopes with solid_gemc, and render line views.
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 5 * * 1"   # weekly, catches API changes in new eic_xl releases
+
+env:
+  EIC_PLATFORM: eic_xl:26.10.0-stable
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cvmfs-contrib/github-action-cvmfs@v4
+      - name: Build and install
+        uses: eic/run-cvmfs-osg-eic-shell@main
+        with:
+          platform-release: ${{ env.EIC_PLATFORM }}
+          run: |
+            cmake -B build -S . -DCMAKE_INSTALL_PREFIX=${PWD}/install -DBUILD_TESTING=OFF
+            cmake --build build -j4
+            cmake --install build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: install
+          path: install/
+          if-no-files-found: error
+
+  geometry:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [solid_SIDIS_He3, solid_SIDIS_NH3, solid_PVDIS, solid_JPsi, solid_DDVCS,
+                 solid_JPsi_lite, solid_DDVCS_lite]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: JeffersonLab/solid_gemc
+          path: solid_gemc
+          sparse-checkout: |
+            geometry
+            script
+      - uses: actions/download-artifact@v4
+        with:
+          name: install
+          path: install/
+      - uses: cvmfs-contrib/github-action-cvmfs@v4
+      - name: Load, overlap check and GEMC comparison
+        uses: eic/run-cvmfs-osg-eic-shell@main
+        with:
+          platform-release: ${{ env.EIC_PLATFORM }}
+          run: |
+            mkdir -p doc
+            source install/bin/thissolid.sh ${{ matrix.config }}
+            python3 scripts/geometry/check_geometry.py ${DETECTOR_PATH}/${{ matrix.config }}.xml | tee doc/${{ matrix.config }}_overlaps.txt
+            python3 scripts/geometry/compare_gemc.py ${{ matrix.config }} --gemc ${PWD}/solid_gemc \
+                    --md doc/${{ matrix.config }}_vs_gemc.md
+      - name: Line views
+        uses: eic/run-cvmfs-osg-eic-shell@main
+        with:
+          platform-release: ${{ env.EIC_PLATFORM }}
+          run: |
+            source install/bin/thissolid.sh ${{ matrix.config }}
+            bin/make_solid_views -c ${{ matrix.config }} -o doc/views || echo "views failed (non-fatal)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: geometry-${{ matrix.config }}
+          path: doc/

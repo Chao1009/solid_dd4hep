@@ -1,0 +1,25 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- TEST: SoLID-lite no-baffle option: photon blocker + plate-1 vacuum slot only, with PVDIS target enclosure (cavity) + beamline -->
+<lccdd>
+  <info name="test_baffle_nobaffle" title="SoLID-lite no-baffle option: photon blocker + plate-1 vacuum slot only, with PVDIS target enclosure (cavity) + beamline" author="SoLID" url="https://github.com/JeffersonLab/solid_dd4hep"
+        status="development" version="v0.3 2026-11"><comment>SoLID-lite no-baffle option: photon blocker + plate-1 vacuum slot only, with PVDIS target enclosure (cavity) + beamline</comment></info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="3"/>
+    <constant name="TargetCenter_z" value="10*cm"/>
+    <constant name="Baffle_Enable" value="0"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+  </includes>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/baffle/baffle_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/target/target_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/beamline/beamline_PVDIS.xml"/>
+</lccdd>

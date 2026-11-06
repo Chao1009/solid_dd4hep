@@ -1,0 +1,13 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- Detector set shared by the SoLID-Lite J/psi and DDVCS configurations (GEMC *_lite_full gcards): unmodified CLEO-II iron, separated LA/FA GEMs, one CO2 Cherenkov (4 segments of 2 sectors), shashlik EC with FA Rmax 220 cm, SPD, FA MRPC. -->
+<lccdd>
+  <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_nomod.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/tracking/gem_LA_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/tracking/gem_FA_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/cherenkov_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_lite_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/mrpc_FA.xml"/>
+</lccdd>

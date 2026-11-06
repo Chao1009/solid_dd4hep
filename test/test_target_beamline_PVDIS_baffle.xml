@@ -1,0 +1,33 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- test top level (target_beamline implementation agent): only the target + beamline fragments of one configuration -->
+<lccdd>
+  <info name="test_target_beamline_PVDIS_baffle" title="target+beamline test PVDIS" author="SoLID" url="" status="test" version="0">
+    <comment>test only</comment>
+  </info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="TargetCenter_z" value="10*cm"/>
+    <constant name="Baffle_Observers_Enable" value="1"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+  </limits>
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001">
+      <limitsetref name="world_limits"/>
+    </region>
+  </regions>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/baffle/baffle_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/target/target_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/beamline/beamline_PVDIS.xml"/>
+</lccdd>

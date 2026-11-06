@@ -1,0 +1,167 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID PVDIS baffle ("CLEO2" design): 11 slitted Pb plates (30 curved slits each) + photon blocker ("12th plane")
+  in front of the forward-angle EC + borated-polyethylene neutron shielding + optional observer (flux) planes.
+  Plugin: SoLID_PVDISBaffle (src/PVDISBaffle_geo.cpp). DetElement "PVDISBaffle", system id Baffle_ID.
+
+  Source of truth: solid_gemc/geometry/baffle_moved (2020-07-24), variation "Enclosure" (= gcard
+  solid_PVDIS_LD2_moved_full): solid_PVDIS_baffle_CLEO2__parameters_Original.txt (plates, slit model),
+  solid_PVDIS_baffle_CLEO2{,_shldPOLY,_photonblock}_geometry.pl, solid_PVDIS_baffle_observer_CLEO2_geometry.pl.
+  Documents: preCDR (2019) ch. 6 p77-82 (PDF 83-88), Fig. 54 p80; p50 + Table 7 p52 (9 cm, 11 x 30, photon blocker
+  5 cm at 110 < r < 200 cm); white paper (2022) p28 Fig. 30 (plates 10/11).
+
+  Hall frame, cm/deg. Plate n (1..11) center z = zc0 + dzc*(n - 6) = 40, 54, ..., 180 cm; 9 cm thick.
+  Lead between two slits of sector 1, in the plate-local frame (hall phi = local + phi_rot0 + offset = local + 99 deg,
+  sector i adds 12 deg*(i-1)):
+     X(z) = c0_X + (c1_X + c2_X*(z - zc0))*(z - zc0)     X in {r1, phi00, phi01, phi02, phi10, phi11, phi12}
+     segments=2: low edge phi0(r) linear from phi00 (r = rinout) to phi01 (r = r1) to phi02 (r = routin);
+                 high edge phi1(r) likewise with phi10, phi11, phi12.
+     segments=1 (plates 1, 2): one straight segment through (r1, phi01) and (routin, phi02) (resp. phi11, phi12).
+  The open slit is [phi1(r), phi0(r) + 12 deg]. chirality=+1 = GEMC (slits drift to +phi with z: e- in Bz > 0,
+  CLEOv9 Bz(0,0) = +1.377 T); chirality=-1 mirrors every phi (reversed field polarity).
+
+  Switches (attributes below) can be overridden from the top level WITHOUT editing this file by defining, in the
+  top-level <define>, any of these constants (layout override_prefix="Baffle_"; they are deliberately NOT defined
+  here, because DD4hep cannot re-define a constant):
+     Baffle_Enable               1 | 0    plates + shielding (0 = SoLID-lite "no baffle"; plate-1 slot and photon
+                                          blocker are kept)
+     Baffle_Mode                 0 | 1    0 = exact slit polygons (G4ExtrudedSolid blades), 1 = GEMC 20-step staircase
+     Baffle_Chirality           +1 | -1   +1 = GEMC/CLEOv9 (Bz > 0), -1 = mirrored for the reversed solenoid polarity
+     Baffle_Plate1_Placement     0 | 1 | 2   0 = vacuum slot filling the target-enclosure cavity, 1 = plain world
+                                          placement (no enclosure), 2 = no plate 1
+     Baffle_PhotonBlocker_Enable 1 | 0
+     Baffle_PhotonBlocker_z      [length] (default 328.4 cm)
+     Baffle_Shielding_Enable     1 | 0    borated-polyethylene shielding (GEMC shldPOLY, no document reference)
+     Baffle_Observers_Enable     0 | 1    22 flux planes, readout BaffleObserverHits
+
+  Constants exported for the PVDIS target enclosure (it cuts the plate-1 cavity Tube(BafflePlate1_rinin,
+  BafflePlate1_routout, BafflePlate1_cavity_halfz) at hall z BafflePlate1_z out of its wall AND its vacuum; the baffle
+  fills it with the vacuum "PVDISBaffle_plate1_slot"): BafflePlate1_z, BafflePlate_halfz, BafflePlate1_rinin,
+  BafflePlate1_routout, BafflePlate1_cavity_halfz.  => include this file BEFORE compact/target/target_PVDIS.xml.
+
+  Requires from the top level: definitions.xml (Baffle_ID), materials Lead (elements.xml), Air, Vacuum.
+-->
+<lccdd>
+  <define>
+    <!-- ======================== layout ======================== -->
+    <constant name="Baffle_NPlates"              value="11"/>
+    <constant name="Baffle_NSectors"             value="30"/>
+    <constant name="BafflePlate_halfz"           value="4.5*cm"/>   <!-- GEMC Dz; 9 cm plates (preCDR p50) -->
+    <constant name="Baffle_zc0"                  value="110.0*cm"/> <!-- center of the plate system (plate 6) -->
+    <constant name="Baffle_dzc"                  value="14.0*cm"/>  <!-- plate pitch -->
+    <constant name="Baffle_gap"                  value="0.002*cm"/> <!-- room for the observers / shielding gap (GEMC Dz_gap) -->
+    <constant name="Baffle_PhiRot0"              value="96*deg"/>   <!-- GEMC slit rotation 96 deg + offset -->
+    <constant name="Baffle_Offset"               value="3.0*deg"/>  <!-- GEMC offset1..11 -->
+
+    <!-- plate 1 (inside the target enclosure) -->
+    <constant name="BafflePlate1_z"              value="Baffle_zc0 + Baffle_dzc*(1 - 0.5*(Baffle_NPlates + 1))"/> <!-- 40 cm -->
+    <constant name="BafflePlate1_rinin"          value="3.89*cm"/>
+    <constant name="BafflePlate1_routout"        value="44.3*cm"/>
+    <constant name="BafflePlate1_cavity_halfz"   value="BafflePlate_halfz + Baffle_gap"/> <!-- 4.502 cm: plate + 2 observers -->
+
+    <!-- outer radius profile of the PVDIS exit beam pipe (beamline_moved B3PP: r 5 cm at z 47 -> 19 cm at 110 cm,
+         19 cm to 550 cm); the inner BorPoly absorber keeps Baffle_BoreClearance from it (GEMC: 44 um) -->
+    <constant name="Baffle_Bore_z0"              value="47*cm"/>
+    <constant name="Baffle_Bore_r0"              value="5*cm"/>
+    <constant name="Baffle_Bore_z1"              value="110*cm"/>
+    <constant name="Baffle_Bore_r1"              value="19*cm"/>
+    <constant name="Baffle_Bore_z2"              value="550*cm"/>
+    <constant name="Baffle_BoreClearance"        value="0.1*cm"/>
+  </define>
+
+  <materials>
+    <!-- GEMC SL_PVDIS_baffle_BorPoly: G4_POLYETHYLENE 0.7 + G4_B 0.3 by mass, 1.19 g/cm3
+         (solid_PVDIS_baffle_materials.pl). Not the ePIC BoratedPolyethylene5 of materials.xml. -->
+    <material name="Baffle_BoratedPolyethylene30">
+      <D type="density" value="1.19" unit="g/cm3"/>
+      <fraction n="0.599402" ref="C"/>
+      <fraction n="0.100598" ref="H"/>
+      <fraction n="0.300000" ref="B"/>
+    </material>
+  </materials>
+
+  <display>
+    <vis name="Baffle_LeadVis"     ref="darkcyan"      alpha="1.0" visible="true" showDaughters="true" drawingStyle="solid"/>
+    <vis name="Baffle_ShieldVis"   ref="mediumpurple"  alpha="0.5" visible="true" showDaughters="true" drawingStyle="solid"/>
+    <vis name="Baffle_ObserverVis" ref="lightcyan"     alpha="0.2" visible="false" showDaughters="false"/>
+  </display>
+
+  <readouts>
+    <!-- flux planes: plate = 1..11, side = 1 (upstream) / 2 (downstream); GEMC id = (7000 + 10*plate + side)*10000.
+         Vacuum planes: keep the ddsim tracker filter at edep0 (steering/solid_sim.py does). -->
+    <readout name="BaffleObserverHits">
+      <segmentation type="NoSegmentation"/>
+      <id>system:8,plate:4,side:2</id>
+    </readout>
+  </readouts>
+
+  <detectors>
+    <detector id="Baffle_ID" name="PVDISBaffle" type="SoLID_PVDISBaffle" readout="BaffleObserverHits"
+              vis="InvisibleWithDaughters">
+      <!-- blade polygon sampling (Geant4 G4ExtrudedSolid, non-convex: navigation cost grows with the vertex count).
+           Measured (4 GeV e-, 22-35 deg, 200 events, event-loop CPU): GEMC staircase 9.7 s; polygon 4 cm/1 deg/100 um
+           10.3 s (31-52 vertices, max deviation from the exact edges 0.07 mm with inset 30 um, lead area -0.07 %; default); 2 cm/0.5 deg/50 um
+           14.8 s (0.06 mm); 1 cm/0.25 deg/10 um 22.5 s (0.013 mm). GEMC staircase deviates by up to 3.5 mm.
+           inset = radial clearance of the blades to the rings; it must exceed the inner-arc chord sagitta
+           r0*(1-cos(dphi_arc/2)) = 23 um at r0 = 60.4 cm with 1 deg (the plugin warns otherwise). -->
+      <layout override_prefix="Baffle_" enable="true" nplates="Baffle_NPlates" nsectors="Baffle_NSectors"
+              thickness="2*BafflePlate_halfz" zc0="Baffle_zc0" dzc="Baffle_dzc" gap="Baffle_gap"
+              phi_rot0="Baffle_PhiRot0" offset="Baffle_Offset" pitch_ref="12*deg"
+              material="Lead" fill="Air" plate1_fill="Vacuum" plate1_placement="cavity"
+              mode="polygon" nblock="20" dr_sample="4.0*cm" dphi_arc="1.0*deg" inset="0.003*cm"
+              hot_edge_trim="0*deg" chirality="+1" vis="Baffle_LeadVis"/>
+
+      <!-- GEMC solid_PVDIS_baffle_CLEO2__parameters_Original.txt (svn 2018, unchanged in baffle_moved).
+           c0 at z = zc0, c1 per cm, c2 per cm^2 -->
+      <slit_model c0_r1="54.737*cm"        c1_r1="0.70297"             c2_r1="-0.00033/cm"
+                  c0_phi00="4.6528748*deg"  c1_phi00="0.0287771*deg/cm"  c2_phi00="-0.0000031*deg/(cm*cm)"
+                  c0_phi01="6.7844537*deg"  c1_phi01="0.0555336*deg/cm"  c2_phi01="-0.0000402*deg/(cm*cm)"
+                  c0_phi02="9.7642885*deg"  c1_phi02="0.0528079*deg/cm"  c2_phi02="-0.0000955*deg/(cm*cm)"
+                  c0_phi10="12.2421505*deg" c1_phi10="0.0251113*deg/cm"  c2_phi10="0.0000082*deg/(cm*cm)"
+                  c0_phi11="12.4643497*deg" c1_phi11="0.0527251*deg/cm"  c2_phi11="-0.0000357*deg/(cm*cm)"
+                  c0_phi12="14.9903623*deg" c1_phi12="0.0476339*deg/cm"  c2_phi12="-0.0000071*deg/(cm*cm)"/>
+
+      <!-- rinin..rinout: inner Pb ring (none if equal), rinout..routin: slitted region, routin..routout: outer ring.
+           Optional per plate: z, offset, enable, hot_edge_trim (preCDR p77: 0.6 deg on plates 2,4,6,8,10, not
+           adopted), material, fill. -->
+      <plate n="1"  segments="1" rinin="BafflePlate1_rinin" rinout="BafflePlate1_rinin" routin="37.0*cm"  routout="BafflePlate1_routout"/>
+      <plate n="2"  segments="1" rinin="8.95*cm"  rinout="8.95*cm"  routin="46.7*cm"   routout="54.2*cm"/>
+      <plate n="3"  segments="2" rinin="12.0*cm"  rinout="14.0*cm"  routin="56.4*cm"   routout="63.9*cm"/>
+      <plate n="4"  segments="2" rinin="16.5*cm"  rinout="18.5*cm"  routin="65.95*cm"  routout="73.95*cm"/>
+      <plate n="5"  segments="2" rinin="22.0*cm"  rinout="24.0*cm"  routin="75.5*cm"   routout="84.0*cm"/>
+      <plate n="6"  segments="2" rinin="30.45*cm" rinout="32.22*cm" routin="85.2*cm"   routout="93.7*cm"/>
+      <plate n="7"  segments="2" rinin="35.9*cm"  rinout="37.9*cm"  routin="94.9*cm"   routout="103.4*cm"/>
+      <plate n="8"  segments="2" rinin="41.40*cm" rinout="43.52*cm" routin="104.2*cm"  routout="113.2*cm"/>
+      <plate n="9"  segments="2" rinin="47.9*cm"  rinout="49.2*cm"  routin="113.5*cm"  routout="122.5*cm"/>
+      <plate n="10" segments="2" rinin="52.35*cm" rinout="54.82*cm" routin="122.75*cm" routout="131.75*cm"/>
+      <plate n="11" segments="2" rinin="58.8*cm"  rinout="60.4*cm"  routin="132.0*cm"  routout="140.0*cm"/>
+
+      <!-- photon blocker. GEMC baffle_moved: z = 330 cm, which overlaps the moved PVDIS FAEC front virtual plane
+           (330.999-331.001) and its Pb shield (332.182). Re-positioned to end 0.1 cm upstream of the EC front plane:
+           z = 331.0 - 0.1 - 2.5 = 328.4 cm (spec 4.6.4); override with Baffle_PhotonBlocker_z if the EC moves. -->
+      <!-- "12th plane": 30 Pb strips, 2.5 deg wide at local phi 2.2..4.7 deg (hall 101.2..103.7 + 12(i-1));
+           GEMC solid_PVDIS_baffle_CLEO2_photonblock_geometry.pl (z 330 there, see Baffle_PhotonBlocker_z) -->
+      <photon_blocker enable="true" z="328.4*cm" rmin="110*cm" rmax="200*cm"
+                      thickness="5*cm" phi_start="2.2*deg" dphi="2.5*deg" material="Lead"/>
+
+      <!-- GEMC solid_PVDIS_baffle_CLEO2_shldPOLY_geometry.pl: slabs between plates n and n+1 for n = 2..8
+           (20 staircase BorPoly blocks behind the lead of each sector + inner/outer rings), inner/outer absorbers -->
+      <shielding enable="true" material="Baffle_BoratedPolyethylene30" fill="Air"
+                 first_plate="2" last_plate="8" nblock="20">
+        <absorbers enable="1" downstream_extension="6*cm" zend="188.99*cm" inner_gap="0.1*cm">
+          <!-- GEMC rmin line 5.56 cm (z 49.5) -> 20.03 cm (z >= 114.5), raised to bore + clearance where closer -->
+          <inner enable="1" rmin_z0="49.5*cm" rmin_r0="5.56*cm" rmin_z1="114.5*cm" rmin_r1="20.03*cm"
+                 bore_clearance="Baffle_BoreClearance">
+            <bore z="Baffle_Bore_z0" r="Baffle_Bore_r0"/>
+            <bore z="Baffle_Bore_z1" r="Baffle_Bore_r1"/>
+            <bore z="Baffle_Bore_z2" r="Baffle_Bore_r1"/>
+          </inner>
+          <outer enable="1" rmax="140*cm"/>
+        </absorbers>
+      </shielding>
+
+      <!-- 20 um vacuum discs r = rinin..routout centered at plate z -/+ (halfz + gap/2) -->
+      <observers enable="false" halfthickness="0.001*cm" material="Vacuum" vis="Baffle_ObserverVis"/>
+    </detector>
+  </detectors>
+</lccdd>

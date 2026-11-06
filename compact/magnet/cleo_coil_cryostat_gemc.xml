@@ -1,0 +1,33 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  VALIDATION ONLY. CLEO-II coil + cryostat exactly as in GEMC magnet_moved/solid_solenoid_cryo__geometry_Original.txt
+  (walls 1.0/1.1 mm, outer wall 176.48-176.59 cm, no support shell, G4_STAINLESS-STEEL, G4_Al coil). Included by the
+  GEMC-parity fragments solenoid_v4_gemc.xml / solenoid_nomod_gemc.xml. The physics geometry is cleo_coil_cryostat.xml.
+-->
+<lccdd>
+  <detectors>
+    <detector id="MagnetCoil_ID" name="MagnetCoil" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>GEMC parity: solid_solenoid_cryo Original (passive)</comment>
+      <part name="CryostatInnerWall_GEMC" material="Magnet_G4StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="-187.00*cm" rmin="144.00*cm" rmax="144.10*cm"/>
+        <zplane z=" 187.00*cm" rmin="144.00*cm" rmax="144.10*cm"/>
+      </part>
+      <part name="CryostatOuterWall_GEMC" material="Magnet_G4StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="-187.00*cm" rmin="176.48*cm" rmax="176.59*cm"/>
+        <zplane z=" 187.00*cm" rmin="176.48*cm" rmax="176.59*cm"/>
+      </part>
+      <part name="CryostatFlangeUp_GEMC" material="Magnet_G4StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z="-188.995*cm" rmin="144.00*cm" rmax="176.59*cm"/>
+        <zplane z="-187.005*cm" rmin="144.00*cm" rmax="176.59*cm"/>
+      </part>
+      <part name="CryostatFlangeDown_GEMC" material="Magnet_G4StainlessSteel" vis="Magnet_CryostatVis">
+        <zplane z=" 187.005*cm" rmin="144.00*cm" rmax="176.59*cm"/>
+        <zplane z=" 188.995*cm" rmin="144.00*cm" rmax="176.59*cm"/>
+      </part>
+      <part name="CoilWinding_GEMC" material="Aluminum" vis="Magnet_CoilVis">
+        <zplane z="-173.75*cm" rmin="151.70*cm" rmax="154.90*cm"/>
+        <zplane z=" 173.75*cm" rmin="151.70*cm" rmax="154.90*cm"/>
+      </part>
+    </detector>
+  </detectors>
+</lccdd>

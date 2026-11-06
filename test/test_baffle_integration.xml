@@ -1,0 +1,41 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- TEST (baffle agent): PVDIS integration = magnet v4 + real PVDIS target enclosure (cavity) + PVDIS beamline + baffle
+     (observers on) + PVDIS LGC + PVDIS FAEC: checks plate-1 clearance, absorbers vs exit pipe / nose, photon blocker vs EC -->
+<lccdd>
+  <info name="test_baffle_integration" title="baffle PVDIS integration test" author="SoLID" url="https://github.com/JeffersonLab/solid_dd4hep"
+        status="development" version="v0.3 2026-11"><comment>test only</comment></info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="3"/>
+    <constant name="TargetCenter_z" value="10*cm"/>
+    <constant name="Baffle_Observers_Enable" value="1"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+    <limitset name="cal_limits">
+      <limit name="step_length_max" particles="*" value="5.0" unit="mm"/>
+    </limitset>
+  </limits>
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001">
+      <limitsetref name="world_limits"/>
+    </region>
+  </regions>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_v4.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/baffle/baffle_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/target/target_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/beamline/beamline_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/lgc_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_PVDIS_FA.xml"/>
+</lccdd>

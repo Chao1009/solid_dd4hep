@@ -1,0 +1,73 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  Forward-angle scintillator pad detector (FASPD), between the forward Cherenkov and the FA MRPC / FAEC.
+  Used by full SoLID (SIDIS He3/NH3, J/psi, DDVCS) and SoLID-Lite (J/psi-lite, DDVCS-lite).
+
+  Reference: GEMC spd_moved/solid_SIDIS_spd_forwardangle (2019-03-16, loaded by all *_moved_full and *_lite_full
+  gcards): one un-segmented PVT annulus Tube(93, 216, 0.25) cm at z = 428 cm.
+  This implementation:
+    * physically segmented as in preCDR 10.8 (p131, PDF137) and the white paper (p27): 240 pads = 60 phi x 4 rings;
+      radial boundaries 93/115/135/165/216 cm (GEMC analysis_tree_solid_spd.C boundaries 115/135/165 with the first
+      and last ring stretched to the GEMC envelope 93-216); sector s covers [90 + 6(s-1), 90 + 6s] deg
+      (GEMC analysis convention, sector 1 = 90-96 deg);
+    * thickness 0.6 cm (Eljen beam-test pad, prototype/ec_pro/HallC2022, and the Oct-2026 ECal-options slide
+      "FASPD: 6mm"); GEMC/preCDR 0.5 cm is obtained with FASPD_thickness = 0.5*cm. Centre z kept at 428 cm.
+    * no wrapping, fibre grooves or pad gaps (unknown).
+  Optional azimuthal mask (SoLID-Lite FA segments, workshop digest 6.2): FASPD_UsePhiMask = 1 keeps only the pads whose
+  centre lies in one of the FASPD_PhiMask_N windows of width FASPD_PhiMask_Width (default: GEMC 4seg2sec Cherenkov
+  segments centred at 42/138/222/318 deg). Override by defining the constants BEFORE this file is included
+  (the plugin resolves its attributes with first-definition-wins semantics; plain DD4hep evaluation would use the
+  LAST definition, i.e. the fragment default).
+
+  Requires from the top level: nothing (hall-frame z).
+  Readout FASPDHits: system:8, sector:6 (1-60), ring:3 (1-4); sensitive type tracker (Edep + time; PVT with
+  Birks constant 0.126 mm/MeV via the PlasticScint material).
+-->
+<lccdd>
+  <define>
+    <constant name="FASPD_z"              value="428.0*cm"/>  <!-- pad centre; GEMC 428 -->
+    <constant name="FASPD_thickness"      value="0.6*cm"/>    <!-- GEMC/preCDR 0.5 cm -->
+    <constant name="FASPD_Nphi"           value="60"/>
+    <constant name="FASPD_phi0"           value="90.0*deg"/>  <!-- lower edge of sector 1 -->
+    <constant name="FASPD_R0"             value="93.0*cm"/>   <!-- GEMC Rmin -->
+    <constant name="FASPD_R1"             value="115.0*cm"/>
+    <constant name="FASPD_R2"             value="135.0*cm"/>
+    <constant name="FASPD_R3"             value="165.0*cm"/>
+    <constant name="FASPD_R4"             value="216.0*cm"/>  <!-- GEMC Rmax -->
+    <!-- optional FA phi mask (default off = GEMC parity, full ring) -->
+    <constant name="FASPD_UsePhiMask"     value="0"/>
+    <constant name="FASPD_PhiMask_N"      value="4"/>
+    <constant name="FASPD_PhiMask_Width"  value="24.0*deg"/>
+    <constant name="FASPD_PhiMask_Phi1"   value="42.0*deg"/>
+    <constant name="FASPD_PhiMask_Phi2"   value="138.0*deg"/>
+    <constant name="FASPD_PhiMask_Phi3"   value="222.0*deg"/>
+    <constant name="FASPD_PhiMask_Phi4"   value="318.0*deg"/>
+  </define>
+
+  <display>
+    <vis name="FASPD_PadVis" ref="gold" alpha="0.5" showDaughters="false" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="SPDFA_ID" name="FASPD" type="SoLID_ScintPadDisk" readout="FASPDHits" vis="InvisibleWithDaughters">
+      <dimensions z="FASPD_z" thickness="FASPD_thickness"/>
+      <pads nphi="FASPD_Nphi" phi0="FASPD_phi0" material="PlasticScint" vis="FASPD_PadVis"/>
+      <ring id="1" rmin="FASPD_R0" rmax="FASPD_R1"/>
+      <ring id="2" rmin="FASPD_R1" rmax="FASPD_R2"/>
+      <ring id="3" rmin="FASPD_R2" rmax="FASPD_R3"/>
+      <ring id="4" rmin="FASPD_R3" rmax="FASPD_R4"/>
+      <phi_mask enable="FASPD_UsePhiMask" count="FASPD_PhiMask_N" width="FASPD_PhiMask_Width">
+        <window center="FASPD_PhiMask_Phi1"/>
+        <window center="FASPD_PhiMask_Phi2"/>
+        <window center="FASPD_PhiMask_Phi3"/>
+        <window center="FASPD_PhiMask_Phi4"/>
+      </phi_mask>
+    </detector>
+  </detectors>
+
+  <readouts>
+    <readout name="FASPDHits">
+      <id>system:8,sector:6,ring:3</id>
+    </readout>
+  </readouts>
+</lccdd>

@@ -1,0 +1,118 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  =====================================  PROVISIONAL  =====================================
+  SoLID-Lite stage-2 magnet for SIDIS-3He-lite: the unmodified CLEO-II iron of stage 1 (identical to the real-iron
+  parts of solenoid_nomod.xml) PLUS a field-clamping upstream front piece with shields and an endcap WITHOUT nose
+  ("front piece and endcap (green) for SIDIS, no magnet endcap nose", High-Lumi workshop Oct 2026, C064 p6, C006 s6,
+  C068 p7/p9). Use INSTEAD of solenoid_nomod.xml (both define MagnetYoke and MagnetCoil).
+
+  Source of the added pieces: the only dimensioned model is the 2D POISSON test "SoLID Lite sidis" (CLEOV11.AM,
+  9-30-2026, C068 p11), digitised from that slide; every piece coincides with a GEMC
+  magnet_moved/v0 Polycone, whose numbers are used here (the donut starts at the unmodified yoke end, z = 266.7 cm).
+  All pieces are axisymmetric 2D-model shapes; the real 3D shapes (octagonal or round), the attachment to the
+  octagonal yoke (2D gap of 12.5 cm between yoke and donut) and the supports are NOT defined yet.
+  There is NO 3D or 2D field map for this iron in solid_gemc (CLEOv11 exists only as an html study): use
+  fields/field_CLEOv10.xml for now and replace it when the stage-2 map exists.
+  The later CLEOv11 variant with nose and bridge, Al corrector ring and -16.2 kA-turn correction coil
+  (solid_gemc/field/"CLEO-II Stage 1 and 2.html") is not built.
+  ===========================================================================================
+-->
+<lccdd>
+  <define>
+    <!-- spacer representation: 1 = 8 discrete bars per end (CAD v1/v2, real), 0 = full octagonal ring (GEMC) -->
+    <constant name="Magnet_SpacerBars" value="1"/>
+  </define>
+
+  <detectors>
+    <!-- materials/vis and the coil + cryostat (DetElement MagnetCoil): included inside <detectors> so that they are
+         converted BEFORE the yoke below (a top-level <include> would be processed after this file's detectors) -->
+    <include ref="${DETECTOR_PATH}/compact/magnet/magnet_materials.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/magnet/cleo_coil_cryostat.xml"/>
+    <detector id="MagnetYoke_ID" name="MagnetYoke" type="SoLID_CLEOMagnet" vis="InvisibleWithDaughters">
+      <comment>PROVISIONAL: CLEO-II iron + SoLID-Lite stage-2 front piece and endcap without nose (passive)</comment>
+      <octagon nsides="8" phi0="-22.5*deg"/>
+
+      <!-- ================= stage 1: real CLEO-II iron (same numbers as solenoid_nomod.xml) ================= -->
+      <part name="InnerOctagon" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis">
+        <zplane z="-266.70*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z="-189.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z="-189.23*cm" rmin="176.53*cm" rmax="212.62*cm"/>
+        <zplane z=" 189.23*cm" rmin="176.53*cm" rmax="212.62*cm"/>
+        <zplane z=" 189.23*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+        <zplane z=" 266.70*cm" rmin="180.34*cm" rmax="212.62*cm"/>
+      </part>
+      <part name="OuterOctagon" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis">
+        <zplane z="-266.70*cm" rmin="221.51*cm" rmax="257.61*cm"/>
+        <zplane z=" 266.70*cm" rmin="221.51*cm" rmax="257.61*cm"/>
+      </part>
+      <bars name="SpacerBarsUp" n="8" phi0="0*deg" rmin="212.62*cm" rmax="221.51*cm" width="149.86*cm"
+            zmin="-266.70*cm" zmax="-232.66*cm" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="Magnet_SpacerBars"/>
+      <bars name="SpacerBarsDown" n="8" phi0="0*deg" rmin="212.62*cm" rmax="221.51*cm" width="149.86*cm"
+            zmin="232.66*cm" zmax="266.70*cm" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="Magnet_SpacerBars"/>
+      <part name="SpacerRingUp" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="1-Magnet_SpacerBars">
+        <zplane z="-266.70*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+        <zplane z="-241.20*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+      </part>
+      <part name="SpacerRingDown" inner="oct" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis"
+            enable="1-Magnet_SpacerBars">
+        <zplane z="241.20*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+        <zplane z="266.70*cm" rmin="212.62*cm" rmax="221.51*cm"/>
+      </part>
+      <part name="UpstreamCoilCollar" inner="round" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis">
+        <zplane z="-266.70*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+        <zplane z="-189.23*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+      </part>
+      <part name="DownstreamCoilCollar" inner="round" outer="oct" material="Magnet_YokeSteel" vis="Magnet_YokeVis">
+        <zplane z="189.23*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+        <zplane z="266.70*cm" rmin="144.14*cm" rmax="180.34*cm"/>
+      </part>
+
+      <!-- ================= stage 2 (PROVISIONAL, 2D POISSON CLEOV11 = GEMC v0 pieces) ================= -->
+      <!-- upstream: shields 1-3 and the front piece sit inside the upstream collar bore (r < 144.14); their bores
+           follow a ~26 deg cone from z = -350 cm (LA acceptance <= 25 deg stays open). Shields 4-5 are upstream of
+           the yoke face (z < -266.7) and reach r = 257.5 (2D area-equivalent octagon radius).
+           Shield 5 is moved +0.6 cm (v0: -280.5..-277.5; CLEOV11 measured -280.8..-277.4 +-0.5): the polarized-3He
+           target (compact/target/target_He3.xml, transverse Helmholtz coils r <= 79.1) ends at z = -280.0 cm. -->
+      <part name="UpstreamShield5" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="-279.90*cm" rmin="33.90*cm" rmax="257.50*cm"/>
+        <zplane z="-276.90*cm" rmin="35.30*cm" rmax="257.50*cm"/>
+      </part>
+      <part name="UpstreamShield4" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="-274.50*cm" rmin="36.80*cm" rmax="257.50*cm"/>
+        <zplane z="-270.50*cm" rmin="38.80*cm" rmax="257.50*cm"/>
+      </part>
+      <part name="UpstreamShield3" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="-266.50*cm" rmin="40.10*cm" rmax="144.00*cm"/>
+        <zplane z="-262.50*cm" rmin="42.70*cm" rmax="144.00*cm"/>
+      </part>
+      <part name="UpstreamShield2" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="-258.50*cm" rmin="44.60*cm" rmax="144.00*cm"/>
+        <zplane z="-254.50*cm" rmin="46.50*cm" rmax="144.00*cm"/>
+      </part>
+      <part name="UpstreamShield1" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="-250.50*cm" rmin="48.50*cm" rmax="144.00*cm"/>
+        <zplane z="-246.50*cm" rmin="50.50*cm" rmax="144.00*cm"/>
+      </part>
+      <part name="FrontPiece" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="-237.00*cm" rmin="55.60*cm" rmax="144.00*cm"/>
+        <zplane z="-207.00*cm" rmin="70.00*cm" rmax="144.00*cm"/>
+      </part>
+      <!-- downstream: endcap donut from the yoke end + two bottom plates, no nose -->
+      <part name="EndcapDonut" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="266.70*cm" rmin="270.00*cm" rmax="285.00*cm"/>
+        <zplane z="530.00*cm" rmin="270.00*cm" rmax="285.00*cm"/>
+      </part>
+      <part name="EndcapBottomInner" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="530.01*cm" rmin="30.00*cm" rmax="285.00*cm"/>
+        <zplane z="545.00*cm" rmin="30.00*cm" rmax="285.00*cm"/>
+      </part>
+      <part name="EndcapBottomOuter" material="Magnet_YokeSteel" vis="Magnet_ProvisionalVis">
+        <zplane z="545.01*cm" rmin="30.00*cm" rmax="185.00*cm"/>
+        <zplane z="560.00*cm" rmin="45.00*cm" rmax="170.00*cm"/>
+      </part>
+    </detector>
+  </detectors>
+</lccdd>

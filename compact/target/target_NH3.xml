@@ -1,0 +1,339 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SIDIS polarized NH3 target (DetElement "Target", plugin SoLID_PolNH3Target).
+  Requires from the top level: TargetCenter_z (-350 cm).
+  Variant selector: the OPTIONAL constant Target_NH3_Variant (define it in the top-level <define> block; it is
+  deliberately not defined here, because a second definition of a constant overrides the first one in DD4hep
+  expressions). Undefined -> 1.
+    Target_NH3_Variant = 1  SM2023 (default): Scientific-Magnetics split-coil magnet delivered to JLab in 2021, from
+                            the JLab target-group CAD (GEMC target/solid_SIDIS_target_NH3_SM, perl 2023-12-14 =
+                            __geometry_CAD.txt + the magnet support of __geometry_Original.txt; window half heights
+                            from the current perl: entrance 10 cm, exit 22 cm).
+                            Vertical Al chamber OD 37.75" (r 47.9425 cm), wall 1", height 34", Al windows 0.2032 mm
+                            (+-10 deg) and 0.5 mm (+-28 deg horizontal), 30 K Al shield r 38-39.5 cm with 0.2 mm
+                            windows, LHe can r 2.10058 cm, NH3/LHe cup r 1.36144 cm x 2.82702 cm with 17.8 um Al caps,
+                            4 Cu coils per side in Al boxes/lids, steel pole rings, Al magnet support with four
+                            25 deg cones (+-25 deg openings, preCDR p74).
+                        = 2  Oxford2020: 2020 design study used by GEMC solid_SIDIS_NH3_moved_full (chamber r 34 cm,
+                            no magnet geometry; the magnet exists only as the oxford_ptarget field map).
+  Frames: the part tree origin is the target center (0, 0, TargetCenter_z). The chamber axis is hall y
+  (chamber rotation x = -90 deg: local x -> hall x, local y -> hall -z, local z -> hall +y); every inner part
+  is positioned in the chamber-vacuum frame exactly like in GEMC. All rotations are ACTIVE,
+  R = RotationX(x) * RotationY(y) * RotationZ(z); a GEMC rotation "a b c" is written x=-a y=-b z=-c.
+  The <part> trees below were generated from the GEMC txt files (scripts/gen_nh3.py in the work area of the
+  implementation; values copied verbatim, cm/deg).
+  Not built (deliberate): the GEMC 130 cm air "field" box (it only carries the target field map in GEMC and
+  overlaps the NH3 exit pipe), and the study-only W-powder "sheet-of-flame" blocks (not compatible with SM2023).
+  Material in the beam (SM2023, upstream->downstream): Al 0.2032 mm, 30K Al 0.2 mm, Al 0.101 mm, LHe 6.86 mm,
+  Al 17.8 um, NH3/LHe 28.235 mm, Al 17.8 um, LHe 6.86 mm, Al 0.101 mm, 30K Al 0.2 mm, Al 0.5 mm.
+  The 5 T target field is an optional separate fragment: compact/target/field_NH3_target.xml.
+-->
+<lccdd>
+  <includes>
+    <gdmlFile ref="${DETECTOR_PATH}/compact/target/target_isotopes.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/target/target_materials.xml"/>
+  </includes>
+
+  <display>
+    <vis name="Target_ChamberVis"     ref="lightgray"  alpha="0.3" visible="true"  showDaughters="true"/>
+    <vis name="Target_WindowVis"      ref="orange"     alpha="0.8" visible="true"/>
+    <vis name="Target_ShieldVis"      ref="silver"     alpha="0.3" visible="true"  showDaughters="true"/>
+    <vis name="Target_LHeVis"         ref="lightcyan"  alpha="0.3" visible="true"  showDaughters="true"/>
+    <vis name="Target_NH3Vis"         ref="red"        alpha="1.0" visible="true"/>
+    <vis name="Target_CupVis"         ref="gray"       alpha="0.6" visible="true"/>
+    <vis name="Target_SteelVis"       ref="slategray"  alpha="0.8" visible="true"/>
+    <vis name="Target_MagnetFrameVis" ref="lightsteelblue" alpha="0.5" visible="true" showDaughters="true"/>
+    <vis name="Target_CoilVis"        ref="chocolate"  alpha="0.9" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="Target_ID" name="Target" type="SoLID_PolNH3Target" select="Target_NH3_Variant">   <!-- 1 = SM2023 (default if undefined), 2 = Oxford2020 -->
+      <position x="0*cm" y="0*cm" z="TargetCenter_z"/>
+      <variant id="1" name="SM2023">
+      <part name="SC_out" shape="Tube" rmax="47.9425*cm" dz="43.18*cm" material="Aluminum" vis="Target_ChamberVis">
+        <rotation x="-90*deg"/>
+        <part name="SC_in" shape="Tube" rmax="45.4025*cm" dz="43.18*cm" material="Vacuum" vis="InvisibleWithDaughters">
+          <part name="30K" shape="Tube" rmin="38*cm" rmax="39.5*cm" dz="37.5*cm" material="Aluminum" vis="Target_ShieldVis">
+            <rotation z="-90*deg"/>
+            <part name="30K_inwindow_vacuum" shape="Tube" rmin="38*cm" rmax="39.48*cm" dz="10*cm" phi0="80*deg" dphi="20*deg" material="Vacuum" vis="InvisibleWithDaughters">
+              <rotation z="90*deg"/>
+            </part>
+            <part name="30K_inwindow_Al" shape="Tube" rmin="39.48*cm" rmax="39.5*cm" dz="10*cm" phi0="80*deg" dphi="20*deg" material="Aluminum" vis="Target_WindowVis">
+              <rotation z="90*deg"/>
+            </part>
+            <part name="30K_outwindow_vacuum" shape="Tube" rmin="38*cm" rmax="39.48*cm" dz="22*cm" phi0="242*deg" dphi="56*deg" material="Vacuum" vis="InvisibleWithDaughters">
+              <rotation z="90*deg"/>
+            </part>
+            <part name="30K_outwindow_Al" shape="Tube" rmin="39.48*cm" rmax="39.5*cm" dz="22*cm" phi0="242*deg" dphi="56*deg" material="Aluminum" vis="Target_WindowVis">
+              <rotation z="90*deg"/>
+            </part>
+          </part>
+          <part name="target_LHe" shape="Tube" rmax="2.10058*cm" dz="11.43*cm" material="Target_LHe4" vis="Target_LHeVis">
+            <rotation z="-90*deg"/>
+            <part name="target" shape="Tube" rmax="1.36144*cm" dz="1.411732*cm" material="Target_NH3_LHe" vis="Target_NH3Vis">
+              <rotation y="90*deg"/>
+            </part>
+            <part name="target_endcaps_u" shape="Tube" rmax="1.36144*cm" dz="0.000889*cm" material="Aluminum" vis="Target_CupVis">
+              <position x="1.41351*cm"/>
+              <rotation y="90*deg"/>
+            </part>
+            <part name="target_endcaps_d" shape="Tube" rmax="1.36144*cm" dz="0.000889*cm" material="Aluminum" vis="Target_CupVis">
+              <position x="-1.41351*cm"/>
+              <rotation y="90*deg"/>
+            </part>
+            <part name="target_cell" shape="Tube" rmin="1.36144*cm" rmax="1.45034*cm" dz="1.41351*cm" material="Aluminum" vis="Target_CupVis">
+              <rotation y="90*deg"/>
+            </part>
+          </part>
+          <part name="target_LHe_shield" shape="Tube" rmin="2.10058*cm" rmax="2.11068*cm" dz="11.43*cm" material="Aluminum" vis="Target_CupVis">
+            <rotation z="-90*deg"/>
+          </part>
+          <part name="left_steel" shape="Polycone" material="Iron" vis="Target_SteelVis">
+            <position x="-5.55*cm"/>
+            <rotation y="90*deg"/>
+            <zplane z="0*cm" rmin="5.9*cm" rmax="7.9*cm"/>
+            <zplane z="1.91*cm" rmin="5.9*cm" rmax="7.9*cm"/>
+            <zplane z="1.95*cm" rmin="5.9*cm" rmax="7.82*cm"/>
+          </part>
+          <part name="right_steel" shape="Polycone" material="Iron" vis="Target_SteelVis">
+            <position x="5.55*cm"/>
+            <rotation y="-90*deg"/>
+            <zplane z="0*cm" rmin="5.9*cm" rmax="7.9*cm"/>
+            <zplane z="1.91*cm" rmin="5.9*cm" rmax="7.9*cm"/>
+            <zplane z="1.95*cm" rmin="5.9*cm" rmax="7.82*cm"/>
+          </part>
+          <part name="left_coil_box" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="-4*cm"/>
+            <rotation y="-90*deg"/>
+            <zplane z="4.39751*cm" rmin="5.88*cm" rmax="8.75*cm"/>
+            <zplane z="5.51756*cm" rmin="6.58125*cm" rmax="8.75*cm"/>
+          </part>
+          <part name="right_coil_box" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="4*cm"/>
+            <rotation y="90*deg"/>
+            <zplane z="4.39751*cm" rmin="5.88*cm" rmax="8.75*cm"/>
+            <zplane z="5.51756*cm" rmin="6.58125*cm" rmax="8.75*cm"/>
+          </part>
+          <part name="left_coil_box_2" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="-4*cm"/>
+            <rotation y="-90*deg"/>
+            <zplane z="0*cm" rmin="7.9*cm" rmax="8.57803*cm"/>
+            <zplane z="4*cm" rmin="7.9*cm" rmax="17.015*cm"/>
+            <zplane z="4*cm" rmin="5.88*cm" rmax="17.015*cm"/>
+            <zplane z="4.39751*cm" rmin="5.88*cm" rmax="17.853*cm"/>
+            <zplane z="4.39751*cm" rmin="11.685*cm" rmax="17.853*cm"/>
+            <zplane z="6.8915*cm" rmin="11.685*cm" rmax="23.114*cm"/>
+            <zplane z="6.8915*cm" rmin="15.212*cm" rmax="23.114*cm"/>
+            <zplane z="7.21668*cm" rmin="15.212*cm" rmax="23.8*cm"/>
+            <zplane z="8.27625*cm" rmin="15.212*cm" rmax="23.8*cm"/>
+            <zplane z="8.27625*cm" rmin="15.212*cm" rmax="25*cm"/>
+            <zplane z="9.28451*cm" rmin="15.212*cm" rmax="25*cm"/>
+            <zplane z="9.28451*cm" rmin="18.856*cm" rmax="25*cm"/>
+            <zplane z="12.14951*cm" rmin="18.856*cm" rmax="25*cm"/>
+            <part name="left_coil_xl" shape="Tube" rmin="19.9*cm" rmax="22.9*cm" dz="2.3*cm" material="Copper" vis="Target_CoilVis">
+              <position z="9.5*cm"/>
+            </part>
+            <part name="left_coil_l" shape="Tube" rmin="16.1*cm" rmax="18.6*cm" dz="1.85*cm" material="Copper" vis="Target_CoilVis">
+              <position z="7.15*cm"/>
+            </part>
+            <part name="left_coil_m" shape="Tube" rmin="13*cm" rmax="15*cm" dz="1.5*cm" material="Copper" vis="Target_CoilVis">
+              <position z="5.1*cm"/>
+            </part>
+            <part name="left_coil_s" shape="Tube" rmin="9.9*cm" rmax="11.4*cm" dz="1.15*cm" material="Copper" vis="Target_CoilVis">
+              <position z="2.95*cm"/>
+            </part>
+          </part>
+          <part name="right_coil_box_2" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="4*cm"/>
+            <rotation y="90*deg"/>
+            <zplane z="0*cm" rmin="7.9*cm" rmax="8.57803*cm"/>
+            <zplane z="4*cm" rmin="7.9*cm" rmax="17.015*cm"/>
+            <zplane z="4*cm" rmin="5.88*cm" rmax="17.015*cm"/>
+            <zplane z="4.39751*cm" rmin="5.88*cm" rmax="17.853*cm"/>
+            <zplane z="4.39751*cm" rmin="11.685*cm" rmax="17.853*cm"/>
+            <zplane z="6.8915*cm" rmin="11.685*cm" rmax="23.114*cm"/>
+            <zplane z="6.8915*cm" rmin="15.212*cm" rmax="23.114*cm"/>
+            <zplane z="7.21668*cm" rmin="15.212*cm" rmax="23.8*cm"/>
+            <zplane z="8.27625*cm" rmin="15.212*cm" rmax="23.8*cm"/>
+            <zplane z="8.27625*cm" rmin="15.212*cm" rmax="25*cm"/>
+            <zplane z="9.28451*cm" rmin="15.212*cm" rmax="25*cm"/>
+            <zplane z="9.28451*cm" rmin="18.856*cm" rmax="25*cm"/>
+            <zplane z="12.14951*cm" rmin="18.856*cm" rmax="25*cm"/>
+            <part name="right_coil_s" shape="Tube" rmin="9.9*cm" rmax="11.4*cm" dz="1.15*cm" material="Copper" vis="Target_CoilVis">
+              <position z="2.95*cm"/>
+            </part>
+            <part name="right_coil_m" shape="Tube" rmin="13*cm" rmax="15*cm" dz="1.5*cm" material="Copper" vis="Target_CoilVis">
+              <position z="5.1*cm"/>
+            </part>
+            <part name="right_coil_l" shape="Tube" rmin="16.1*cm" rmax="18.6*cm" dz="1.85*cm" material="Copper" vis="Target_CoilVis">
+              <position z="7.15*cm"/>
+            </part>
+            <part name="right_coild_xl" shape="Tube" rmin="19.9*cm" rmax="22.9*cm" dz="2.3*cm" material="Copper" vis="Target_CoilVis">
+              <position z="9.5*cm"/>
+            </part>
+          </part>
+          <part name="left_coil_lid" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="-8.39751*cm"/>
+            <rotation y="-90*deg"/>
+            <zplane z="0*cm" rmin="8.75*cm" rmax="11.685*cm"/>
+            <zplane z="1.384*cm" rmin="8.75*cm" rmax="11.685*cm"/>
+            <zplane z="1.384*cm" rmin="8.825*cm" rmax="11.685*cm"/>
+            <zplane z="2.494*cm" rmin="9.954*cm" rmax="11.685*cm"/>
+            <zplane z="2.494*cm" rmin="9.954*cm" rmax="15.212*cm"/>
+            <zplane z="4.887*cm" rmin="12.736*cm" rmax="15.212*cm"/>
+            <zplane z="4.887*cm" rmin="12.736*cm" rmax="18.851*cm"/>
+            <zplane z="7.752*cm" rmin="16.068*cm" rmax="18.851*cm"/>
+            <zplane z="7.752*cm" rmin="16.068*cm" rmax="25*cm"/>
+            <zplane z="8.852*cm" rmin="17.57*cm" rmax="25*cm"/>
+            <zplane z="9.052*cm" rmin="17.75*cm" rmax="24.8*cm"/>
+          </part>
+          <part name="right_coil_lid" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="8.39751*cm"/>
+            <rotation y="90*deg"/>
+            <zplane z="0*cm" rmin="8.75*cm" rmax="11.685*cm"/>
+            <zplane z="1.384*cm" rmin="8.75*cm" rmax="11.685*cm"/>
+            <zplane z="1.384*cm" rmin="8.825*cm" rmax="11.685*cm"/>
+            <zplane z="2.494*cm" rmin="9.954*cm" rmax="11.685*cm"/>
+            <zplane z="2.494*cm" rmin="9.954*cm" rmax="15.212*cm"/>
+            <zplane z="4.887*cm" rmin="12.736*cm" rmax="15.212*cm"/>
+            <zplane z="4.887*cm" rmin="12.736*cm" rmax="18.851*cm"/>
+            <zplane z="7.752*cm" rmin="16.068*cm" rmax="18.851*cm"/>
+            <zplane z="7.752*cm" rmin="16.068*cm" rmax="25*cm"/>
+            <zplane z="8.852*cm" rmin="17.57*cm" rmax="25*cm"/>
+            <zplane z="9.052*cm" rmin="17.75*cm" rmax="24.8*cm"/>
+          </part>
+          <!-- magnet support (defines the +-25 deg openings): polycone minus 4 holes, each = slot box + half tube + 25 deg cone
+               (GEMC Operation:@ booleans; operand transforms are given in the chamber-vacuum frame, frame="mother") -->
+          <part name="magnet_support" shape="Polycone" material="Aluminum" vis="Target_MagnetFrameVis">
+            <position x="12.157745*cm"/>
+            <rotation y="-90*deg"/>
+            <zplane z="0*cm" rmin="23.8*cm" rmax="25*cm"/>
+            <zplane z="1.05957*cm" rmin="23.8*cm" rmax="25*cm"/>
+            <zplane z="2.5*cm" rmin="23.22839568*cm" rmax="25*cm"/>
+            <zplane z="2.5*cm" rmin="23.22839568*cm" rmax="24*cm"/>
+            <zplane z="3.064705*cm" rmin="19.5*cm" rmax="24*cm"/>
+            <zplane z="21.250785*cm" rmin="19.5*cm" rmax="24*cm"/>
+            <zplane z="21.81549*cm" rmin="23.22839568*cm" rmax="24*cm"/>
+            <zplane z="21.81549*cm" rmin="23.22839568*cm" rmax="25*cm"/>
+            <zplane z="23.25592*cm" rmin="23.8*cm" rmax="25*cm"/>
+            <zplane z="24.31549*cm" rmin="23.8*cm" rmax="25*cm"/>
+            <subtract shape="Box" dx="12.157*cm" dy="1.08*cm" dz="2.5*cm" frame="mother"><!-- rec_1 -->
+              <position y="20.58*cm"/>
+            </subtract>
+            <subtract shape="Tube" rmax="2.5*cm" dz="12.157*cm" phi0="0*deg" dphi="180*deg" frame="mother"><!-- addtub_1 -->
+              <position y="21.66*cm"/>
+              <rotation y="-90*deg"/>
+            </subtract>
+            <subtract shape="Cons" rmin1="0*cm" rmax1="8.2410559724*cm" rmin2="0*cm" rmax2="11.6576912273*cm" dz="3.6634990457*cm" frame="mother"><!-- cone_1 -->
+              <position y="21.3365009543*cm"/>
+              <rotation x="-90*deg"/>
+            </subtract>
+            <subtract shape="Box" dx="12.157*cm" dy="1.08*cm" dz="2.5*cm" frame="mother"><!-- rec_2 -->
+              <position z="20.58*cm"/>
+              <rotation x="-90*deg"/>
+            </subtract>
+            <subtract shape="Tube" rmax="2.5*cm" dz="12.157*cm" phi0="0*deg" dphi="180*deg" frame="mother"><!-- addtub_2 -->
+              <position z="21.66*cm"/>
+              <rotation y="-90*deg" z="-90*deg"/>
+            </subtract>
+            <subtract shape="Cons" rmin1="0*cm" rmax1="8.2410559724*cm" rmin2="0*cm" rmax2="11.6576912273*cm" dz="3.6634990457*cm" frame="mother"><!-- cone_2 -->
+              <position z="21.3365009543*cm"/>
+            </subtract>
+            <subtract shape="Box" dx="12.157*cm" dy="1.08*cm" dz="2.5*cm" frame="mother"><!-- rec_3 -->
+              <position y="-20.58*cm"/>
+            </subtract>
+            <subtract shape="Tube" rmax="2.5*cm" dz="12.157*cm" phi0="0*deg" dphi="180*deg" frame="mother"><!-- addtub_3 -->
+              <position y="-21.66*cm"/>
+              <rotation y="-90*deg" z="-180*deg"/>
+            </subtract>
+            <subtract shape="Cons" rmin1="0*cm" rmax1="8.2410559724*cm" rmin2="0*cm" rmax2="11.6576912273*cm" dz="3.6634990457*cm" frame="mother"><!-- cone_3 -->
+              <position y="-21.3365009543*cm"/>
+              <rotation x="90*deg"/>
+            </subtract>
+            <subtract shape="Box" dx="12.157*cm" dy="1.08*cm" dz="2.5*cm" frame="mother"><!-- rec_4 -->
+              <position z="-20.58*cm"/>
+              <rotation x="90*deg"/>
+            </subtract>
+            <subtract shape="Tube" rmax="2.5*cm" dz="12.157*cm" phi0="0*deg" dphi="180*deg" frame="mother"><!-- addtub_4 -->
+              <position z="-21.66*cm"/>
+              <rotation y="-90*deg" z="-270*deg"/>
+            </subtract>
+            <subtract shape="Cons" rmin1="0*cm" rmax1="8.2410559724*cm" rmin2="0*cm" rmax2="11.6576912273*cm" dz="3.6634990457*cm" frame="mother"><!-- cone_4 -->
+              <position z="-21.3365009543*cm"/>
+              <rotation x="-180*deg"/>
+            </subtract>
+          </part>
+        </part>
+        <part name="entrance_cut" shape="Tube" rmin="45.4025*cm" rmax="47.92218*cm" dz="10*cm" phi0="80*deg" dphi="20*deg" material="Vacuum" vis="InvisibleWithDaughters">
+        </part>
+        <part name="entrance_win" shape="Tube" rmin="47.92218*cm" rmax="47.9425*cm" dz="10*cm" phi0="80*deg" dphi="20*deg" material="Aluminum" vis="Target_WindowVis">
+        </part>
+        <part name="exit_cut" shape="Tube" rmin="45.4025*cm" rmax="47.8925*cm" dz="22*cm" phi0="242*deg" dphi="56*deg" material="Vacuum" vis="InvisibleWithDaughters">
+        </part>
+        <part name="exit_win" shape="Tube" rmin="47.8925*cm" rmax="47.9425*cm" dz="22*cm" phi0="242*deg" dphi="56*deg" material="Aluminum" vis="Target_WindowVis">
+        </part>
+      </part>
+      </variant>
+      <variant id="2" name="Oxford2020">
+        <!-- the GEMC "up_" disks sit at hall z > TargetCenter_z (downstream), GEMC naming kept; symmetric anyway -->
+      <part name="SC_out" shape="Tube" rmax="34*cm" dz="38*cm" material="Aluminum" vis="Target_ChamberVis">
+        <rotation x="-90*deg"/>
+        <part name="SC_in" shape="Tube" rmax="31.5*cm" dz="38*cm" material="Vacuum" vis="InvisibleWithDaughters">
+          <part name="target" shape="Tube" rmax="1.413*cm" dz="1.423*cm" material="Target_NH3_LHe" vis="Target_NH3Vis">
+            <rotation x="90*deg"/>
+          </part>
+          <part name="up_endcap" shape="Tube" rmax="1.613*cm" dz="0.000889*cm" material="Aluminum" vis="Target_CupVis">
+            <position y="-1.426*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="down_endcap" shape="Tube" rmax="1.613*cm" dz="0.000889*cm" material="Aluminum" vis="Target_CupVis">
+            <position y="1.426*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="up_LHe" shape="Tube" rmax="1.613*cm" dz="0.218*cm" material="Target_LHe4" vis="Target_LHeVis">
+            <position y="-1.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="down_LHe" shape="Tube" rmax="1.613*cm" dz="0.218*cm" material="Target_LHe4" vis="Target_LHeVis">
+            <position y="1.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="up_tail_nose" shape="Tube" rmax="1.613*cm" dz="0.006345*cm" material="Aluminum" vis="Target_WindowVis">
+            <position y="-2.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="down_tail_nose" shape="Tube" rmax="1.613*cm" dz="0.006345*cm" material="Aluminum" vis="Target_WindowVis">
+            <position y="2.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="up_4Kshield" shape="Tube" rmax="1.613*cm" dz="0.0006345*cm" material="Aluminum" vis="Target_WindowVis">
+            <position y="-3.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="down_4Kshield" shape="Tube" rmax="1.613*cm" dz="0.0006345*cm" material="Aluminum" vis="Target_WindowVis">
+            <position y="3.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="up_LN2shield" shape="Tube" rmax="1.613*cm" dz="0.0019*cm" material="Aluminum" vis="Target_WindowVis">
+            <position y="-4.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+          <part name="down_LN2shield" shape="Tube" rmax="1.613*cm" dz="0.0019*cm" material="Aluminum" vis="Target_WindowVis">
+            <position y="4.65*cm"/>
+            <rotation x="90*deg"/>
+          </part>
+        </part>
+        <part name="entrance_cut" shape="Tube" rmin="31.5*cm" rmax="33.98*cm" dz="6*cm" phi0="80*deg" dphi="20*deg" material="Vacuum" vis="InvisibleWithDaughters">
+        </part>
+        <part name="entrance_win" shape="Tube" rmin="33.98*cm" rmax="34*cm" dz="6*cm" phi0="80*deg" dphi="20*deg" material="Aluminum" vis="Target_WindowVis">
+        </part>
+        <part name="exit_cut" shape="Tube" rmin="31.5*cm" rmax="33.96*cm" dz="16.6*cm" phi0="242*deg" dphi="56*deg" material="Vacuum" vis="InvisibleWithDaughters">
+        </part>
+        <part name="exit_win" shape="Tube" rmin="33.96*cm" rmax="34*cm" dz="16.6*cm" phi0="242*deg" dphi="56*deg" material="Aluminum" vis="Target_WindowVis">
+        </part>
+      </part>
+
+      </variant>
+    </detector>
+  </detectors>
+</lccdd>

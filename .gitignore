@@ -1,6 +1,8 @@
 !*.png
 
 /*.xml
+# ...but keep the top-level SoLID configurations
+!/solid*.xml
 *.prim
 */*.eps
 */*/*.eps
@@ -32,6 +34,11 @@ acts.txt
 acts2.txt
 
 materials-map.cbor
+
+# containers/install.sh: downloaded images, the saved image choice, and the default install prefix
+/containers/images/
+/containers/solid-shell.local
+/install/
 
 # local install directories
 prefix/

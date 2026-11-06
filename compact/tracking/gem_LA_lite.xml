@@ -1,0 +1,184 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite large-angle GEM tracker: 4 planes x 30 sectors, theta 14-25 deg from z = -350 cm.
+  Rin = floor((350+z) tan 14deg), Rout = ceil((350+z) tan 25deg) (gem_separated/readme.md).
+  Reference: solid_gemc geometry/gem_separated/solid_SIDIS_LA_gem (2026-10-25), used by script/solid_JPsi_{,DDVCS_}LH2_lite_full.gcard.
+  DetElement GEMTrackerLA (GEMLA_ID), readout GEMTrackerLAHits, plugin SoLID_GEMTracker (src/GEMTracker_geo.cpp).
+  Requires from the top level: nothing (hall-frame z).
+
+  Module (GEMC gem_moved stack of 2024-01-18, SBS-type, 25 slices, 16.005 mm, X/X0 = 0.915 % at normal incidence):
+    Al window | honeycomb (G10 skin + NOMEX core) | G10 support | drift cathode (Kapton + Cu) | 3 mm DRIFT GAP |
+    GEM1 | 2 mm transfer | GEM2 | 2 mm transfer | GEM3 | 2 mm induction | U/V readout (Cu, Kapton, G10) | honeycomb | Al
+  The drift cathode faces the target (all targets are upstream of all planes). The plane z is the stack CENTRE
+  (GEMC PlateZ). Sensitive volume: the 3 mm drift gap (slice 7) with a DDRec VolPlane surface (GEMC also records
+  slices 6, 8, 10-12, 20; add sensitive="true" there for GEMC-like occupancy studies - not for ACTS).
+  Module shape "trapezoid": planar trapezoid covering the GEMC annular sector [rmin, rmax] x 12 deg (inner flat at
+  rmin cos6, outer flat at rmax, sides on the radial sector edges): envelope r = rmin cos6 ... rmax/cos6, i.e.
+  -0.55 % at the inner flat centre and +0.55 % at the outer corners relative to GEMC. Use shape="sector"
+  (gem_SIDIS_annular.xml) for the exact GEMC tube segments.
+  Sector s (= readout field module = GEMC sector) is centred at phi = 96 + 12(s-1) deg (+ phi_offset of the layer).
+  Optional per-layer/per-detector `sectors="..."` list (e.g. NH3 sheet-of-flame masking) keeps the ids unchanged.
+
+  ACTS / EICrecon: the ACTS legacy DD4hep conversion translates endcaps only inside a DD4hep_SubdetectorAssembly
+  ("compound") holding one negative and one positive endcap, classified by the sign of the endcap placement z.
+  LA (z < 0) is the NEGATIVE endcap and GEMTrackerFA (gem_FA_lite.xml, z >= 0) the POSITIVE endcap of the
+  compound GEMTrackerLiteAssembly (GEMAssembly_ID) declared HERE: include gem_LA_lite.xml before gem_FA_lite.xml
+  (as compact/configs/lite_common.xml does). Without gem_FA_lite.xml the geometry still loads, but ACTS
+  refuses the unpaired endcap.
+  Layers are found through the layer_pattern parameter; each layer carries layer_material (binPhi x binR) on
+  its inner/outer approach surfaces for the ACTS material map; the sensitive slice DetElements carry
+  axis_definitions = "XZY" (ACTS local x = phi-hat, local y = r-hat), matching CartesianGridXZ.
+
+  Readout GEMTrackerLAHits: system:8 (GEMLA_ID), layer = GEMC plane n, module = GEMC sector s, slice = GEMC slice l.
+      Segmentation: the GEM reads two strip views (U, V) parallel to the two radial sector edges (12 deg stereo,
+      preCDR p83). EICrecon's generic tracker chain (SiliconTrackerDigi -> TrackerHitReconstruction ->
+      TrackerMeasurementFromHits -> ACTS CKF) takes the hit position from the cell centre and the covariance from
+      the cell size (sigma = pitch/sqrt(12)) in the surface frame, exactly as ePIC's MPGD endcaps
+      (CartesianGridXZ sqrt(12)*150 um). The grid therefore emulates the U/V resolution in the module frame:
+      x = phi-hat: sqrt(12)*sigma_phi, sigma_phi = sigma_strip/(sqrt(2) cos 6deg) = 49.8 um;
+      z = r-hat:   sqrt(12)*sigma_r,   sigma_r   = sigma_strip/(sqrt(2) sin 6deg) = 474 um;
+      sigma_strip = 70 um (WP p26, preCDR p83). The u/v strip formation (u = X sin6 + Y cos6, v = X sin6 - Y cos6
+      with X = r_c + z_loc, Y = x_loc; pitch 0.4 mm) belongs in a dedicated digitizer that can use the same ids.
+      GEMC id = base + layer*10000 + module*100 + slice (base 1200000).
+-->
+<lccdd>
+  <define>
+    <constant name="GEMLA_nsectors"      value="30"/>
+    <constant name="GEMLA_phi_sector1"   value="96*deg"/>   <!-- centre of GEMC sector 1; sector s at 96 + 12(s-1) deg -->
+    <constant name="GEMLA_strip_sigma"   value="70*um"/>    <!-- single-view resolution (WP p26) -->
+    <constant name="GEMLA_stereo_angle"  value="12*deg"/>   <!-- U/V stereo angle (preCDR p83) -->
+    <constant name="GEMLA_seg_x"         value="sqrt(12)*GEMLA_strip_sigma/(sqrt(2)*cos(GEMLA_stereo_angle/2))"/>  <!-- 0.1726 mm, phi-hat -->
+    <constant name="GEMLA_seg_z"         value="sqrt(12)*GEMLA_strip_sigma/(sqrt(2)*sin(GEMLA_stereo_angle/2))"/>  <!-- 1.6406 mm, r-hat -->
+    <constant name="GEMLA_z1"    value="-175*cm"/>  <constant name="GEMLA_rmin1" value="43*cm"/>  <constant name="GEMLA_rmax1" value="82*cm"/>  <!-- GEMC solid_SIDIS_LA_gem_1 -->
+    <constant name="GEMLA_z2"    value="-150*cm"/>  <constant name="GEMLA_rmin2" value="49*cm"/>  <constant name="GEMLA_rmax2" value="94*cm"/>  <!-- _LA_gem_2 -->
+    <constant name="GEMLA_z3"    value="-119*cm"/>  <constant name="GEMLA_rmin3" value="57*cm"/>  <constant name="GEMLA_rmax3" value="108*cm"/>  <!-- _LA_gem_3 -->
+    <constant name="GEMLA_z4"    value="-68*cm"/>  <constant name="GEMLA_rmin4" value="70*cm"/>  <constant name="GEMLA_rmax4" value="132*cm"/>  <!-- _LA_gem_4 -->
+  </define>
+
+  <!-- GEM materials, identical to GEMC gem_moved/solid_gem_materials.pl (prefixed; duplicates in other GEM
+       fragments are identical and silently ignored by DD4hep). The generic GEMGas of materials.xml is NOT used
+       (it has atom fractions entered as mass fractions and a wrong density). -->
+  <materials>
+    <!-- SL_gem_GEMgas: CO2 0.32 + Ar 0.68 by mass (= Ar/CO2 70/30 by volume), 0 degC, 1 atm -->
+    <material name="SoLID_GEM_ArCO2" state="gas">
+      <D type="density" value="0.0018407" unit="g/cm3"/>
+      <T type="temperature" value="273.15" unit="kelvin"/>
+      <P type="pressure" value="1" unit="atmosphere"/>
+      <fraction n="0.680000" ref="Ar"/>
+      <fraction n="0.087332" ref="C"/>
+      <fraction n="0.232668" ref="O"/>
+    </material>
+    <!-- SL_gem_NEMAG10: Si1 O2 C3 H3, 1.70 g/cm3 -->
+    <material name="SoLID_GEM_NEMAG10">
+      <D type="density" value="1.70" unit="g/cm3"/>
+      <composite n="1" ref="Si"/>
+      <composite n="2" ref="O"/>
+      <composite n="3" ref="C"/>
+      <composite n="3" ref="H"/>
+    </material>
+    <!-- SL_gem_NOMEX honeycomb: 0.55 G4_AIR + 0.45 SL_gem_NOMEX_pure (H .04 C .54 N .09 O .10 Cl .23) by mass, 0.040 g/cm3 -->
+    <material name="SoLID_GEM_NOMEX">
+      <D type="density" value="0.040" unit="g/cm3"/>
+      <fraction n="0.243068" ref="C"/>
+      <fraction n="0.455897" ref="N"/>
+      <fraction n="0.172480" ref="O"/>
+      <fraction n="0.007055" ref="Ar"/>
+      <fraction n="0.018000" ref="H"/>
+      <fraction n="0.103500" ref="Cl"/>
+    </material>
+    <!-- SL_gem_Kapton (= G4_KAPTON), 1.42 g/cm3 -->
+    <material name="SoLID_GEM_Kapton">
+      <D type="density" value="1.42" unit="g/cm3"/>
+      <fraction n="0.026362" ref="H"/>
+      <fraction n="0.691133" ref="C"/>
+      <fraction n="0.073270" ref="N"/>
+      <fraction n="0.209235" ref="O"/>
+    </material>
+    <!-- G4_Al -->
+    <material name="SoLID_GEM_Aluminum">
+      <D type="density" value="2.699" unit="g/cm3"/>
+      <fraction n="1.0" ref="Al"/>
+    </material>
+  </materials>
+
+  <limits>
+    <!-- GEMC solid_gem hit: maxStep 1 mm in the sensitive gas (needs a step-limiter physics constructor to act) -->
+    <limitset name="GEMLA_limits">
+      <limit name="step_length_max" particles="*" value="1.0" unit="mm"/>
+    </limitset>
+  </limits>
+
+  <display>
+    <!-- one outline per module (30 trapezoids per plane); the 25 slices are not drawn -->
+    <vis name="GEMLA_ModuleVis" ref="darkorange" alpha="0.5" showDaughters="false" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="GEMAssembly_ID" name="GEMTrackerLiteAssembly" type="DD4hep_SubdetectorAssembly" vis="InvisibleWithDaughters">
+      <composite name="GEMTrackerLA"/>
+      <composite name="GEMTrackerFA"/>
+    </detector>
+    <detector id="GEMLA_ID" name="GEMTrackerLA" type="SoLID_GEMTracker" readout="GEMTrackerLAHits" vis="InvisibleWithDaughters">
+      <type_flags type="DetType_TRACKER + DetType_ENDCAP + DetType_GASEOUS"/>
+      <acts side="negative" z_offset="1*um"/>   <!-- ACTS endcap classification: placement z sign -->
+      <module_layout shape="trapezoid" nsectors="GEMLA_nsectors" phi_sector1="GEMLA_phi_sector1"
+                     module_vis="GEMLA_ModuleVis" layer_vis="InvisibleWithDaughters"/>
+      <!-- 25-layer module stack, upstream (target side) -> downstream; slice k = GEMC slice k (16.005 mm) -->
+      <slice name="window_up"       material="SoLID_GEM_Aluminum" thickness="0.050*mm"/>  <!-- 1: entrance window (G4_Al) -->
+      <slice name="hc_skin_up"      material="SoLID_GEM_NEMAG10"  thickness="0.125*mm"/>  <!-- 2: honeycomb skin -->
+      <slice name="hc_core_up"      material="SoLID_GEM_NOMEX"    thickness="3.000*mm"/>  <!-- 3: honeycomb core -->
+      <slice name="drift_support"   material="SoLID_GEM_NEMAG10"  thickness="0.180*mm"/>  <!-- 4: drift support 120 um + 60 um glue -->
+      <slice name="drift_kapton"    material="SoLID_GEM_Kapton"   thickness="0.050*mm"/>  <!-- 5: drift cathode -->
+      <slice name="drift_cu"        material="Copper"             thickness="0.005*mm"/>  <!-- 6: drift cathode Cu (GEMC sensitive) -->
+      <slice name="drift_gap"       material="SoLID_GEM_ArCO2"    thickness="3.000*mm" sensitive="true" limits="GEMLA_limits"/>  <!-- 7: DRIFT GAP: the dd4hep sensitive volume -->
+      <slice name="gem1_cu_top"     material="Copper"             thickness="0.005*mm"/>  <!-- 8: GEM1 (GEMC sensitive) -->
+      <slice name="gem1_kapton"     material="SoLID_GEM_Kapton"   thickness="0.050*mm"/>  <!-- 9: GEM1 -->
+      <slice name="gem1_cu_bot"     material="Copper"             thickness="0.005*mm"/>  <!-- 10: GEM1 (GEMC sensitive) -->
+      <slice name="transfer1_gap"   material="SoLID_GEM_ArCO2"    thickness="2.000*mm"/>  <!-- 11: transfer gap 1 (GEMC sensitive) -->
+      <slice name="gem2_cu_top"     material="Copper"             thickness="0.005*mm"/>  <!-- 12: GEM2 (GEMC sensitive) -->
+      <slice name="gem2_kapton"     material="SoLID_GEM_Kapton"   thickness="0.050*mm"/>  <!-- 13: GEM2 -->
+      <slice name="gem2_cu_bot"     material="Copper"             thickness="0.005*mm"/>  <!-- 14: GEM2 -->
+      <slice name="transfer2_gap"   material="SoLID_GEM_ArCO2"    thickness="2.000*mm"/>  <!-- 15: transfer gap 2 -->
+      <slice name="gem3_cu_top"     material="Copper"             thickness="0.005*mm"/>  <!-- 16: GEM3 -->
+      <slice name="gem3_kapton"     material="SoLID_GEM_Kapton"   thickness="0.050*mm"/>  <!-- 17: GEM3 -->
+      <slice name="gem3_cu_bot"     material="Copper"             thickness="0.005*mm"/>  <!-- 18: GEM3 -->
+      <slice name="induction_gap"   material="SoLID_GEM_ArCO2"    thickness="2.000*mm"/>  <!-- 19: induction gap -->
+      <slice name="readout_cu"      material="Copper"             thickness="0.010*mm"/>  <!-- 20: U+V readout strips (GEMC sensitive) -->
+      <slice name="readout_kapton"  material="SoLID_GEM_Kapton"   thickness="0.050*mm"/>  <!-- 21: readout board -->
+      <slice name="readout_support" material="SoLID_GEM_NEMAG10"  thickness="0.180*mm"/>  <!-- 22: readout support 120 um + 60 um glue -->
+      <slice name="hc_core_down"    material="SoLID_GEM_NOMEX"    thickness="3.000*mm"/>  <!-- 23: honeycomb core -->
+      <slice name="hc_skin_down"    material="SoLID_GEM_NEMAG10"  thickness="0.125*mm"/>  <!-- 24: honeycomb skin -->
+      <slice name="window_down"     material="SoLID_GEM_Aluminum" thickness="0.050*mm"/>  <!-- 25: exit window (G4_Al) -->
+      <layer id="1" z="GEMLA_z1" rmin="GEMLA_rmin1" rmax="GEMLA_rmax1">
+        <layer_material surface="inner" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+        <layer_material surface="outer" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+      </layer>
+      <layer id="2" z="GEMLA_z2" rmin="GEMLA_rmin2" rmax="GEMLA_rmax2">
+        <layer_material surface="inner" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+        <layer_material surface="outer" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+      </layer>
+      <layer id="3" z="GEMLA_z3" rmin="GEMLA_rmin3" rmax="GEMLA_rmax3">
+        <layer_material surface="inner" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+        <layer_material surface="outer" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+      </layer>
+      <layer id="4" z="GEMLA_z4" rmin="GEMLA_rmin4" rmax="GEMLA_rmax4">
+        <layer_material surface="inner" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+        <layer_material surface="outer" binning="binPhi,binR" bins0="GEMLA_nsectors" bins1="20"/>
+      </layer>
+    </detector>
+  </detectors>
+
+  <plugins>
+    <plugin name="DD4hep_ParametersPlugin">
+      <argument value="GEMTrackerLA"/>
+      <argument value="layer_pattern: str=GEMTrackerLA_layer\d"/>
+    </plugin>
+  </plugins>
+
+  <readouts>
+    <readout name="GEMTrackerLAHits">
+      <segmentation type="CartesianGridXZ" grid_size_x="GEMLA_seg_x" grid_size_z="GEMLA_seg_z"/>
+      <id>system:8,layer:4,module:6,slice:5,x:32:-16,z:-16</id>
+    </readout>
+  </readouts>
+</lccdd>

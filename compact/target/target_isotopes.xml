@@ -1,0 +1,15 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  Isotope-pure elements needed by the SoLID targets (polarized 3He, liquid deuterium).
+  DD4hep reads <isotope> only from a GDML-style file loaded with <gdmlFile> (not from a compact
+  <materials> block), so this file is loaded by compact/target/target_materials.xml through
+  <includes><gdmlFile .../></includes>. Elements already defined (e.g. by another fragment) are
+  not redefined.
+  GEMC origin: gemc 2.9 cpp_materials.cc (helium3Gas, LD2).
+-->
+<materials>
+  <isotope name="Target_He3_isotope" N="3" Z="2"><atom unit="g/mole" value="3.0160293"/></isotope>
+  <element name="Target_Helium3" formula="He3" Z="2"><fraction n="1.0" ref="Target_He3_isotope"/></element>
+  <isotope name="Target_D_isotope" N="2" Z="1"><atom unit="g/mole" value="2.0141018"/></isotope>
+  <element name="Target_Deuterium" formula="D" Z="1"><fraction n="1.0" ref="Target_D_isotope"/></element>
+</materials>
