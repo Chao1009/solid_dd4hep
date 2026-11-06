@@ -1,0 +1,13 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- Detector set shared by the full-SoLID SIDIS (3He, NH3), J/psi and DDVCS configurations (GEMC *_moved_full gcards). Target, beamline, field and muon system are added by the top-level file. -->
+<lccdd>
+  <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_v4.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/tracking/gem_SIDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/lgc_SIDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/hgc_SIDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/mrpc_FA.xml"/>
+</lccdd>
