@@ -11,18 +11,23 @@ It covers full SoLID and the staged SoLID-Lite configurations, follows the
 - Line-view drawings (DAWN replacement): [docs/visualization.md](docs/visualization.md)
 - Reconstruction framework and container environment: [docs/reconstruction.md](docs/reconstruction.md)
 
+<img src="docs/images/overview_solid_JPsi_lite.svg" width="100%" alt="SoLID-Lite J/psi detector overview: labelled cutaway drawing of the DD4hep geometry">
+
+*SoLID-Lite J/ψ (`solid_JPsi_lite.xml`), drawn from the DD4hep geometry with `make_solid_views --views overview`.
+The overviews of the other configurations are linked in the table below.*
+
 ## Configurations
 
-| compact file | experiment | magnet / field | GEMC reference |
-|---|---|---|---|
-| `solid.xml` = `solid_SIDIS_He3.xml` | SIDIS, polarized 3He (40 cm, z = -350 cm) | CLEO-II, longer endcap (v4c) / CLEOv9 | solid_SIDIS_He3_moved_full |
-| `solid_SIDIS_NH3.xml` | SIDIS, polarized NH3 (+ 5 T target field) | v4c / CLEOv9 | solid_SIDIS_NH3_moved_full |
-| `solid_PVDIS.xml` | PVDIS, 40 cm LD2 (z = +10 cm), baffles | v4c / CLEOv9 | solid_PVDIS_LD2_moved_full |
-| `solid_JPsi.xml` | J/psi, 15 cm LH2 (z = -315 cm) | v4c / CLEOv9 | solid_JPsi_LH2_moved_full |
-| `solid_DDVCS.xml` | J/psi + DDVCS forward muon detector | v4c / CLEOv9 | solid_JPsi_DDVCS_LH2_moved_full |
-| `solid_JPsi_lite.xml` | **SoLID-Lite** J/psi (stage 1) | CLEO-II iron as built / CLEOv10 | solid_JPsi_LH2_lite_full |
-| `solid_DDVCS_lite.xml` | **SoLID-Lite** DDVCS | CLEO-II iron as built / CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full |
-| `solid_beamtest.xml` | beam-test placeholder (telescope Cherenkov) | none | – |
+| compact file | experiment | magnet / field | GEMC reference | overview |
+|---|---|---|---|---|
+| `solid.xml` = `solid_SIDIS_He3.xml` | SIDIS, polarized 3He (40 cm, z = -350 cm) | CLEO-II, longer endcap (v4c) / CLEOv9 | solid_SIDIS_He3_moved_full | [drawing](docs/images/overview_solid_SIDIS_He3.svg) |
+| `solid_SIDIS_NH3.xml` | SIDIS, polarized NH3 (+ 5 T target field) | v4c / CLEOv9 | solid_SIDIS_NH3_moved_full | [drawing](docs/images/overview_solid_SIDIS_NH3.svg) |
+| `solid_PVDIS.xml` | PVDIS, 40 cm LD2 (z = +10 cm), baffles | v4c / CLEOv9 | solid_PVDIS_LD2_moved_full | [drawing](docs/images/overview_solid_PVDIS.svg) |
+| `solid_JPsi.xml` | J/psi, 15 cm LH2 (z = -315 cm) | v4c / CLEOv9 | solid_JPsi_LH2_moved_full | [drawing](docs/images/overview_solid_JPsi.svg) |
+| `solid_DDVCS.xml` | J/psi + DDVCS forward muon detector | v4c / CLEOv9 | solid_JPsi_DDVCS_LH2_moved_full | [drawing](docs/images/overview_solid_DDVCS.svg) |
+| `solid_JPsi_lite.xml` | **SoLID-Lite** J/psi (stage 1) | CLEO-II iron as built / CLEOv10 | solid_JPsi_LH2_lite_full | above ([svg](docs/images/overview_solid_JPsi_lite.svg)) |
+| `solid_DDVCS_lite.xml` | **SoLID-Lite** DDVCS | CLEO-II iron as built / CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full | [drawing](docs/images/overview_solid_DDVCS_lite.svg) |
+| `solid_beamtest.xml` | beam-test placeholder (telescope Cherenkov) | none | – | – |
 
 Subsystems: CLEO-II solenoid (yoke, coil, cryostat), targets and beamlines, PVDIS baffles, GEM trackers, light-gas and
 heavy-gas Cherenkovs (plus the SoLID-Lite CO2 Cherenkov), shashlik ECal (forward and large angle, with preshower),
@@ -55,6 +60,7 @@ python3 scripts/geometry/compare_gemc.py $DETECTOR_CONFIG --gemc /path/to/solid_
 
 # line drawings (SVG/PDF/PNG)
 make_solid_views -o views
+make_solid_views -o views --views overview             # the labelled overview shown above
 ```
 
 `steering/solid_sim.py` turns on optical photons for the gas Cherenkovs (`SOLID_OPTICAL=0` switches them off) and
