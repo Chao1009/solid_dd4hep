@@ -1,0 +1,27 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  J/psi, DDVCS and SoLID-lite target: 15 cm liquid-hydrogen cell (DetElement "Target", plugin SoLID_CryoTarget).
+  Requires from the top level: TargetCenter_z (-315 cm; preCDR p61: 35 cm downstream of the SIDIS target center).
+  GEMC target/solid_JPsi_target_LH2 (Original): LH2 r 1.8872 cm (dia 3.774 cm) x 15 cm, Al side wall 178 um (7 mil),
+  Al end windows 102 um (4 mil), in an air envelope r 2 cm (no scattering chamber in GEMC; the beamline Be windows
+  are 5 cm upstream and downstream of the cell).
+-->
+<lccdd>
+  <includes>
+    <gdmlFile ref="${DETECTOR_PATH}/compact/target/target_isotopes.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/target/target_materials.xml"/>
+  </includes>
+
+  <display>
+    <vis name="Target_CellVis"   ref="lightgray" alpha="0.6" visible="true" showDaughters="true"/>
+    <vis name="Target_LiquidVis" ref="lightblue" alpha="0.4" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="Target_ID" name="Target" type="SoLID_CryoTarget">
+      <position x="0*cm" y="0*cm" z="TargetCenter_z"/>
+      <cell radius="1.8872*cm" length="15*cm" wall="0.0178*cm" window="0.0102*cm" material="Aluminum" fill="Target_LH2"/>
+      <envelope rmax="2.0*cm" halfz="7.5102*cm" material="Air"/>
+    </detector>
+  </detectors>
+</lccdd>

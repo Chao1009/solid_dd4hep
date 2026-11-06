@@ -1,0 +1,53 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SIDIS polarized-NH3 beamline (GEMC geometry/beamline_moved/solid_SIDIS_beamline_NH3, 2023-11-17 + 2026-10-25).
+  Requires from the top level: TargetCenter_z (-350 cm).
+  * no entrance pipe: the beam reaches the scattering-chamber entrance window from air (GEMC; the 5 T transverse
+    target field deflects the incoming beam - the upstream chicane is not defined, see the target fragment)
+  * exit pipe: Al polycone r_out 1.05 -> 19 cm (z -300 -> 190 cm), 19 cm to z = 550 cm, wall 0.5 mm;
+    it starts 50 cm downstream of the target, sized for the SM2023 chamber (outer radius 47.94 cm, 2.06 cm gap);
+    Be window 0.4 mm at z = -300 cm, kill disk z 549.9..550 cm (GEMC Kryptonite B3DM)
+-->
+<lccdd>
+  <define>
+    <constant name="Beamline_ExitPipe_z0"        value="TargetCenter_z + 50*cm"/>    <!-- -300 cm -->
+    <constant name="Beamline_ExitPipe_z1"        value="190*cm"/>
+    <constant name="Beamline_ExitPipe_z2"        value="550*cm"/>
+    <constant name="Beamline_ExitPipe_rout0"     value="1.05*cm"/>
+    <constant name="Beamline_ExitPipe_rout1"     value="19*cm"/>
+    <constant name="Beamline_ExitPipe_wall"      value="0.05*cm"/>
+    <constant name="Beamline_ExitWindow_t"       value="0.04*cm"/>
+    <constant name="Beamline_Kill_t"             value="0.1*cm"/>
+  </define>
+
+  <display>
+    <vis name="Beamline_PipeVis"   ref="silver"     alpha="0.5" showDaughters="true" visible="true"/>
+    <vis name="Beamline_WindowVis" ref="lightcoral" alpha="0.8" visible="true"/>
+    <vis name="Beamline_KillVis"   ref="black"      alpha="0.5" visible="true"/>
+  </display>
+
+  <!-- Kill disk = replacement of the GEMC "Kryptonite" disk (gemc 2.9 MSteppingAction kills every track whose
+       material is Kryptonite). A zero maximum track length makes G4UserSpecialCuts (registered for all particles
+       by G4StepLimiterPhysics, which ddsim always adds) stop every track that takes a step in the disk.
+       Its remaining kinetic energy is deposited locally (G4UserSpecialCuts uses fStopButAlive, so a stopped e+
+       may still annihilate at rest; GEMC uses fStopAndKill). -->
+  <limits>
+    <limitset name="Beamline_KillLimits">
+      <limit name="track_length_max" particles="*" value="0.0" unit="mm"/>
+    </limitset>
+  </limits>
+
+  <detectors>
+    <detector id="Beamline_ID" name="Beamline" type="SoLID_Beamline">
+      <pipe name="ExitPipe" material="Aluminum" fill="Vacuum">
+        <zplane z="Beamline_ExitPipe_z0" rout="Beamline_ExitPipe_rout0" rvac="Beamline_ExitPipe_rout0 - Beamline_ExitPipe_wall"/>
+        <zplane z="Beamline_ExitPipe_z1" rout="Beamline_ExitPipe_rout1" rvac="Beamline_ExitPipe_rout1 - Beamline_ExitPipe_wall"/>
+        <zplane z="Beamline_ExitPipe_z2" rout="Beamline_ExitPipe_rout1" rvac="Beamline_ExitPipe_rout1 - Beamline_ExitPipe_wall"/>
+        <window name="ExitWindow" material="Beryllium"
+                zmin="Beamline_ExitPipe_z0" zmax="Beamline_ExitPipe_z0 + Beamline_ExitWindow_t"/>
+        <kill name="KillDisk" zmin="Beamline_ExitPipe_z2 - Beamline_Kill_t" zmax="Beamline_ExitPipe_z2"
+              limits="Beamline_KillLimits"/>
+      </pipe>
+    </detector>
+  </detectors>
+</lccdd>

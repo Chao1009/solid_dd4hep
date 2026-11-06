@@ -1,0 +1,32 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  OPTIONAL: field of the polarized-NH3 target magnet (5 T, transverse = along hall +x), added ON TOP of the solenoid
+  field (DD4hep sums all <field> overlays). Include it in solid_SIDIS_NH3.xml after the solenoid field.
+  Requires from the top level: TargetCenter_z (-350 cm).
+  Map: GEMC field/oxford_ptarget.dat (Oxford 2012 design study, C. Gu, oxford_field.f): 2D map, r 0..199 cm x
+  longitudinal -200..200 cm, 1 cm grid, gauss, columns "r x Br Bx", header symmetry cylindrical-x (map axis = hall x).
+  B(0,0) = +49996 G along +x; maximum 8.62 T near the coils. GEMC solid_SIDIS_NH3_moved_full uses it with
+  DISPLACE_FIELDMAP 0,0,-350 cm (gemc ignores the header <shift>), restricted to a 130 cm air box around the target
+  where it REPLACES the solenoid field; here it is a global overlay (the CLEO fringe field at the target, ~27 G, is
+  negligible against 5 T; the map ends at |x| = 200 cm, r = 199 cm).
+  Caveats: (1) this is the Oxford design map; the installed Scientific-Magnetics magnet (SM2023 geometry, default of
+  target_NH3.xml) has no public map yet (GEMC runs SM2023 without target field); (2) the 5 T field deflects the
+  incoming and outgoing beam (no chicane is modelled); (3) needs the SoLID_FieldMapB with header/symmetry support
+  (map axis from the "cylindrical-x" header, translationCoord = map origin) - the original FieldMapB rotated only
+  the B vector and cannot place an x-axis map.
+  The map is looked up in ./fieldmaps, then in ${DETECTOR_PATH}/fieldmaps, else downloaded there once from the
+  solid_gemc repository (pinned commit 6826f84). Offline: copy field/oxford_ptarget.dat into ${DETECTOR_PATH}/fieldmaps/.
+-->
+<lccdd>
+  <fields>
+    <field type="SoLID_FieldMapB" name="NH3TargetField" field_type="magnetic" coord_type="BrBz"
+           field_map="fieldmaps/oxford_ptarget.dat"
+           cache="${DETECTOR_PATH}/fieldmaps"
+           url="https://raw.githubusercontent.com/JeffersonLab/solid_gemc/6826f84fc9a9d561c82c655d970fe00e584399dd/field/oxford_ptarget.dat"
+           scale="1.0">
+      <dimensions>
+        <translationCoord x="0*cm" y="0*cm" z="TargetCenter_z"/>
+      </dimensions>
+    </field>
+  </fields>
+</lccdd>

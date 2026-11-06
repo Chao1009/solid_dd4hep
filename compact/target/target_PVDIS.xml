@@ -1,0 +1,53 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  PVDIS cryotarget: 40 cm LD2 (LH2 option) cell inside a vacuum enclosure (DetElement "Target", plugin SoLID_CryoTarget).
+  GEMC target/solid_PVDIS_target_enclosure (variations LD2, LH2) as loaded by solid_PVDIS_LD2_moved_full.
+  * cell: r 2.5 cm x 40 cm, Al side wall 0.4 mm, Al windows 120 um (preCDR p74-75: 40 cm, 120 um), center z +10 cm
+  * enclosure (placeholder for the real two-section IVC, preCDR p75): Al r 45 cm, z -27..+47 cm, radial wall 0.5 mm,
+    end walls 0.2 mm, vacuum inside; beam openings r 30 cm upstream (onto the r = 30 cm entrance "pipe") and r 5 cm
+    downstream (onto the exit pipe) - see compact/beamline/beamline_PVDIS.xml
+  * cavity for baffle plate 1: GEMC places plate 1 inside the enclosure vacuum; here a slot
+    Tube(BafflePlate1_rinin, BafflePlate1_routout) with half length BafflePlate_halfz + 20 um around BafflePlate1_z is
+    cut from the enclosure wall AND vacuum, and the baffle (compact/baffle/baffle_PVDIS.xml) places its own vacuum slot
+    with plate 1 there. Hall z 35.498..44.502 cm, r 3.89..44.3 cm with the GEMC numbers.
+    DEPENDENCY: the constants BafflePlate1_z, BafflePlate_halfz, BafflePlate1_rinin and BafflePlate1_routout are
+    defined in compact/baffle/baffle_PVDIS.xml, which MUST be included BEFORE this file (DD4hep builds a detector
+    when its fragment is read). Without the baffle, remove/comment the <cavity> element.
+  Requires from the top level: TargetCenter_z (+10 cm). Optional top-level constant (not defined here):
+    Target_PVDIS_Fill = 1 LD2 (default if undefined, 0.169 g/cm3), 2 LH2 (0.0708 g/cm3)
+-->
+<lccdd>
+  <define>
+    <constant name="Target_Enclosure_halfz"       value="37*cm"/>   <!-- also used by beamline_PVDIS.xml (as 37 cm) -->
+    <constant name="Target_Enclosure_rmax"        value="45*cm"/>
+    <constant name="Target_BaffleCavity_clearance" value="0.002*cm"/> <!-- room for the 20 um baffle observer planes -->
+  </define>
+
+  <includes>
+    <gdmlFile ref="${DETECTOR_PATH}/compact/target/target_isotopes.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/target/target_materials.xml"/>
+  </includes>
+
+  <display>
+    <vis name="Target_CellVis"      ref="lightgray" alpha="0.6" visible="true" showDaughters="true"/>
+    <vis name="Target_LiquidVis"    ref="lightblue" alpha="0.4" visible="true"/>
+    <vis name="Target_EnclosureVis" ref="silver"    alpha="0.2" visible="true" showDaughters="true"/>
+  </display>
+
+  <detectors>
+    <detector id="Target_ID" name="Target" type="SoLID_CryoTarget">
+      <position x="0*cm" y="0*cm" z="TargetCenter_z"/>
+      <cell radius="2.5*cm" length="40*cm" wall="0.04*cm" window="0.012*cm" material="Aluminum" fill_select="Target_PVDIS_Fill">
+        <fill id="1" material="Target_LD2"/>
+        <fill id="2" material="Target_LH2"/>
+      </cell>
+      <enclosure rmax="Target_Enclosure_rmax" halfz="Target_Enclosure_halfz" wall="0.05*cm" endwall="0.02*cm"
+                 material="Aluminum" fill="Vacuum" dz="0*cm">
+        <opening side="upstream"   r="30*cm"/>
+        <opening side="downstream" r="5*cm"/>
+        <cavity rmin="BafflePlate1_rinin" rmax="BafflePlate1_routout"
+                halfz="BafflePlate_halfz + Target_BaffleCavity_clearance" z="BafflePlate1_z - TargetCenter_z"/>
+      </enclosure>
+    </detector>
+  </detectors>
+</lccdd>

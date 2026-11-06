@@ -1,0 +1,25 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- TEST: baffle + PVDIS target enclosure with plate-1 cavity + PVDIS pipes, observers on -->
+<lccdd>
+  <info name="test_baffle_enclosure" title="baffle + PVDIS target enclosure with plate-1 cavity + PVDIS pipes, observers on" author="SoLID" url="https://github.com/JeffersonLab/solid_dd4hep"
+        status="development" version="v0.3 2026-11"><comment>baffle + PVDIS target enclosure with plate-1 cavity + PVDIS pipes, observers on</comment></info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="3"/>
+    <constant name="TargetCenter_z" value="10*cm"/>
+    <constant name="Baffle_Observers_Enable" value="1"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+  </includes>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/baffle/baffle_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/target/target_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/beamline/beamline_PVDIS.xml"/>
+</lccdd>

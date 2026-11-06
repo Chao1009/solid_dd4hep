@@ -1,0 +1,75 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SIDIS polarized 3He target (DetElement "Target", plugin SoLID_PolHe3Target).
+  Requires from the top level: TargetCenter_z (-350 cm). All z below are relative to the cell center.
+  GEMC: target/solid_SIDIS_target_He3 (cell, 2022-03), _collimator (2022-08), _coil (2018), as loaded by
+  script/solid_SIDIS_He3_moved_full.gcard.
+  * cell: 40 cm GE180 glass, r_in 0.9 cm, wall 1.0 mm, end windows 120 um, 3He at 10 amg, vacuum envelope r 1.01 cm
+    (preCDR p71: 40 cm, ~10 amg; WP p7)
+  * N2 cooling gas (r 50 cm): upstream/downstream slabs between the cell windows and the beamline windows
+    (z -24.98..-20.02 and 20.02..24.98 cm) and a sleeve r 1.1-50 cm along the cell (+-20 cm)
+  * collimators, selected by the OPTIONAL top-level constant Target_He3_Collimators (not defined here; undefined -> 1):
+      1 = 2022 design (default; tungsten powder 11.25 g/cm3): upstream cone z -10..0 cm (in the N2 sleeve),
+          r_in 1.23 -> 2.46, r_out 6.35 -> 10.6 cm (7 to 23 deg); downstream polycone z 30..50 cm,
+          r_in 1.23/1.71/2.85, r_out 2.70/5.40/5.40 cm (7 deg from the cell window, 6.5 deg from the beamline
+          window = magnet nose opening, outer 15 deg)
+      2 = 2018 (pre-2022 GEMC): two cones r 1.3-2.7 -> 2.6-5.4 cm at z -10..0 and 30..40 cm
+      0 = none
+  * holding-field Helmholtz coils: 2 copper pairs, 6.6 x 6.6 cm section, rings at +-R/2: longitudinal (axis z)
+    R 75.8 cm, transverse (axis x) R 66.7 cm. The third (vertical) pair of the real target (preCDR p71: "three sets")
+    is not in GEMC; a placeholder is listed with enable="0" (dimensions to be confirmed).
+  Not modeled (as in GEMC): pumping chamber, transfer tube, oven, ladder, reference cell, optics targets.
+-->
+<lccdd>
+  <includes>
+    <gdmlFile ref="${DETECTOR_PATH}/compact/target/target_isotopes.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/target/target_materials.xml"/>
+  </includes>
+
+  <display>
+    <vis name="Target_GlassVis"      ref="lightskyblue" alpha="0.6" visible="true"/>
+    <vis name="Target_GasVis"        ref="lightyellow"  alpha="0.2" visible="false"/>
+    <vis name="Target_CoolGasVis"    ref="honeydew"     alpha="0.1" visible="false" showDaughters="true"/>
+    <vis name="Target_CollimatorVis" ref="dimgray"      alpha="0.8" visible="true"/>
+    <vis name="Target_CoilVis"       ref="chocolate"    alpha="0.8" visible="true"/>
+  </display>
+
+  <detectors>
+    <detector id="Target_ID" name="Target" type="SoLID_PolHe3Target">
+      <position x="0*cm" y="0*cm" z="TargetCenter_z"/>
+      <cell length="40*cm" rin="0.9*cm" wall="0.1*cm" window="0.012*cm" material="Target_GE180" gas="Target_He3_10amg"
+            envelope_r="1.01*cm" envelope_material="Vacuum"/>
+      <coolgas enable="1" material="Target_N2Gas" rmax="50*cm">
+        <slab name="upstream"   rmin="0*cm"   zmin="-24.98*cm" zmax="-20.02*cm"/>
+        <slab name="around"     rmin="1.1*cm" zmin="-20*cm"    zmax="20*cm"/>
+        <slab name="downstream" rmin="0*cm"   zmin="20.02*cm"  zmax="24.98*cm"/>
+      </coolgas>
+      <collimators select="Target_He3_Collimators">   <!-- 1 = 2022 (default if undefined), 2 = 2018, 0 = none -->
+        <set id="1" name="2022">
+          <collimator name="Upstream" material="Target_TungstenPowder" mother="around">
+            <zplane z="-10*cm" rmin="1.23*cm" rmax="6.35*cm"/>
+            <zplane z="0*cm"   rmin="2.46*cm" rmax="10.6*cm"/>
+          </collimator>
+          <collimator name="Downstream" material="Target_TungstenPowder">
+            <zplane z="30*cm" rmin="1.23*cm" rmax="2.70*cm"/>
+            <zplane z="40*cm" rmin="1.71*cm" rmax="5.40*cm"/>
+            <zplane z="50*cm" rmin="2.85*cm" rmax="5.40*cm"/>
+          </collimator>
+        </set>
+        <set id="2" name="2018">
+          <collimator name="Upstream" material="Target_TungstenPowder" mother="around">
+            <zplane z="-10*cm" rmin="1.3*cm" rmax="2.7*cm"/>
+            <zplane z="0*cm"   rmin="2.6*cm" rmax="5.4*cm"/>
+          </collimator>
+          <collimator name="Downstream" material="Target_TungstenPowder">
+            <zplane z="30*cm" rmin="1.3*cm" rmax="2.7*cm"/>
+            <zplane z="40*cm" rmin="2.6*cm" rmax="5.4*cm"/>
+          </collimator>
+        </set>
+      </collimators>
+      <coil_pair name="Longitudinal" axis="z" R="75.8*cm" width="6.6*cm" material="Copper"/>
+      <coil_pair name="Transverse"   axis="x" R="66.7*cm" width="6.6*cm" material="Copper"/>
+      <coil_pair name="Vertical"     axis="y" R="57.6*cm" width="6.6*cm" material="Copper" enable="0"/>  <!-- placeholder, not in GEMC -->
+    </detector>
+  </detectors>
+</lccdd>

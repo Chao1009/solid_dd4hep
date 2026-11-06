@@ -1,0 +1,46 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- test top level (target_beamline implementation agent): only the target + beamline fragments of one configuration -->
+<lccdd>
+  <info name="test_target_beamline_PVDIS_LH2" title="target+beamline test PVDIS_LH2" author="SoLID" url="" status="test" version="0">
+    <comment>test only</comment>
+  </info>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="TargetCenter_z" value="10*cm"/>
+    <!-- FALLBACK copies of the baffle constants (normally defined by compact/baffle/baffle_PVDIS.xml, spec 4.7) -->
+    <constant name="BafflePlate1_z"       value="40*cm"/>
+    <constant name="BafflePlate_halfz"    value="4.5*cm"/>
+    <constant name="BafflePlate1_rinin"   value="3.89*cm"/>
+    <constant name="BafflePlate1_routout" value="44.3*cm"/>
+    <constant name="Target_PVDIS_Fill" value="2"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+  </includes>
+  <limits>
+    <limitset name="world_limits"/>
+  </limits>
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001">
+      <limitsetref name="world_limits"/>
+    </region>
+  </regions>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/target/target_PVDIS.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/beamline/beamline_PVDIS.xml"/>
+  <!-- stand-in for the baffle plate-1 vacuum slot (spec 4.6.3 c): exactly the cavity shape, placed in the world -->
+  <detectors>
+    <detector id="Baffle_ID" name="Plate1SlotStandIn" type="DD4hep_TubeSegment" vis="InvisibleNoDaughters">
+      <material name="Vacuum"/>
+      <tubs rmin="BafflePlate1_rinin" rmax="BafflePlate1_routout" zhalf="BafflePlate_halfz + 0.002*cm"/>
+      <position x="0" y="0" z="BafflePlate1_z"/>
+      <rotation x="0" y="0" z="0"/>
+    </detector>
+  </detectors>
+</lccdd>

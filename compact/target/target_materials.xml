@@ -1,0 +1,73 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  Target materials (prefix "Target_"), loaded by every compact/target/target_*.xml fragment through
+    <includes>
+      <gdmlFile ref="${DETECTOR_PATH}/compact/target/target_isotopes.xml"/>   (must come first: He3, D isotopes)
+      <file     ref="${DETECTOR_PATH}/compact/target/target_materials.xml"/>
+    </includes>
+  (materials pulled in with a plain <include> of an lccdd fragment were not yet defined when the
+  fragment's detector was built - DD4hep 1.38 test).
+  DD4hep silently ignores a second definition of the same material, so including this file from
+  several fragments is harmless. Numbers follow the GEMC material definitions (see the source column
+  in the comments) unless stated otherwise.
+-->
+<materials>
+  <!-- polarized 3He at 10 amg (1 amg = 2.6868e19 /cm3 -> 1.345e-3 g/cm3); GEMC SL_target_He3_He3_10amg -->
+  <material name="Target_He3_10amg" state="gas">
+    <D type="density" value="0.001345" unit="g/cm3"/>
+    <T type="temperature" value="294" unit="kelvin"/>
+    <fraction n="1.0" ref="Target_Helium3"/>
+  </material>
+  <!-- GE180 aluminosilicate glass, 2.76 g/cm3: SiO2 60.8, BaO 18.2, Al2O3 14.3, CaO 6.5, SrO 0.2 (mass %),
+       converted to elemental mass fractions; GEMC SL_target_He3_Glass_GE180 -->
+  <material name="Target_GE180">
+    <D type="density" value="2.76" unit="g/cm3"/>
+    <fraction n="0.42896" ref="O"/>
+    <fraction n="0.28420" ref="Si"/>
+    <fraction n="0.16301" ref="Ba"/>
+    <fraction n="0.07568" ref="Al"/>
+    <fraction n="0.04646" ref="Ca"/>
+    <fraction n="0.00169" ref="Sr"/>
+  </material>
+  <!-- N2 cooling gas around the 3He cell (GEMC G4_N, NTP) -->
+  <material name="Target_N2Gas" state="gas">
+    <D type="density" value="0.0011652" unit="g/cm3"/>
+    <fraction n="1.0" ref="N"/>
+  </material>
+  <!-- tungsten powder, 58 % of bulk density (GEMC SL_target_He3_TungstenPowder: G4_W at 11.25 g/cm3, X0 = 0.60 cm).
+       Not the ePIC "TungstenPowder" of materials.xml (W/Ni/Fe). -->
+  <material name="Target_TungstenPowder">
+    <D type="density" value="11.25" unit="g/cm3"/>
+    <fraction n="1.0" ref="W"/>
+  </material>
+  <!-- liquid 4He at ~1 K (GEMC SL_target_NH3_He4_liquid) -->
+  <material name="Target_LHe4" state="liquid">
+    <D type="density" value="0.145" unit="g/cm3"/>
+    <T type="temperature" value="1" unit="kelvin"/>
+    <fraction n="1.0" ref="He"/>
+  </material>
+  <!-- solid ammonia (GEMC SL_target_NH3_NH3_solid; 0.817-0.917 in the literature, to be confirmed) -->
+  <material name="Target_NH3_solid">
+    <D type="density" value="0.819" unit="g/cm3"/>
+    <composite n="1" ref="N"/>
+    <composite n="3" ref="H"/>
+  </material>
+  <!-- NH3 beads in LHe, packing fraction 0.55 (GEMC SL_target_NH3_NH3He4): mass fractions NH3 0.8735, He 0.1265 -->
+  <material name="Target_NH3_LHe">
+    <D type="density" value="0.5157" unit="g/cm3"/>
+    <fraction n="0.8735" ref="Target_NH3_solid"/>
+    <fraction n="0.1265" ref="Target_LHe4"/>
+  </material>
+  <!-- liquid hydrogen (NIST G4_lH2) -->
+  <material name="Target_LH2" state="liquid">
+    <D type="density" value="0.0708" unit="g/cm3"/>
+    <T type="temperature" value="20" unit="kelvin"/>
+    <composite n="2" ref="H"/>
+  </material>
+  <!-- liquid deuterium (gemc built-in "LD2", 0.169 g/cm3; the real density at 22 K is ~0.167) -->
+  <material name="Target_LD2" state="liquid">
+    <D type="density" value="0.169" unit="g/cm3"/>
+    <T type="temperature" value="22" unit="kelvin"/>
+    <composite n="2" ref="Target_Deuterium"/>
+  </material>
+</materials>
