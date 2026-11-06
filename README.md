@@ -11,10 +11,16 @@ It covers full SoLID and the staged SoLID-Lite configurations, follows the
 - Line-view drawings (DAWN replacement): [docs/visualization.md](docs/visualization.md)
 - Reconstruction framework and container environment: [docs/reconstruction.md](docs/reconstruction.md)
 
-<img src="docs/images/overview_solid_JPsi_lite.svg" width="100%" alt="SoLID-Lite J/psi detector overview: labelled cutaway drawing of the DD4hep geometry">
+## Detector overview
 
-*SoLID-Lite J/ψ (`solid_JPsi_lite.xml`), drawn from the DD4hep geometry with `make_solid_views --views overview`.
-The overviews of the other configurations are linked in the table below.*
+<img src="docs/images/overview_solid_SIDIS_He3.svg" width="100%" alt="SoLID SIDIS with the polarized 3He target: labelled cutaway drawing of the DD4hep geometry">
+
+<img src="docs/images/overview_solid_PVDIS.svg" width="100%" alt="SoLID PVDIS with the LD2 target and baffles: labelled cutaway drawing of the DD4hep geometry">
+
+<img src="docs/images/overview_solid_JPsi_lite.svg" width="100%" alt="SoLID-Lite J/psi: labelled cutaway drawing of the DD4hep geometry">
+
+*Full SoLID in its SIDIS (polarized ³He) and PVDIS (LD₂, baffles) setups, and SoLID-Lite J/ψ, drawn from the DD4hep
+geometry with `make_solid_views --views overview`. The other configurations are linked in the table below.*
 
 ## Configurations
 
@@ -25,7 +31,7 @@ The overviews of the other configurations are linked in the table below.*
 | `solid_PVDIS.xml` | PVDIS, 40 cm LD2 (z = +10 cm), baffles | v4c / CLEOv9 | solid_PVDIS_LD2_moved_full | [drawing](docs/images/overview_solid_PVDIS.svg) |
 | `solid_JPsi.xml` | J/psi, 15 cm LH2 (z = -315 cm) | v4c / CLEOv9 | solid_JPsi_LH2_moved_full | [drawing](docs/images/overview_solid_JPsi.svg) |
 | `solid_DDVCS.xml` | J/psi + DDVCS forward muon detector | v4c / CLEOv9 | solid_JPsi_DDVCS_LH2_moved_full | [drawing](docs/images/overview_solid_DDVCS.svg) |
-| `solid_JPsi_lite.xml` | **SoLID-Lite** J/psi (stage 1) | CLEO-II iron as built / CLEOv10 | solid_JPsi_LH2_lite_full | above ([svg](docs/images/overview_solid_JPsi_lite.svg)) |
+| `solid_JPsi_lite.xml` | **SoLID-Lite** J/psi (stage 1) | CLEO-II iron as built / CLEOv10 | solid_JPsi_LH2_lite_full | [drawing](docs/images/overview_solid_JPsi_lite.svg) |
 | `solid_DDVCS_lite.xml` | **SoLID-Lite** DDVCS | CLEO-II iron as built / CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full | [drawing](docs/images/overview_solid_DDVCS_lite.svg) |
 | `solid_beamtest.xml` | beam-test placeholder (telescope Cherenkov) | none | – | – |
 
@@ -60,7 +66,7 @@ python3 scripts/geometry/compare_gemc.py $DETECTOR_CONFIG --gemc /path/to/solid_
 
 # line drawings (SVG/PDF/PNG)
 make_solid_views -o views
-make_solid_views -o views --views overview             # the labelled overview shown above
+make_solid_views -o views --views overview             # the labelled overviews shown above
 ```
 
 `steering/solid_sim.py` turns on optical photons for the gas Cherenkovs (`SOLID_OPTICAL=0` switches them off) and
