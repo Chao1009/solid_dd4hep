@@ -1,0 +1,18 @@
+spack:
+  include:
+  - /opt/spack-environment/concretizer.yaml
+  - /opt/spack-environment/config.yaml
+  - /opt/spack-environment/packages.yaml
+  - /opt/spack-environment/packages_root_with_opengl.yaml
+  specs:
+  - gaudi
+  - k4fwcore
+  concretizer:
+    unify: true
+    reuse:
+      roots: true
+      from:
+      - type: local
+  view: false
+# Gaudi + k4FWCore on top of eic_xl (used by containers/Dockerfile with WITH_GAUDI=1).
+# Concretized on eic_xl:26.10.0-stable to gaudi@39.4 +aida cxxstd=20 and k4fwcore@1.5 (12 new packages).

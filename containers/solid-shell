@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# solid-shell: open a shell (or run a command) in the EIC/SoLID container with the SoLID geometry environment.
+#
+#   containers/solid-shell [-i IMAGE] [-p PREFIX] [-c CONFIG] [-b PATH]... [-- command ...]
+#
+#   -i IMAGE   container image: a .sif file, a /cvmfs/singularity.opensciencegrid.org/... directory, or docker://...
+#              default: $SOLID_SHELL_IMAGE, else the image saved by containers/install.sh (solid-shell.local),
+#              else the newest containers/images/*.sif, else /cvmfs/.../eicweb/eic_xl:26.10.0-stable
+#   -p PREFIX  solid_dd4hep install prefix (holds bin/thissolid.sh); default $SOLID_PREFIX or <repo>/install;
+#              ignored when the image already provides /opt/solid (solid_xl)
+#   -c CONFIG  geometry configuration, e.g. solid_JPsi_lite (default: solid = SIDIS 3He)
+#   -b PATH    extra bind path (repeatable); /home, /tmp and $PWD are bound by apptainer by default
+#
+# examples:
+#   containers/solid-shell                                 # interactive shell
+#   containers/solid-shell -c solid_PVDIS -- checkOverlaps -c '$DETECTOR_PATH/$DETECTOR_CONFIG.xml'
+#   containers/solid-shell -- 'cmake -B build -S . -DCMAKE_INSTALL_PREFIX=install && cmake --build build -j4 --target install'
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo="$(cd "${here}/.." && pwd)"
+image="${SOLID_SHELL_IMAGE:-}"
+prefix="${SOLID_PREFIX:-${repo}/install}"
+config="solid"
+binds=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -i|--image)  image="$2"; shift 2 ;;
+    -p|--prefix) prefix="$2"; shift 2 ;;
+    -c|--config) config="$2"; shift 2 ;;
+    -b|--bind)   binds+=("--bind" "$2"); shift 2 ;;
+    -h|--help)   sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --)          shift; break ;;
+    *)           break ;;
+  esac
+done
+
+runner="$(command -v apptainer || command -v singularity || true)"
+if [[ -z "${runner}" ]]; then
+  echo "solid-shell: apptainer/singularity not found (with Docker, e.g. on macOS: see containers/README.md)" >&2
+  exit 1
+fi
+
+if [[ -z "${image}" && -f "${here}/solid-shell.local" ]]; then
+  image="$(. "${here}/solid-shell.local"; echo "${SOLID_SHELL_IMAGE:-}")"
+fi
+if [[ -z "${image}" ]]; then
+  image="$(ls -t "${here}"/images/*.sif 2>/dev/null | head -1 || true)"
+fi
+image="${image:-/cvmfs/singularity.opensciencegrid.org/eicweb/eic_xl:26.10.0-stable}"
+
+# common JLab mounts, when present
+for p in /work /group /volatile /cache /scratch /cvmfs; do
+  [[ -d "${p}" ]] && binds+=("--bind" "${p}")
+done
+
+rc="$(mktemp "${TMPDIR:-/tmp}/solid-shell-rc.XXXXXX")"
+trap 'rm -f "${rc}"' EXIT
+cat > "${rc}" <<RC
+[ -f /etc/profile ] && . /etc/profile
+if [ -f /opt/solid/bin/thissolid.sh ]; then
+  . /opt/solid/bin/thissolid.sh ${config}
+elif [ -f "${prefix}/bin/thissolid.sh" ]; then
+  . "${prefix}/bin/thissolid.sh" ${config}
+else
+  case \$- in *i*) echo "solid-shell: no ${prefix}/bin/thissolid.sh yet (run containers/install.sh --build)" >&2 ;; esac
+fi
+# the images set PROMPT_COMMAND to reset PS1 before the first prompt
+unset PROMPT_COMMAND
+export PS1="solid(\${DETECTOR_CONFIG:-no geometry})> "
+RC
+
+if [[ $# -eq 0 ]]; then
+  exec "${runner}" exec ${binds[@]+"${binds[@]}"} "${image}" bash --rcfile "${rc}" -i
+else
+  # keep the rc file until the command finishes (no exec, so the trap runs)
+  "${runner}" exec ${binds[@]+"${binds[@]}"} "${image}" bash -c ". '${rc}' && $*"
+fi
