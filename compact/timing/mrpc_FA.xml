@@ -1,0 +1,192 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  Forward-angle MRPC (FAMRPC), between the FASPD and the FAEC.
+  Used by full SoLID (SIDIS He3/NH3, J/psi, DDVCS) and SoLID-Lite (J/psi-lite, DDVCS-lite: the lite talks drop the
+  MRPC - "No MRPC, need SPD as TOF" - but the GEMC lite gcards still load mrpc_moved, so it stays in lite_common;
+  remove the include from compact/configs/lite_common.xml to switch it off).
+
+  Reference: GEMC mrpc_moved/solid_SIDIS_mrpc_forwardangle (2019-03-16): Vacuum mother Tube(93, 216, 1.415) cm at
+  z = 435 cm (433.585 ... 436.415), 35 coaxial layers, 2 x 5 gas gaps of 0.25 mm, total 28.3 mm.
+  This implementation:
+    * stack variant 0 (default) = preCDR Fig. 110 (p136, PDF142) Tsinghua prototype: per stack outer glass 1.1 mm,
+      5 gas gaps 0.25 mm separated by 4 inner glass plates 0.7 mm; Mylar 0.15, PCB 0.8 (outer) / 1.6 (central),
+      honeycomb 6 mm; total 28.3 mm, same z and radii as GEMC. GEMC's 0.4 mm graphite "electrode" + 0.7 mm glass
+      reproduces the 1.1 mm outer glass; the real electrode (graphite paint) is negligible and omitted.
+    * stack variant 1 = the GEMC 35-layer list, for validation (FAMRPC_StackVariant = 1).
+    * the white-paper thin-gap design (4 stacks x 8 gaps x 104 um, WP p28) is NOT implemented: glass/PCB
+      thicknesses are not documented (open question).
+    * gas: 90 % R134a + 5 % iC4H10 + 5 % SF6 by volume (preCDR 11.3). GEMC's SL_mrpc_Gas has the SF6 and isobutane
+      mass fractions swapped and SF6 at 10 mg/cm3; corrected here (see FAMRPC_Gas).
+    * sensitive: the gas gaps only (GEMC also flags the glass); strips = PolarGridRPhi readout, 2.8 cm (25 mm strip +
+      3 mm gap, preCDR 11.2) x 7.2 deg (50 super-modules), edges at r = 93 cm and phi = 0.
+  Optional azimuthal mask (SoLID-Lite FA segments): FAMRPC_UsePhiMask = 1 builds only FAMRPC_PhiMask_N phi segments
+  of width FAMRPC_PhiMask_Width (default 4 x 24 deg centred at 42/138/222/318 deg = GEMC hgc_moved_ext 4seg2sec).
+
+  Any constant below can be overridden by defining it in the top-level <define> before the include (the plugin
+  resolves its attributes with first-definition-wins semantics).
+  Requires from the top level: nothing (hall-frame z).
+  Readout FAMRPCHits: system:8, module:4 (1, or the mask window), stack:2 (1 upstream, 2 downstream),
+  gap:4 (1-5, upstream first), r:16, phi:-16 (PolarGridRPhi bins); sensitive type tracker.
+-->
+<lccdd>
+  <define>
+    <constant name="FAMRPC_z"               value="435.0*cm"/>  <!-- centre of the 28.3 mm stack; GEMC 435 -->
+    <constant name="FAMRPC_rmin"            value="93.0*cm"/>
+    <constant name="FAMRPC_rmax"            value="216.0*cm"/>
+    <constant name="FAMRPC_StackVariant"    value="0"/>         <!-- 0 = preCDR Fig. 110, 1 = GEMC 35 layers -->
+    <constant name="FAMRPC_GasGap"          value="0.25*mm"/>
+    <constant name="FAMRPC_InnerGlass"      value="0.7*mm"/>
+    <constant name="FAMRPC_OuterGlass"      value="1.1*mm"/>
+    <constant name="FAMRPC_Mylar"           value="0.15*mm"/>
+    <constant name="FAMRPC_OuterPCB"        value="0.8*mm"/>
+    <constant name="FAMRPC_CentralPCB"      value="1.6*mm"/>
+    <constant name="FAMRPC_Honeycomb"       value="6.0*mm"/>
+    <constant name="FAMRPC_GEMC_Electrode"  value="0.4*mm"/>    <!-- GEMC variant only -->
+    <!-- strip segmentation -->
+    <constant name="FAMRPC_StripPitch"      value="2.8*cm"/>
+    <constant name="FAMRPC_PhiPitch"        value="7.2*deg"/>
+    <!-- optional FA phi mask (default off = GEMC parity, full ring) -->
+    <constant name="FAMRPC_UsePhiMask"      value="0"/>
+    <constant name="FAMRPC_PhiMask_N"       value="4"/>
+    <constant name="FAMRPC_PhiMask_Width"   value="24.0*deg"/>
+    <constant name="FAMRPC_PhiMask_Phi1"    value="42.0*deg"/>
+    <constant name="FAMRPC_PhiMask_Phi2"    value="138.0*deg"/>
+    <constant name="FAMRPC_PhiMask_Phi3"    value="222.0*deg"/>
+    <constant name="FAMRPC_PhiMask_Phi4"    value="318.0*deg"/>
+  </define>
+
+  <materials>
+    <!-- 90/5/5 vol R134a (4.25 mg/cm3, GEMC) / iC4H10 (2.51) / SF6 (6.10 mg/cm3, NTP) -> rho 4.26 mg/cm3,
+         mass R134a 0.8999, iC4H10 0.0285, SF6 0.0716 -->
+    <material name="FAMRPC_Gas" state="gas">
+      <D type="density" value="0.00426" unit="g/cm3"/>
+      <fraction n="0.2355" ref="C"/>
+      <fraction n="0.0227" ref="H"/>
+      <fraction n="0.7261" ref="F"/>
+      <fraction n="0.0157" ref="S"/>
+    </material>
+    <!-- = G4_GLASS_PLATE (GEMC); real low-resistivity glass composition unknown -->
+    <material name="FAMRPC_Glass">
+      <D type="density" value="2.40" unit="g/cm3"/>
+      <fraction n="0.459800" ref="O"/>
+      <fraction n="0.096441" ref="Na"/>
+      <fraction n="0.336553" ref="Si"/>
+      <fraction n="0.107205" ref="Ca"/>
+    </material>
+    <!-- = GEMC SL_mrpc_AlHoneycomb -->
+    <material name="FAMRPC_AlHoneycomb">
+      <D type="density" value="0.13" unit="g/cm3"/>
+      <fraction n="1.0" ref="Al"/>
+    </material>
+    <!-- = GEMC SL_mrpc_PCBoardM ("FIX" placeholder C/Si/Fe), used by the GEMC stack variant only -->
+    <material name="FAMRPC_PCB_GEMC">
+      <D type="density" value="1.86" unit="g/cm3"/>
+      <fraction n="0.4" ref="C"/>
+      <fraction n="0.3" ref="Si"/>
+      <fraction n="0.3" ref="Fe"/>
+    </material>
+  </materials>
+
+  <display>
+    <vis name="FAMRPC_EnvVis"   ref="limegreen" alpha="0.4" showDaughters="false" visible="true"/>
+    <vis name="FAMRPC_LayerVis" ref="limegreen" alpha="0.4" visible="false"/>
+  </display>
+
+  <detectors>
+    <detector id="MRPCFA_ID" name="FAMRPC" type="SoLID_MRPCDisk" readout="FAMRPCHits" vis="InvisibleWithDaughters">
+      <dimensions z="FAMRPC_z" rmin="FAMRPC_rmin" rmax="FAMRPC_rmax" stack="FAMRPC_StackVariant"/>
+      <envelope material="Air" vis="FAMRPC_EnvVis"/>
+
+      <!-- variant 0: preCDR Fig. 110 (28.3 mm), upstream to downstream -->
+      <stack variant="0" name="preCDR_Fig110">
+        <slice material="FAMRPC_AlHoneycomb" thickness="FAMRPC_Honeycomb"   vis="FAMRPC_LayerVis"/>
+        <slice material="Fr4"                thickness="FAMRPC_OuterPCB"    vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"       vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_OuterGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_OuterGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"       vis="FAMRPC_LayerVis"/>
+        <slice material="Fr4"                thickness="FAMRPC_CentralPCB"  vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"       vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_OuterGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"      vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_OuterGlass"  vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"       vis="FAMRPC_LayerVis"/>
+        <slice material="Fr4"                thickness="FAMRPC_OuterPCB"    vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_AlHoneycomb" thickness="FAMRPC_Honeycomb"   vis="FAMRPC_LayerVis"/>
+      </stack>
+
+      <!-- variant 1: GEMC mrpc_moved 35 layers (solid_SIDIS_mrpc_forwardangle_geometry.pl), for validation -->
+      <stack variant="1" name="GEMC_35layers">
+        <slice material="FAMRPC_AlHoneycomb" thickness="FAMRPC_Honeycomb"      vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_PCB_GEMC"    thickness="FAMRPC_OuterPCB"       vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"          vis="FAMRPC_LayerVis"/>
+        <slice material="Graphite"           thickness="FAMRPC_GEMC_Electrode" vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="1"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="Graphite"           thickness="FAMRPC_GEMC_Electrode" vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"          vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_PCB_GEMC"    thickness="FAMRPC_CentralPCB"     vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"          vis="FAMRPC_LayerVis"/>
+        <slice material="Graphite"           thickness="FAMRPC_GEMC_Electrode" vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_Gas"         thickness="FAMRPC_GasGap"         vis="FAMRPC_LayerVis" sensitive="true" stack="2"/>
+        <slice material="FAMRPC_Glass"       thickness="FAMRPC_InnerGlass"     vis="FAMRPC_LayerVis"/>
+        <slice material="Graphite"           thickness="FAMRPC_GEMC_Electrode" vis="FAMRPC_LayerVis"/>
+        <slice material="Mylar"              thickness="FAMRPC_Mylar"          vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_PCB_GEMC"    thickness="FAMRPC_OuterPCB"       vis="FAMRPC_LayerVis"/>
+        <slice material="FAMRPC_AlHoneycomb" thickness="FAMRPC_Honeycomb"      vis="FAMRPC_LayerVis"/>
+      </stack>
+
+      <phi_mask enable="FAMRPC_UsePhiMask" count="FAMRPC_PhiMask_N" width="FAMRPC_PhiMask_Width">
+        <window center="FAMRPC_PhiMask_Phi1"/>
+        <window center="FAMRPC_PhiMask_Phi2"/>
+        <window center="FAMRPC_PhiMask_Phi3"/>
+        <window center="FAMRPC_PhiMask_Phi4"/>
+      </phi_mask>
+    </detector>
+  </detectors>
+
+  <readouts>
+    <readout name="FAMRPCHits">
+      <!-- PolarGridRPhi bins are centred on offset + k*pitch: offsets of half a pitch put the bin edges at
+           r = FAMRPC_rmin (+ k * 2.8 cm) and phi = k * 7.2 deg -->
+      <segmentation type="PolarGridRPhi" grid_size_r="FAMRPC_StripPitch" grid_size_phi="FAMRPC_PhiPitch"
+                    offset_r="FAMRPC_rmin + 0.5*FAMRPC_StripPitch" offset_phi="0.5*FAMRPC_PhiPitch"/>
+      <id>system:8,module:4,stack:2,gap:4,r:16,phi:-16</id>
+    </readout>
+  </readouts>
+</lccdd>

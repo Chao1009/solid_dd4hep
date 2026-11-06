@@ -1,0 +1,25 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- test configuration (default): SPD FA/LA + MRPC FA + DDVCS muon system only -->
+<lccdd>
+  <info name="test_timing_muon_default" title="timing + muon test (default)" author="SoLID" url="" status="test" version="0"/>
+  <std_conditions type="NTP"/>
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <constant name="SoLID_Config" value="99"/>
+    <constant name="TargetCenter_z" value="-315*cm"/>
+
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+  </includes>
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/mrpc_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/muon/muon_DDVCS.xml"/>
+</lccdd>
