@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+# magnet_field: r-z magnetostatic solver (rzfield) and validation tools; python >= 3.9.
+numpy>=1.21
+scipy>=1.7
+gmsh>=4.8          # meshing (solve_rz.py only; write_map.py / eval_field.py work without it)
+matplotlib>=3.5    # validation plots (validate_poisson.py only)
+# optional: pyamg>=5.0 for solve_rz.py --linear-solver amg (meshes above ~1e6 nodes)

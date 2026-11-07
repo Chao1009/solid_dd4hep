@@ -1,0 +1,220 @@
+{
+ "description": "SoLID_FieldMapB (DD4hep 1.38, eic_xl 26.10.0) with the three new fragments: desc.field().magneticField vs the map file (bilinear) and vs the rzfield solution; ddsim 10 events (SOLID_OPTICAL=0): GEM hits of the primary vs an RK4 trajectory through the map (no material), a straight line and the reversed field. field_query redone with the regenerated maps (grid nodes on iron faces take the air-side value; the maps changed only at those nodes: 218 of v4c, 582 of stage 2, none of stage 1); the ddsim results are from the previous maps",
+ "field_query": {
+  "v4c": {
+   "compact": "test_magnet_v4_2D.xml",
+   "map": "solenoid_SoLID_v4c_2D.dat",
+   "outside_max_G": 0.0,
+   "n_random": 20000,
+   "bphi_max_G": 1.8189894035458565e-12,
+   "file_max_dB_G": 0.0006790964480961027,
+   "file_max_rel": 5.567763058599638e-08,
+   "nodes_max_dB_G": 0.005716094058108108,
+   "nodes_max_rel": 4.84582638270409e-07,
+   "interp_air": {
+    "n": 13083,
+    "median_G": 3.764896902025993e-05,
+    "p99_G": 1.074552013550995,
+    "max_G": 28.935118281609583,
+    "max_rel": 0.029533472571726598
+   },
+   "interp_tracking": {
+    "n": 1608,
+    "median_G": 0.03179205222579083,
+    "p99_G": 4.931886027647031,
+    "max_G": 20.586933346060132,
+    "max_rel": 0.009483523777881187
+   },
+   "interp_pmt": {
+    "n": 104,
+    "median_G": 0.009892596475189485,
+    "p99_G": 0.055971173110423295,
+    "max_G": 0.08072039114989883,
+    "max_rel": 0.0009727786844088425
+   },
+   "interp_iron_or_edges": {
+    "n": 1841,
+    "median_G": 0.176378300278054,
+    "p99_G": 5985.162166546121,
+    "max_G": 19289.871131472868,
+    "max_rel": 5.191027326475138
+   }
+  },
+  "stage1": {
+   "compact": "test_magnet_nomod_2D.xml",
+   "map": "solenoid_SoLIDlite_stage1_2D.dat",
+   "outside_max_G": 0.0,
+   "n_random": 20000,
+   "bphi_max_G": 1.8189894035458565e-12,
+   "file_max_dB_G": 0.0006772935090675941,
+   "file_max_rel": 5.8159044298894083e-08,
+   "nodes_max_dB_G": 0.005381780696762736,
+   "nodes_max_rel": 5.003227722306151e-07,
+   "interp_air": {
+    "n": 13852,
+    "median_G": 0.0002542774759829918,
+    "p99_G": 0.42803019496391953,
+    "max_G": 16.564500081390904,
+    "max_rel": 0.006929067528249397
+   },
+   "interp_tracking": {
+    "n": 1751,
+    "median_G": 0.03425429451233057,
+    "p99_G": 1.4486963882657231,
+    "max_G": 15.21463947838884,
+    "max_rel": 0.001171129842567879
+   },
+   "interp_pmt": {
+    "n": 104,
+    "median_G": 0.0032684317803896266,
+    "p99_G": 0.026848070299889882,
+    "max_G": 0.04799399062310524,
+    "max_rel": 0.000263507438949178
+   },
+   "interp_iron_or_edges": {
+    "n": 1072,
+    "median_G": 0.10090546817093886,
+    "p99_G": 3321.13575796895,
+    "max_G": 13503.403981509597,
+    "max_rel": 1.6196181345921477
+   }
+  },
+  "stage2": {
+   "compact": "test_magnet_lite_sidis_2D.xml",
+   "map": "solenoid_SoLIDlite_stage2_2D.dat",
+   "outside_max_G": 0.0,
+   "n_random": 20000,
+   "bphi_max_G": 1.8189894035458565e-12,
+   "file_max_dB_G": 0.0006798715172261887,
+   "file_max_rel": 5.8262120094862794e-08,
+   "nodes_max_dB_G": 0.005627301861098882,
+   "nodes_max_rel": 5.008203935015645e-07,
+   "interp_air": {
+    "n": 13398,
+    "median_G": 5.533947764510381e-05,
+    "p99_G": 0.6020585371312602,
+    "max_G": 32.32043990192209,
+    "max_rel": 0.0097736562934724
+   },
+   "interp_tracking": {
+    "n": 1597,
+    "median_G": 0.026153659232642176,
+    "p99_G": 2.8540717279057017,
+    "max_G": 32.32043990192209,
+    "max_rel": 0.007730131797451252
+   },
+   "interp_pmt": {
+    "n": 104,
+    "median_G": 0.004738286705188647,
+    "p99_G": 0.028265492752018815,
+    "max_G": 0.05430051396092207,
+    "max_rel": 0.0003742490046304752
+   },
+   "interp_iron_or_edges": {
+    "n": 1526,
+    "median_G": 0.0718228690057057,
+    "p99_G": 3188.131224408702,
+    "max_G": 13325.707043637225,
+    "max_rel": 22.66457047496858
+   }
+  }
+ },
+ "ddsim": {
+  "sidis_he3_lite_stage2": {
+   "n_hits": 47,
+   "n_events": 10,
+   "charge": [
+    -1.0
+   ],
+   "d_map_median_cm": 0.5778433649572983,
+   "d_map_max_cm": 9.738448293327412,
+   "d_map_max_cm_no_brems": 1.2115950633952304,
+   "d_straight_median_cm": 4.659397918386029,
+   "d_straight_range_cm": [
+    0.9936051842451232,
+    27.69948279368333
+   ],
+   "d_reversed_min_cm": 1.995876242655261,
+   "dphi_vs_straight_deg": [
+    0.9171144107532756,
+    15.979661721752313
+   ],
+   "z_range_cm": [
+    -175.40264484131984,
+    179.68864132506442
+   ]
+  },
+  "sidis_he3_lite_stage2_geantino": {
+   "n_hits": 44,
+   "n_events": 10,
+   "charge": [
+    1.0
+   ],
+   "d_map_median_cm": 0.0002576439899787484,
+   "d_map_max_cm": 0.000956537476567774,
+   "d_map_max_cm_no_brems": 0.000956537476567774,
+   "d_straight_median_cm": 7.0565850280005264,
+   "d_straight_range_cm": [
+    0.8566261613630991,
+    21.584546231525678
+   ],
+   "d_reversed_min_cm": 1.7130706957035122,
+   "dphi_vs_straight_deg": [
+    -10.510384792433976,
+    -1.0123296629666865
+   ],
+   "z_range_cm": [
+    -175.30925,
+    179.69075
+   ]
+  },
+  "sidis_he3_v4c": {
+   "n_hits": 49,
+   "n_events": 10,
+   "charge": [
+    -1.0
+   ],
+   "d_map_median_cm": 0.33796527309819924,
+   "d_map_max_cm": 63.8179246070339,
+   "d_map_max_cm_no_brems": 1.1827613503755414,
+   "d_straight_median_cm": 3.8178091693153826,
+   "d_straight_range_cm": [
+    0.8815352466033914,
+    72.5058571343445
+   ],
+   "d_reversed_min_cm": 1.7991523675303729,
+   "dphi_vs_straight_deg": [
+    1.049927249887965,
+    62.09750641178964
+   ],
+   "z_range_cm": [
+    -175.37443765099312,
+    91.7378503780248
+   ]
+  },
+  "sidis_he3_v4c_geantino": {
+   "n_hits": 47,
+   "n_events": 10,
+   "charge": [
+    1.0
+   ],
+   "d_map_median_cm": 0.0003659426620305887,
+   "d_map_max_cm": 0.0038471600748214143,
+   "d_map_max_cm_no_brems": 0.0038471600748214143,
+   "d_straight_median_cm": 3.210180394392574,
+   "d_straight_range_cm": [
+    0.7065891231822159,
+    18.718329445471916
+   ],
+   "d_reversed_min_cm": 1.413013566030019,
+   "dphi_vs_straight_deg": [
+    -8.775980887276969,
+    -1.0384348402232901
+   ],
+   "z_range_cm": [
+    -175.30925,
+    91.69075000000001
+   ]
+  }
+ }
+}
