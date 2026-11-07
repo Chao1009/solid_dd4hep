@@ -11,8 +11,9 @@
   magnet_moved/v0 Polycone, whose numbers are used here (the donut starts at the unmodified yoke end, z = 266.7 cm).
   All pieces are axisymmetric 2D-model shapes; the real 3D shapes (octagonal or round), the attachment to the
   octagonal yoke (2D gap of 12.5 cm between yoke and donut) and the supports are NOT defined yet.
-  There is NO 3D or 2D field map for this iron in solid_gemc (CLEOv11 exists only as an html study): use
-  fields/field_CLEOv10.xml for now and replace it when the stage-2 map exists.
+  There is no field map for this iron in solid_gemc (CLEOv11 exists only as an html study). Its 2D map,
+  fields/field_SoLIDlite_stage2_2D.xml, is computed from this geometry with magnet_field/ (as provisional as the
+  geometry: the field at the target is not cancelled).
   The later CLEOv11 variant with nose and bridge, Al corrector ring and -16.2 kA-turn correction coil
   (solid_gemc/field/"CLEO-II Stage 1 and 2.html") is not built.
   ===========================================================================================

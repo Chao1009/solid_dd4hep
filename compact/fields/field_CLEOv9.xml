@@ -2,8 +2,11 @@
 <!--
   Full-SoLID solenoid field: 2D POISSON map solenoid_CLEOv9 (CLEOv9.am = CLEOv8 with the endcap moved +45 cm,
   "longer endcap"; 1282 turns x 3266 A), the map used by all GEMC *_moved_full gcards (FIELD solenoid_CLEOv9).
-  Caveat: the 3D yoke is v4, but its TOSCA map solenoid_v4.dat is not public (404);
-  CLEOv9 is used until it is recovered. Reference values (map): Bz(0,0) = 13775 G, Bz(0,-315 cm) = 81.6 G,
+  Kept for GEMC parity (test/test_magnet_v4_gemc.xml): the full-SoLID configurations use field_SoLID_v4c_2D.xml,
+  computed from the v4c geometry (the 3D TOSCA map solenoid_v4.dat is not public, 404). CLEOv9 is for an older iron,
+  and CLEOv9.am has rhogam = 1e-6, so POISSON left the steel near its starting permeability (mu_r = 250, unconverged;
+  CLEOv10.am fixed this): its fringe field is too high, e.g. +48..63 % at the Cherenkov PMTs against the v4c map
+  (magnet_field/README.md). Reference values (map): Bz(0,0) = 13775 G, Bz(0,-315 cm) = 81.6 G,
   Bz(0,-350 cm) = 27.3 G, integral Bz dz on axis 5.220 T m.
   File: GEMC ASCII map with <mfield> header (R 0..500 cm x Z -600..600 cm, 1 cm, gauss, cylindrical-z); grid and
   unit are read from the header and cross-checked against <dimensions>. scale is dimensionless (e.g. -1 to flip

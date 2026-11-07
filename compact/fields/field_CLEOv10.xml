@@ -4,7 +4,8 @@
   iron, no endcap, no plug; 1282 turns x 3266 A), used by the GEMC lite gcards (FIELD solenoid_CLEOv10); consistent
   with compact/magnet/solenoid_nomod.xml. Reference values (map; workshop C068 p.11 "1.38 T -> 1.32 T"):
   Bz(0,0) = 13208 G, Bz(0,-315 cm) = 1188.5 G, Bz(0,-350 cm) = 669.7 G, |B|(r 215, z 344 cm) = 117 G,
-  integral Bz dz on axis 5.220 T m. Also the provisional stage-2 (SIDIS-lite) magnet uses it until a map exists.
+  integral Bz dz on axis 5.220 T m. The default map of the SoLID-Lite configurations (the collaboration's reference);
+  field_SoLIDlite_stage1_2D.xml is the same iron solved with an open boundary instead of POISSON's closed box.
   File: GEMC ASCII map with <mfield> header (R 0..500 cm x Z -500..700 cm, 1 cm, gauss, cylindrical-z); grid and
   unit are read from the header and cross-checked against <dimensions>. scale is dimensionless (e.g. -1 to flip
   the polarity, 3300/3266 = 1.0104 for the NIM current, ignoring saturation).

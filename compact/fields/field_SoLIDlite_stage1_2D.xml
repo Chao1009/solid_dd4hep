@@ -1,0 +1,40 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite stage-1 solenoid field (unmodified CLEO-II iron, compact/magnet/solenoid_nomod.xml): 2D axisymmetric
+  (r-z) map solenoid_SoLIDlite_stage1_2D, solved with magnet_field/ (rzfield finite elements, open boundary, POISSON's
+  1010-steel table) on magnet_field/models/solid_lite_stage1.am, the r-z model extracted from this geometry (CLEO-II
+  coil 1282 turns x 3266 A). Same iron as CLEOv10.am (to 0.25 cm, spacer rings 0.9 cm shorter), but with an open
+  boundary: the POISSON map of field_CLEOv10.xml has A = 0 on its box (z -500, 700, r 500 cm), which makes its fringe
+  field 5 % low at the target and 5-16 % high at the PMTs. Covers z up to 800 cm (DDVCS muon system). Reference values
+  (map): Bz(0,0) = 13209 G, Bz(0,-315 cm) = 1219.7 G, Bz(0,-350 cm) = 706.9 G, |B|(r 215, z 344 cm) = 110.9 G,
+  integral Bz dz on axis 5.250 T m (z -600..800 cm; 5.241 T m over z -500..700 cm).
+  File: GEMC ASCII map with <mfield> header (R 0..500 cm x Z -600..800 cm, 1 cm, gauss, cylindrical-z; 30.4 MB);
+  grid and unit are read from the header and cross-checked against <dimensions>. scale is dimensionless (e.g. -1 to
+  flip the polarity, 3300/3266 = 1.0104 for the NIM current, ignoring saturation).
+  The map is looked up in ./fieldmaps, then in ${DETECTOR_PATH}/fieldmaps, else downloaded there once from the
+  fieldmaps-v1 release of solid_dd4hep; its sha256 is checked, and an earlier download of another version is
+  replaced. Offline: copy the release file into ${DETECTOR_PATH}/fieldmaps/. To regenerate it from a checkout
+  (python3 with numpy, scipy and gmsh; about 2 min; magnet_field/README.md):
+      magnet_field/make_maps.sh -n -f ${DETECTOR_PATH}/fieldmaps stage1
+  (-n solves the committed deck after checking that the checkout's magnet files are those it was extracted
+  from; without -n the deck is first re-extracted from the DD4hep geometry in the eic_xl container). A regenerated
+  map has its own header comment (how and when it was made), so its sha256 differs from the release file's: to
+  use it, set sha256 to the value the checksum error reports.
+-->
+<lccdd>
+  <fields>
+    <field type="SoLID_FieldMapB" name="SolenoidField" field_type="magnetic" coord_type="BrBz"
+           field_map="fieldmaps/solenoid_SoLIDlite_stage1_2D.dat"
+           cache="${DETECTOR_PATH}/fieldmaps"
+           url="https://github.com/JeffersonLab/solid_dd4hep/releases/download/fieldmaps-v1/solenoid_SoLIDlite_stage1_2D.dat"
+           sha256="f5e650b1d02aecab4f74a54f9bfbf26cd8aac6ba0bcc5d2ab2426e249ae70b70"
+           hint="Generate it from a solid_dd4hep checkout: magnet_field/make_maps.sh -n -f ${DETECTOR_PATH}/fieldmaps stage1 (magnet_field/README.md)"
+           scale="1.0">
+      <dimensions>
+        <R step="1.0*cm" min="0*cm"    max="500*cm"/>
+        <Z step="1.0*cm" min="-600*cm" max="800*cm"/>
+        <translationCoord x="0*cm" y="0*cm" z="0*cm"/>
+      </dimensions>
+    </field>
+  </fields>
+</lccdd>

@@ -29,8 +29,9 @@
     * iron material Iron (7.874 g/cm3 = G4_Fe as GEMC); real slab steel unknown (magnet spec: AISI 1010-like).
     * iron blocks keep the GEMC sizes (250 x 534 x 36 cm); the real slabs are 251.46 x 533.4 x 35.56 cm (14").
 
-  Requires from the top level: nothing (hall-frame z). Field maps (CLEOv9 z <= 600, CLEOv10 z <= 700) do not cover
-  the muon iron; it is not magnetized here.
+  Requires from the top level: nothing (hall-frame z). The full-SoLID map (field_SoLID_v4c_2D, z <= 800 cm) gives
+  the solenoid's fringe field over the muon system, but the muon iron is not part of the magnet model, so it is not
+  magnetized; the SoLID-Lite map (CLEOv10) ends at z = 700 cm.
   Readouts: MuonScintHits system:8, layer:3, module:12 (paddle); MuonObserverHits system:8, plane:5
   (FA 0-4, LA endcap 10, LA barrel 11). Observer planes are vacuum (zero deposit): steering/solid_sim.py
   (SIM.filter.tracker = 'edep0') keeps their hits; with ddsim's default 'edep1kev' filter set

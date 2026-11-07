@@ -18,7 +18,7 @@
                  high edge phi1(r) likewise with phi10, phi11, phi12.
      segments=1 (plates 1, 2): one straight segment through (r1, phi01) and (routin, phi02) (resp. phi11, phi12).
   The open slit is [phi1(r), phi0(r) + 12 deg]. chirality=+1 = GEMC (slits drift to +phi with z: e- in Bz > 0,
-  CLEOv9 Bz(0,0) = +1.377 T); chirality=-1 mirrors every phi (reversed field polarity).
+  full-SoLID map Bz(0,0) = +1.370 T); chirality=-1 mirrors every phi (reversed field polarity).
 
   Switches (attributes below) can be overridden from the top level WITHOUT editing this file by defining, in the
   top-level <define>, any of these constants (layout override_prefix="Baffle_"; they are deliberately NOT defined
@@ -26,7 +26,7 @@
      Baffle_Enable               1 | 0    plates + shielding (0 = SoLID-lite "no baffle"; plate-1 slot and photon
                                           blocker are kept)
      Baffle_Mode                 0 | 1    0 = exact slit polygons (G4ExtrudedSolid blades), 1 = GEMC 20-step staircase
-     Baffle_Chirality           +1 | -1   +1 = GEMC/CLEOv9 (Bz > 0), -1 = mirrored for the reversed solenoid polarity
+     Baffle_Chirality           +1 | -1   +1 = GEMC polarity (Bz > 0), -1 = mirrored for the reversed solenoid polarity
      Baffle_Plate1_Placement     0 | 1 | 2   0 = vacuum slot filling the target-enclosure cavity, 1 = plain world
                                           placement (no enclosure), 2 = no plate 1
      Baffle_PhotonBlocker_Enable 1 | 0
