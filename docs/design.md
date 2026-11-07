@@ -39,13 +39,14 @@ compact/
   materials.xml optics.xml    shared materials and optical tables
   colors.xml display.xml      named colors and common vis attributes
   configs/                    detector sets shared by several configurations (full_common, lite_common)
-  fields/                     field maps (CLEOv9: full SoLID, CLEOv10: lite stage 1)
+  fields/                     field maps (v4c 2D: full SoLID, CLEOv10: SoLID-Lite; see 5.3)
   magnet/ target/ beamline/ baffle/ tracking/ cherenkov/ ecal/ timing/ muon/   subsystem fragments
 src/                          DD4hep plugins (SoLID_* detector constructors, field map, file loader)
 steering/solid_sim.py         generic ddsim/npsim steering (optical photons, gun per configuration)
 scripts/geometry/             check_geometry.py (load + overlaps), solid_geo_dump.py (extents), gemc_txt.py,
                               compare_gemc.py (dd4hep vs GEMC extents)
 bin/                          thissolid.sh (generated), solid_lineview, make_solid_views
+magnet_field/                 2D magnet solver: field maps computed from the DD4hep magnet geometry
 docs/                         design.md (this file), geometry_comparison.md, visualization.md, reconstruction.md
 containers/                   solid-shell launcher and the solid_xl image recipe
 ```
@@ -54,11 +55,11 @@ containers/                   solid-shell launcher and the solid_xl image recipe
 
 | top-level | detectors | field | GEMC reference gcard |
 |---|---|---|---|
-| `solid_SIDIS_He3.xml` (default) | full_common + He3 target + He3 beamline | CLEOv9 | solid_SIDIS_He3_moved_full |
-| `solid_SIDIS_NH3.xml` | full_common + NH3 target + NH3 beamline | CLEOv9 | solid_SIDIS_NH3_moved_full |
-| `solid_JPsi.xml` | full_common + LH2 15 cm + J/psi beamline | CLEOv9 | solid_JPsi_LH2_moved_full |
-| `solid_DDVCS.xml` | J/psi + muon system | CLEOv9 | solid_JPsi_DDVCS_LH2_moved_full |
-| `solid_PVDIS.xml` | v4 magnet, PVDIS target, beamline, baffles, PVDIS GEM, PVDIS LGC, PVDIS FAEC | CLEOv9 | solid_PVDIS_LD2_moved_full |
+| `solid_SIDIS_He3.xml` (default) | full_common + He3 target + He3 beamline | v4c 2D | solid_SIDIS_He3_moved_full |
+| `solid_SIDIS_NH3.xml` | full_common + NH3 target + NH3 beamline | v4c 2D | solid_SIDIS_NH3_moved_full |
+| `solid_JPsi.xml` | full_common + LH2 15 cm + J/psi beamline | v4c 2D | solid_JPsi_LH2_moved_full |
+| `solid_DDVCS.xml` | J/psi + muon system | v4c 2D | solid_JPsi_DDVCS_LH2_moved_full |
+| `solid_PVDIS.xml` | v4 magnet, PVDIS target, beamline, baffles, PVDIS GEM, PVDIS LGC, PVDIS FAEC | v4c 2D | solid_PVDIS_LD2_moved_full |
 | `solid_JPsi_lite.xml` | lite_common + LH2 15 cm + J/psi beamline | CLEOv10 | solid_JPsi_LH2_lite_full |
 | `solid_DDVCS_lite.xml` | J/psi-lite + muon system | CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full |
 
@@ -127,10 +128,19 @@ property tables follow GEMC tables, quoted with their source.
 `SoLID_FieldMapB` reads the GEMC ASCII maps including their `<mfield>` header (grid, units, symmetry), converts the
 header unit (gauss) to tesla itself (`scale` is a plain extra multiplier, normally 1), is thread-safe, and can
 translate/rotate a map (cylindrical-z solenoid maps, cylindrical-x maps such as the NH3 target magnet). Maps:
-`solenoid_CLEOv9.dat` (full SoLID; computed for an older long-endcap iron, the 3D map for the v4 yoke is not
-available), `solenoid_CLEOv10.dat` (lite stage 1, unmodified CLEO-II iron), `oxford_ptarget.dat` (NH3 target, 5 T).
-The `FileLoader` downloads them once from pinned `solid_gemc` GitHub raw URLs into `$DETECTOR_PATH/fieldmaps`
-(offline: copy `solid_gemc/field/*.dat` there).
+
+| map | used by | origin |
+|---|---|---|
+| `solenoid_SoLID_v4c_2D.dat` | full SoLID | 2D solve of this repository's v4c iron (`magnet_field/`); the 3D TOSCA map of the v4 yoke is not available |
+| `solenoid_CLEOv10.dat` | SoLID-Lite | POISSON, unmodified CLEO-II iron (the collaboration's reference map) |
+| `oxford_ptarget.dat` | NH3 target magnet (5 T) | solid_gemc |
+| `solenoid_SoLIDlite_stage1_2D.dat` | optional | CLEOv10's iron solved with an open boundary instead of POISSON's box |
+| `solenoid_SoLIDlite_stage2_2D.dat` | stage-2 magnet test | provisional SIDIS-lite iron |
+| `solenoid_CLEOv9.dat` | GEMC-parity test | POISSON, older iron, unconverged steel (`rhogam` = 1e-6) |
+
+The `FileLoader` downloads each map once into `$DETECTOR_PATH/fieldmaps`: the POISSON maps from a pinned
+`solid_gemc` commit, the 2D maps from the `fieldmaps-v1` release of this repository. Fragments with a `sha256`
+attribute are checked against it; an outdated earlier download is replaced. Offline: copy the files there.
 
 ## 6. Validation
 
