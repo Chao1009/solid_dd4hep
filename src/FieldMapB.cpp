@@ -7,6 +7,8 @@
 //          field_map="fieldmaps/solenoid_CLEOv9.dat"            path read if it exists (env vars expanded), else
 //          cache="${DETECTOR_PATH}/fieldmaps"                    looked up (by file name or URL hash) in the cache
 //          url="https://raw.githubusercontent.com/..."           list, else downloaded into the first writable cache
+//          sha256="<64 hex digits>"                              optional: required SHA-256 of the file (FileLoaderHelper.h)
+//          hint="generate it with ..."                           optional: added to the error if the file is missing
 //          scale="1.0">                                          dimensionless multiplier (polarity, current scaling)
 //     <dimensions>                                               optional if the file has a GEMC <mfield> header
 //       <R step="1*cm" min="0*cm" max="500*cm"/>  <Z step="1*cm" min="-600*cm" max="600*cm"/>   (BrBz)
@@ -566,7 +568,17 @@ static Ref_t create_field_map_b(Detector& /*lcdd*/, xml::Handle_t handle)
   const std::string field_map_file  = x_par.attr<std::string>(_Unicode(field_map));
   const std::string field_map_url   = getAttrOrDefault<std::string>(x_par, _Unicode(url), "");
   const std::string field_map_cache = getAttrOrDefault<std::string>(x_par, _Unicode(cache), "");
-  const std::string path = EnsureFileFromURLExists(field_map_url, field_map_file, field_map_cache, false);
+  const std::string field_map_sha   = getAttrOrDefault<std::string>(x_par, _Unicode(sha256), "");
+  // hint: how to obtain a map that cannot be found or downloaded (e.g. how to generate it)
+  const std::string field_map_hint = getAttrOrDefault<std::string>(x_par, _Unicode(hint), "");
+  std::string       path;
+  try {
+    path = EnsureFileFromURLExists(field_map_url, field_map_file, field_map_cache, false, field_map_sha);
+  } catch (const std::runtime_error& e) {
+    if (field_map_hint.empty())
+      throw;
+    throw std::runtime_error(std::string(e.what()) + ". " + FileLoaderHelper::ExpandEnv(field_map_hint));
+  }
 
   const double      scale      = getAttrOrDefault<double>(x_par, _Unicode(scale), 1.0);
   const std::string field_unit = getAttrOrDefault<std::string>(x_par, _Unicode(field_unit), "");
