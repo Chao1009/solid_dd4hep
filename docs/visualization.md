@@ -21,6 +21,9 @@ scene.npz --> solid_scene_dump --prim / solid_lineview.scene.write_prim --> .pri
 
 `make_solid_views` runs both steps for the standard views.
 
+Simulated events on these drawings (tracks, hits, energy per volume, animations) are described in
+[event_display.md](event_display.md).
+
 ## Quick start
 
 ```bash
@@ -29,7 +32,7 @@ make_solid_views -o views                       # section_yz, section_xz, cutawa
 make_solid_views -o views --views beam_440,beam_-40      # beam-eye sections at z = 440 and -40 cm
 make_solid_views -o views --views overview      # labelled detector overview (see below)
 make_solid_views -o views --views field_yz      # x = 0 section with the solenoid field under it (see below)
-make_solid_views -o views -n 5                  # with 5 events of trajectories (uses the DAWNFILE route)
+make_solid_views -o views -n 5                  # 5 gun events on event views (see event_display.md)
 make_solid_views -o views --source dawnfile     # geometry from the Geant4 DAWNFILE driver instead of the scene
 make_solid_views -o views --scene scene.npz     # draw an existing scene.npz or .prim file
 ```
@@ -102,7 +105,7 @@ under [Checks](#checks)).
 | volume names | all | extruded solids have none (the 330 PVDIS baffle blades) |
 | DetElement paths, volume IDs | yes | no |
 | coordinates | float64 | text, about 7 significant digits |
-| trajectories and hits (`-n EVENTS`) | not yet | yes |
+| events (`-n EVENTS`) | trajectory recorder, `solid_evexport`, `solid_evview`: tracks with times, hits, energy per volume, animation ([event_display.md](event_display.md)) | Geant4 trajectories and hit markers as the driver writes them, no times or energies |
 
 DAWNFILE stays as the fallback and as the reference for `scripts/geometry/compare_scene_dawnfile.py`. To make a
 `.prim` file with the driver by hand, write a macro `dawnfile.mac`
@@ -146,7 +149,8 @@ digits. `solid_lineview` reads the file back to the same volumes as the `.npz`. 
 ### From Python
 
 `solid_lineview` is an ordinary package (`python/solid_lineview` in the source tree, `<prefix>/python` when
-installed; `thissolid.sh` adds the latter to `PYTHONPATH`). The `solid_lineview` command and
+installed; `thissolid.sh` adds the latter to `PYTHONPATH`). Version 0.5.1 draws exactly as 0.5.0 and adds
+`cairo_draw_items()` and `svg_items()`, the bodies of the PNG and SVG writers, which the event display uses. The `solid_lineview` command and
 `python3 -m solid_lineview` both call `solid_lineview.main()`.
 
 ```python
@@ -300,7 +304,7 @@ CI workflow yet.
 |---|---|---|---|
 | unit test of the scene producer | `ctest -R scene_dump` in the build directory (runs `scripts/geometry/test_scene_dump.py`) | on `test/test_scene_dump.xml` (one volume placed twice, a rotated and a reflected placement of a solid without mirror symmetry, a parameterised volume): counts, depths and mothers, transforms, the mirrored mesh, volume IDs and masks, bounding sphere, reproducible hash, and that `solid_lineview` reads the `.npz` and the `.prim` to the same solids | 4 s |
 | reference hashes | `scripts/geometry/check_scene_hash.py` (all configurations) or `... solid_PVDIS` | the scene hash and the volume, drawn-volume and mesh counts of each configuration equal `scripts/geometry/scene_hashes.json`; after an intended change of geometry, colours or volume IDs run it with `--update` and commit the file | 3 s per configuration |
-| hits map to volumes | `scripts/geometry/check_scene_hits.py -c solid_JPsi_lite -n 3` | runs ddsim with `SOLID_SCENE`, then checks that every hit of every collection matches exactly one most specific drawn volume | about 20 s |
+| hits map to volumes | `scripts/geometry/check_scene_hits.py -c solid_JPsi_lite -n 3` | runs ddsim with `SOLID_SCENE`, then checks that every hit of every collection matches exactly one most specific drawn volume; readouts whose volumes are all invisible (the DDVCS muon observer planes) are listed and skipped | about 20 s |
 | scene against DAWNFILE | `scripts/geometry/compare_scene_dawnfile.py -c solid_PVDIS -o out` | volume count, names, depths, colours, bounding boxes and bounding sphere equal those of a DAWNFILE run; the four standard views rendered from both differ in at most 0.1 % of the pixels (`--max-diff`); diff images in `out/` | 45–70 s |
 
 The first two are cheap enough for every CI run. The other two start ddsim; two configurations (for example
@@ -335,7 +339,8 @@ the bounding sphere within 1e-5 mm. The hit check passed for `solid_JPsi_lite`, 
   and a `.prim` written from it with 9 digits already differ by 0.07 % in this view and by nothing in the other
   three. The cause inside the hidden-line code has not been tracked down. Sections and cutaway agree within
   0.03 %.
-- **Trajectories and hits** are only in DAWNFILE files, so `make_solid_views -n EVENTS` still uses that route.
+- **Events.** `make_solid_views -n EVENTS` draws events with the tools of [event_display.md](event_display.md);
+  its limits are listed there. The DAWNFILE trajectories remain available with `--source dawnfile -n EVENTS`.
 - **Replicas.** The scene producer expands Geant4 replicas, but this is untested. No SoLID detector uses them, and
   DDG4 1.38 appears to pass the width and offset of `Volume::replicate` to Geant4 without converting cm to mm
   (read from its source and its log message, not checked further), so they were left out of the test geometry.
