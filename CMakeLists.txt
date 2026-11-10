@@ -120,4 +120,17 @@ if(BUILD_TESTING)
     )
     set_tests_properties(load_${cfg_name} PROPERTIES TIMEOUT 1800 LABELS geometry)
   endforeach()
+
+  # scene producer: a small geometry with a doubly placed, a reflected and a parameterised volume
+  add_test(NAME scene_dump
+    COMMAND ${CMAKE_COMMAND} -E env
+            DETECTOR_PATH=${PROJECT_SOURCE_DIR}
+            LD_LIBRARY_PATH=${PROJECT_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}
+            PYTHONPATH=${PROJECT_SOURCE_DIR}/python:$ENV{PYTHONPATH}
+            PYTHONDONTWRITEBYTECODE=1
+            python3 ${PROJECT_SOURCE_DIR}/scripts/geometry/test_scene_dump.py
+                    --tool $<TARGET_FILE:solid_scene_dump>
+                    --compact ${PROJECT_SOURCE_DIR}/test/test_scene_dump.xml
+  )
+  set_tests_properties(scene_dump PROPERTIES TIMEOUT 300 LABELS scene)
 endif()

@@ -1,0 +1,32 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!-- Geometry for the scene-producer test (ctest scene_dump, scripts/geometry/test_scene_dump.py): one volume placed
+     twice, a rotated and a reflected placement of a solid without mirror symmetry, a parameterised volume.
+     Not a SoLID configuration. -->
+<lccdd>
+  <info name="test_scene_dump" title="scene producer test geometry" author="SoLID collaboration" url="https://github.com/JeffersonLab/solid_dd4hep" status="development" version="v0.3 2026-11">
+    <comment>placements the SoLID detectors do not use: reflection, parameterisation</comment>
+  </info>
+  <std_conditions type="NTP"/>
+  <define>
+    <constant name="world_side" value="1*m"/>
+    <constant name="world_x" value="world_side"/>
+    <constant name="world_y" value="world_side"/>
+    <constant name="world_z" value="world_side"/>
+  </define>
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/materials.xml"/>
+  </includes>
+  <display>
+    <vis name="SceneTestVis" r="0.2" g="0.4" b="0.8" alpha="0.5" visible="true" showDaughters="true"/>
+  </display>
+  <detectors>
+    <detector id="7" name="SceneTest" type="SoLID_SceneTestDetector" readout="SceneTestHits" z="100*mm"
+              nstrip="4" vis="SceneTestVis" material="Silicon"/>
+  </detectors>
+  <readouts>
+    <readout name="SceneTestHits">
+      <id>system:8,layer:4,module:8,strip:8</id>
+    </readout>
+  </readouts>
+</lccdd>
