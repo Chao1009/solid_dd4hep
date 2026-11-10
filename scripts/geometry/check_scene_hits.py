@@ -10,7 +10,8 @@ A drawn volume of the scene carries the readout it belongs to and the volume ID 
 down to it, with their mask. A hit of that readout lies in the volume if (cellID & mask) == id. Several nested
 volumes can match (a calorimeter module and the plate it stands on); the hit belongs to the most specific one,
 the match with the most mask bits. The test fails if a hit matches no drawn volume, or if two volumes tie for
-the most specific match. An event display relies on this rule to colour volumes by deposited energy; the
+the most specific match. Readouts whose volumes are all invisible (the muon observer planes of the DDVCS
+configurations) are listed and skipped. An event display relies on this rule to colour volumes by deposited energy; the
 rule itself is implemented once, in python/solid_evdisplay/hitmap.py, which solid_evexport uses as well.
 
 Without --scene/--hits the script runs ddsim with steering/solid_sim.py, SOLID_SCENE (so the scene comes from
@@ -73,6 +74,9 @@ def main():
         per_event = tree['%s/%s.cellID' % (c, c)].array(library='np')
         cid = np.concatenate(list(per_event)).astype(np.uint64) if len(per_event) else np.zeros(0, np.uint64)
         if len(cid) == 0:
+            continue
+        if not vmap.is_drawn(c):
+            print('%-22s %7d   readout without drawn volumes (invisible planes): not checked' % (c, len(cid)))
             continue
         node, nmatch = vmap.match(c, cid)
         none = int((node == NO_MATCH).sum())

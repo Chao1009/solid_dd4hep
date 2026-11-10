@@ -11,7 +11,7 @@ at least from the same geometry.  Needs uproot and numpy; no DD4hep, no ROOT.
 What is written (OUTDIR/event_NNNNNN.npz, NNNNNN = EDM4hep event number; schema 1; mm, ns, MeV, momenta GeV):
 
     meta            JSON: schema, config, geometry_hash, event, run, entry, files, trajectory cuts,
-                    collections [{name, kind (tracker | calorimeter), photon, hits, energy}]
+                    collections [{name, kind (tracker | calorimeter), photon, drawn, hits, energy}]
     trk_id, trk_parent, trk_pdg, trk_ekin      recorded tracks (Geant4 track ID, parent ID, PDG code, kinetic
                     energy at the first point); trk_offset (N + 1): track k owns points offset[k]:offset[k+1]
     pt_pos (P, 3), pt_time, pt_ekin            trajectory points in time order within a track
@@ -27,6 +27,8 @@ What is written (OUTDIR/event_NNNNNN.npz, NNNNNN = EDM4hep event number; schema 
 Hit -> volume: among the drawn volumes of the hit's readout with (cellID & mask) == volume ID, the one with
 the most mask bits (solid_evdisplay.hitmap).  The exporter checks, per collection, that the energies per
 volume add up to the hit energies, and reports hits without a unique volume; such hits make the exit status 1.
+A readout whose volumes are all invisible (the muon observer planes of the DDVCS configurations) has nothing
+to map to: its hits are kept with hit_node -1, the collection is flagged drawn = false, and that is no error.
 
 Photon-counting readouts (collections with 'Cherenkov' in the name; filled only when the simulation ran with
 optical physics, SOLID_OPTICAL=1) are flagged photon = true: their hits are single photons, and a display
@@ -148,7 +150,8 @@ def is_photon_readout(name):
 def build_event(sim, entry, vmap, traj_points, meta):
     """The arrays of one event.npz and its per-collection check rows.
 
-    Returns (arrays, rows): rows are (collection, hits, unique, no match, tie, hit energy, volume energy).
+    Returns (arrays, rows): rows are (collection, hits, unique, no match, tie, hit energy, volume energy,
+    readout has drawn volumes).
     """
     out = dict(sim.mcparticles(entry))
     hit = {k: [] for k in ("collection", "cellid", "node", "energy", "time", "pos", "particle")}
@@ -175,9 +178,11 @@ def build_event(sim, entry, vmap, traj_points, meta):
         vol["energy"].append(ve)
         vol["hits"].append(np.bincount(inv, minlength=len(un)).astype(np.int32))
         esum = float(h["energy"].sum())
-        colls.append(dict(name=name, kind=kind, photon=is_photon_readout(name), hits=int(n), energy=esum))
+        drawn = vmap.is_drawn(name)
+        colls.append(dict(name=name, kind=kind, photon=is_photon_readout(name), drawn=drawn, hits=int(n),
+                          energy=esum))
         rows.append((name, n, int(ok.sum()), int((node == NO_MATCH).sum()), int((node == TIE).sum()), esum,
-                     float(ve.sum())))
+                     float(ve.sum()), drawn))
         nhit += n
 
     def cat(parts, dtype, shape=(0,)):
@@ -253,7 +258,7 @@ def main(argv=None):
     os.makedirs(a.outdir, exist_ok=True)
     want = set(a.event) if a.event else None
     total = {}
-    written, nbad, npts = [], 0, 0
+    written, nbad, npts, nvirtual = [], 0, 0, 0
     for entry in range(sim.entries):
         evn = int(sim.event_number[entry])
         if want is not None and evn not in want:
@@ -267,11 +272,14 @@ def main(argv=None):
         np.savez_compressed(path, **arrays)
         written.append(path)
         npts += len(arrays["pt_time"])
-        for name, n, uni, none, tie, eh, ev_ in rows:
-            t = total.setdefault(name, [0, 0, 0, 0, 0.0, 0.0])
+        for name, n, uni, none, tie, eh, ev_, drawn in rows:
+            t = total.setdefault(name, [0, 0, 0, 0, 0.0, 0.0, drawn])
             for i, v in enumerate((n, uni, none, tie, eh, ev_)):
                 t[i] += v
-            nbad += none + tie
+            if drawn:
+                nbad += none + tie
+            else:
+                nvirtual += none
         if a.max_events and len(written) >= a.max_events:
             break
     if a.traj and want is None and not a.select and a.min_energy is None and not a.max_events:
@@ -283,17 +291,20 @@ def main(argv=None):
         print("%-24s %8s %8s %8s %6s %14s %14s" % ("collection", "hits", "unique", "no match", "tie",
                                                     "hit E [MeV]", "volume E [MeV]"))
     for name in sorted(total):
-        n, uni, none, tie, eh, ev_ = total[name]
+        n, uni, none, tie, eh, ev_, drawn = total[name]
         if abs(eh - ev_) > 1e-6 * max(abs(eh), 1e-12) and none + tie == 0:
             ebad += 1
         if not a.quiet and n:
-            print("%-24s %8d %8d %8d %6d %14.6f %14.6f" % (name, n, uni, none, tie, eh, ev_))
+            print("%-24s %8d %8d %8d %6d %14.6f %14.6f%s" % (
+                name, n, uni, none, tie, eh, ev_, "" if drawn else "  (readout without drawn volumes)"))
     size = sum(os.path.getsize(p) for p in written)
     print("%d events written to %s (%.1f kB per event, %d trajectory points per event) in %.1f s" % (
         len(written), a.outdir, size / 1024.0 / max(len(written), 1), npts // max(len(written), 1),
         time.perf_counter() - t0))
     print("%d hits, %d without exactly one most specific drawn volume; energy per volume %s the hit energy" % (
-        sum(t[0] for t in total.values()), nbad, "differs from" if ebad else "adds up to"))
+        sum(t[0] for t in total.values()) - nvirtual, nbad, "differs from" if ebad else "adds up to"))
+    if nvirtual:
+        print("%d more hits are in readouts without drawn volumes (invisible planes): kept, not shown" % nvirtual)
     if not written:
         print("no event selected")
         return 1

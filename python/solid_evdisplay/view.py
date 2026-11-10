@@ -28,7 +28,8 @@ What is drawn
     hits     markers at the tracker-type hits (GEM, SPD, MRPC, muon chambers)
     volumes  every drawn volume with hits is coloured by its energy deposit on a log scale (one red ramp,
              --emin-cal to the largest deposit); volumes below the scale minimum stay as they are.
-             Photon-counting readouts (Cherenkov) are counted, not summed: a volume with photon hits is violet.
+             Photon-counting readouts (Cherenkov) are counted, not summed: a sensor volume with photon hits
+             is violet and has a violet dot at its centre (the photocathode tiles are thin).
 
 Event selection: --event N (repeatable), --min-energy GEV (calorimeter deposit), --select pair (generator
 e+ and e- both with at least --min-tracker-hits GEM hits; pair-mu for muons), --max-events K.  --overlay
@@ -204,7 +205,8 @@ class Deposits:
         is_calo = calo_coll[hc] if nc else np.zeros(0, bool)
         ok = ev.hit_node >= 0
         hsolid = np.where(ok, solid_of[np.maximum(ev.hit_node, 0)], -1)
-        self.unmapped = int((hsolid < 0).sum())
+        drawn_coll = np.array([c.get("drawn", True) for c in ev.collections], bool)
+        self.unmapped = int(((hsolid < 0) & drawn_coll[hc]).sum()) if nc else 0
         # energy with time: calorimeter contributions, and the other hits at their hit time
         direct = ok & ~is_photon & ~is_calo
         sid = np.concatenate([hsolid[ev.dep_hit], hsolid[direct]])
@@ -213,8 +215,8 @@ class Deposits:
         self.energy = self._group(sid, t, e, cumulative=True)
         ph = ok & is_photon
         self.photons = self._group(hsolid[ph], ev.hit_time[ph].astype(float), None, cumulative=False)
-        # markers: tracker-type hits that are not single photons
-        m = ~is_photon & ~is_calo
+        # markers: tracker-type hits in drawn volumes that are not single photons
+        m = ~is_photon & ~is_calo & ok
         self.hit_pos, self.hit_time = ev.hit_pos[m].astype(float), ev.hit_time[m].astype(float)
         # energy-weighted positions for the choice of the event plane (all hits with energy)
         w = np.where(is_photon, 0.0, ev.hit_energy.astype(float))
@@ -352,6 +354,7 @@ def geometry_layer(sc, view, a, title):
     common = ["--size", a.size, "--dpi", str(a.dpi), "--lw", str(a.lw), "--font-size", str(a.font_size)]
     if title:
         common += ["--title", title]
+    common += ["--subtitle", view["label"]]          # the caption, in the band reserved above the drawing
     labels = a.labels and view["kind"] in ("side", "cutaway")
     if labels:
         common += ["--labels", "solid"]
@@ -485,6 +488,16 @@ class EventView:
         if kind in ("side", "zoom"):
             tracks = [rhoz_track(t, view["phi"]) for t in tracks]
             self.hitP = rhoz_points(self.hitP, view["phi"])
+        # photon-counting volumes (thin photocathode tiles) also get a marker at their centre
+        ps = sorted(self.dep.photons)
+        self.photon_solids = ps
+        pc = np.array([0.5 * (sc.solids[s].bmin + sc.solids[s].bmax) for s in ps], float).reshape(-1, 3)
+        if kind in ("side", "zoom"):
+            pc = rhoz_points(pc, view["phi"])
+        if kind == "beam" and len(pc):
+            keep = pc[:, 2] <= view["zsec"]
+            pc, self.photon_solids = pc[keep], [s for s, k in zip(ps, keep) if k]
+        self.photon_px = np.stack(to_px(pc)[:2], 1) if len(pc) else np.zeros((0, 2))
         self.ring_hits = kind == "beam"
         if kind == "beam":
             tracks = [u for u in (clip_track_z(t, view["zsec"]) for t in tracks) if u is not None and len(u.P) >= 2]
@@ -607,7 +620,7 @@ class EventView:
 
     # ---- legend
     def legend_items(self):
-        """white band on the right with the colour bar and the legend, and the caption under the title"""
+        """white band on the right with the colour bar and the legend"""
         a = self.a
         dl = lv.DrawList(self.W, self.H, self.dpi, None)
         pt = self.dpi / 72.0
@@ -662,10 +675,9 @@ class EventView:
             dl.text(x0 + 28 * pt, yy + 0.35 * fs * pt, "tracker hit", fs * 0.9, INK)
             yy += row
         if self.dep.photons:
-            dl.fill([np.array([[x0 + 5 * pt, yy - 4 * pt], [x0 + 17 * pt, yy - 4 * pt], [x0 + 17 * pt, yy + 4 * pt],
-                               [x0 + 5 * pt, yy + 4 * pt]])], PHOTON_RGB, stroke=INK, lw_pt=0.3)
-            dl.text(x0 + 28 * pt, yy + 0.35 * fs * pt, "Cherenkov photons seen", fs * 0.9, INK)
-        dl.text(10 * pt, self.title_band + 0.3 * fs * pt, self.view["label"], fs * 0.9, INK2)
+            dl.marker("circle", x0 + 11 * pt, yy, 3.2 * pt, INK)
+            dl.marker("circle", x0 + 11 * pt, yy, 2.5 * pt, PHOTON_RGB)
+            dl.text(x0 + 28 * pt, yy + 0.35 * fs * pt, "sensor with Cherenkov photons", fs * 0.9, INK)
         return dl.items
 
     def mask_items(self):
@@ -674,7 +686,7 @@ class EventView:
             return []
         dl = lv.DrawList(self.W0, self.H, self.dpi, None)
         pt = self.dpi / 72.0
-        band = self.title_band + int(1.4 * self.a.font_size * pt)
+        band = self.title_band + int(0.3 * self.a.font_size * pt)
         dl.fill([np.array([[0, 0], [self.W0, 0], [self.W0, band], [0, band]], float)], (1, 1, 1))
         lv.draw_title(dl, self._title_options())
         return dl.items
@@ -692,6 +704,11 @@ class EventView:
         dl = lv.DrawList(self.W0, self.H, self.dpi, None)
         self._add_tracks(dl, tmax)
         self._add_hits(dl, tmax)
+        pt = self.dpi / 72.0
+        for s, (x, y) in zip(self.photon_solids, self.photon_px):
+            if self.dep.photons_at(s, tmax) > 0:
+                dl.marker("circle", float(x), float(y), 3.2 * pt, INK)
+                dl.marker("circle", float(x), float(y), 2.5 * pt, PHOTON_RGB)
         return dl.items
 
     def clock_items(self, tmax):
@@ -701,7 +718,7 @@ class EventView:
         return dl.items
 
     def top_items(self):
-        """everything static above the event: masks, legend, caption"""
+        """everything static above the event: masks and legend"""
         if not hasattr(self, "_top"):
             self._top = self.mask_items() + self.legend_items()
         return self._top
@@ -731,7 +748,7 @@ def write_figure(dl, paths):
                 lv.cairo_draw_items(cr, dl.items, dl.dpi)
                 surf.flush()
                 bgra = np.ndarray((dl.H, dl.W, 4), np.uint8, surf.get_data(), 0, (surf.get_stride(), 4, 1))
-                Image.fromarray(np.ascontiguousarray(bgra[:, :, 2::-1])).save(path, dpi=(dl.dpi, dl.dpi))
+                Image.fromarray(np.ascontiguousarray(bgra[:, :, 2::-1])).save(path, dpi=(dl.dpi, dl.dpi), compress_level=3)
                 done = True
             except ImportError:
                 pass

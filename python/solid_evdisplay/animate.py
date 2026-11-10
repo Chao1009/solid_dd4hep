@@ -325,6 +325,11 @@ def write_svg_animation(view, path, t_end, duration, hold=2.0):
             kt = min(max(min(th, t_end) * k / total, 1e-4), 0.999)
             out.append('<circle cx="%.1f" cy="%.1f" r="%.2f" %s opacity="0"><animate attributeName="opacity" '
                        'calcMode="discrete" values="0;1" keyTimes="0;%.4f" %s/></circle>' % (xi, yi, r, style, kt, loop))
+    for s, (px, py) in zip(view.photon_solids, view.photon_px):
+        kt = min(max(min(float(dep.photons[s][0]), t_end) * k / total, 1e-4), 0.999)
+        out.append('<circle cx="%.1f" cy="%.1f" r="%.2f" fill="%s" stroke="#0b0b0b" stroke-width="%.2f" opacity="0">'
+                   '<animate attributeName="opacity" calcMode="discrete" values="0;1" keyTimes="0;%.4f" %s/></circle>'
+                   % (px, py, 2.85 * pt, hexc(PHOTON_RGB), 0.7 * pt, kt, loop))
     out += lv.svg_items(view.top_items(), dpi)
     # clock: one text per ns, switched on in turn; none in the hold phase (as in the last frame)
     fs = a.font_size

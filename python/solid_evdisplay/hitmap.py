@@ -9,6 +9,9 @@ on).  The rule used everywhere in this repository:
     the hit belongs to the matching drawn volume with the most mask bits (the most specific one);
     no match and two matches with the same number of bits (a tie) are errors.
 
+A readout without any drawn volume (invisible virtual planes, such as the muon observer planes of the DDVCS
+configurations) is not an error: its hits stay without a volume (VolumeMap.is_drawn).
+
 Candidates are all drawn volumes of the hit's readout that fix at least one ID bit.  `sensitive_only` narrows
 them to sensitive volumes; the SoLID geometries do not need that for uniqueness (checked by
 scripts/geometry/check_scene_hits.py and by solid_evexport on every run).
@@ -48,6 +51,11 @@ class VolumeMap:
     def readouts(self):
         """readout names that have candidate volumes"""
         return sorted(set(self.readout[self.candidate]) - {""})
+
+    def is_drawn(self, readout):
+        """False for a readout whose volumes are all invisible (virtual planes such as the DDVCS muon
+        observers): its hits cannot be shown on a volume, which is not a mapping error"""
+        return bool(len(self._table(readout)))
 
     def _table(self, readout):
         """[(mask, bits, sorted ids, node of each id)] of a readout, most mask bits first"""
