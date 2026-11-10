@@ -13,7 +13,9 @@
 ARG EIC_TAG=26.10.0-stable
 FROM eicweb/eic_xl:${EIC_TAG}
 ARG WITH_GAUDI=0
-SHELL ["/bin/bash", "-c"]
+# Login shells: the eic_xl environment (python, cmake, DD4hep, Geant4 under /opt/local) is set in /etc/profile.d,
+# not in the image's ENV, where PATH holds only the system directories.
+SHELL ["/bin/bash", "-l", "-c"]
 
 # (optional) Gaudi + k4FWCore in a separate spack environment/view, reusing the image's packages
 # (verified to concretize to gaudi@39.4 + k4fwcore@1.5 with 12 new packages on eic_xl 26.10).
@@ -33,6 +35,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m pip install --no-cache-dir --no-deps "gmsh>=4.8" && \
     ffmpeg -version | head -1 && \
+    command -v python3 cmake ddsim && \
     python3 -c "import gmsh; gmsh.initialize(); print('gmsh', gmsh.__version__); gmsh.finalize()"
 
 # SoLID geometry, built with the image's own toolchain
