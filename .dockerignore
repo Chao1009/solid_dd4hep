@@ -1,0 +1,11 @@
+# keep the build context of containers/Dockerfile small
+.git
+build
+install
+containers/images
+containers/solid-shell.local
+fieldmaps
+**/__pycache__
+*.sif
+*.root
+*.prim
