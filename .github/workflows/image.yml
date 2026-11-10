@@ -4,6 +4,7 @@
 #
 #   - a pushed tag v*      -> ghcr.io/<owner>/solid_xl:<tag> and :latest
 #   - "Run workflow"       -> ghcr.io/<owner>/solid_xl:<image tag input> (default dev); :latest only if asked
+#   - a pull request that changes the image recipe -> build and test only, nothing is published
 #
 # The image is tested before it is pushed. Users get it with `containers/install.sh --solid-xl [OWNER]`.
 # A new package is private at first: make it public once under the owner's Packages settings.
@@ -12,6 +13,8 @@ name: image
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths: ["containers/Dockerfile", "containers/profile.d/**", "containers/spack-gaudi.yaml", ".github/workflows/image.yml"]
   workflow_dispatch:
     inputs:
       eic_tag:
@@ -76,12 +79,14 @@ jobs:
           assert abs(b.z() / dd4hep.tesla) > 1.0
           "'
       - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push
+        if: github.event_name != 'pull_request'
         run: |
           docker push ${{ steps.names.outputs.image }}:${{ steps.names.outputs.tag }}
           if [[ "${{ steps.names.outputs.latest }}" == "true" ]]; then
