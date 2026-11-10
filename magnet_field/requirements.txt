@@ -3,5 +3,5 @@
 numpy>=1.21
 scipy>=1.7
 gmsh>=4.8          # meshing (solve_rz.py only; write_map.py / eval_field.py work without it)
-matplotlib>=3.5    # validation plots (validate_poisson.py only)
+matplotlib>=3.5    # plots (plot_map.py, validate_poisson.py)
 # optional: pyamg>=5.0 for solve_rz.py --linear-solver amg (meshes above ~1e6 nodes)
