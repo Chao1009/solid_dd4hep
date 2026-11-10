@@ -63,6 +63,7 @@ extract_rz_model.py   DD4hep magnet -> POISSON-style deck (.am) + JSON sidecar; 
 solve_rz.py           deck -> mesh -> nonlinear solve -> solution (.npz) [+ GEMC map]       (needs gmsh)
 write_map.py          solution -> GEMC map on any grid                                       (numpy and scipy)
 eval_field.py         solution -> B(r, z) at points or on the axis                           (numpy and scipy)
+plot_map.py           map -> picture: |B| bands, field lines, the deck's iron and coils, on-axis field (matplotlib)
 validate_poisson.py   solution vs a POISSON map or another solution: reference points, regions, plots
 compare_references.py new maps vs the POISSON references; rebuilds the CLEOv11 deck from the Stage 1/2 html
 models/               the three decks, their JSON sidecars, cleo2_coils.json (coil currents), README.md (details);
@@ -73,6 +74,22 @@ tests/                test_rzfield.py (analytic checks, map nodes on iron faces)
                       map vs solution near iron); dd4hep_field_query.py and ddsim_bending.py (DD4hep checks)
 validation/           plots and JSON files behind the numbers below
 ```
+
+## Plotting a map
+
+```bash
+magnet_field/plot_map.py install/share/solid/fieldmaps/solenoid_SoLID_v4c_2D.dat --deck magnet_field/models/solid_v4c.am \
+    --mark "³He target:-350:0" --mark "PMT region:344:215" -o map_v4c.png
+```
+
+![The v4c map: |B| bands, field lines, the r-z model and the on-axis field](validation/map_SoLID_v4c_2D.png)
+
+`plot_map.py` needs numpy and matplotlib. It draws |B| in colour bands (1 G to 3 T), field lines with equal flux
+between neighbours, direction arrows, the iron and coil regions of the deck, and |Bz| on the axis. `--mark
+LABEL:Z:R` (cm) marks a point and prints the field there. Give `--deck` for a map with iron: the flux function is
+then carried through the air only, because a 1 cm map cannot be integrated through iron. The three maps are in
+`validation/map_*.png`. To see a map on the detector geometry instead, use `make_solid_views --views field_yz`
+([docs/visualization.md](../docs/visualization.md#magnetic-field-on-the-geometry)).
 
 ## Method
 

@@ -4,7 +4,7 @@
 
 usage (inside eic-shell / solid-shell, after `source thissolid.sh <config>`):
     make_solid_views [-c CONFIG] [-o OUTDIR] [-n EVENTS] [--prim FILE] [--views v1,v2,...] [--formats svg,pdf,png]
-                     [--name FORMAT]
+                     [--name FORMAT] [--field MAP]
 
 Views (all in the GEMC hall frame, beam from left to right):
     section_yz   exact cut at x = 0, filled with the vis colors (the classic SoLID side-view layout)
@@ -17,6 +17,12 @@ Views (all in the GEMC hall frame, beam from left to right):
                  and the configuration's display name as title (compact file as subtitle); PNG about 1600 px wide.
                  The README figures:
                      make_solid_views --views overview --formats svg,png --name '{view}_{config}' -o docs/images
+    field_yz     the x = 0 section with the solenoid field under it: |B| in colour bands, field lines, direction
+                 arrows, iron in grey, a callout label per subsystem (solid_lineview --field). The map is the
+                 2-D solenoid map of the configuration's field fragment (compact/fields/field_*.xml, found in
+                 $DETECTOR_PATH/fieldmaps after the first run); --field MAP names another one. Other fields of
+                 the configuration (the NH3 target magnet) are not drawn.
+                     make_solid_views --views field_yz --formats svg,png --name '{view}_{config}' -o docs/images
 With -n EVENTS > 0 the default particle gun of steering/solid_sim.py shoots EVENTS electrons and their trajectories
 are drawn on top of the section/lines views.
 
@@ -25,6 +31,7 @@ DAWN program is not started.  Rendering needs only numpy (+ pycairo or matplotli
 """
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -44,6 +51,9 @@ VIEWS = {
                    '--trim-margin', '0.015', '--beam-arrow', '--labels', 'solid', '--title-bold',
                    '--title-size', '13', '--no-traj', '--no-hits'],
 }
+FIELD_VIEW = ['--mode', 'section', '--section', 'x=0', '--view', 'side', '--scale-bar', '--labels', 'solid',
+              '--size', '2000x1000', '--dpi', '150', '--lw', '0.5', '--title-bold', '--title-size', '13']
+
 DEFAULT_VIEWS = 'section_yz,section_xz,cutaway,lines_yz'
 
 # figure titles and subtitle of the 'overview' view (other views are titled '<config>: <view>')
@@ -106,6 +116,34 @@ def make_prim(compact, workdir, events, segments, steering):
     return os.path.join(workdir, prims[-1])
 
 
+def find_field_map(compact, path):
+    """(map file, scale) of the first 2-D solenoid map (SoLID_FieldMapB, BrBz) the compact file includes"""
+    try:
+        text = open(compact).read()
+    except OSError:
+        return None, 1.0
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.S)
+    for ref in re.findall(r'<include\s+ref="([^"]*field[^"]*\.xml)"', text):
+        frag = ref.replace('${DETECTOR_PATH}', path)
+        try:
+            ftext = re.sub(r'<!--.*?-->', '', open(frag).read(), flags=re.S)
+        except OSError:
+            continue
+        for m in re.finditer(r'<field\b[^>]*>', ftext, flags=re.S):
+            tag = m.group(0)
+            fm = re.search(r'field_map="([^"]*)"', tag)
+            if 'coord_type="BrBz"' not in tag or not fm:
+                continue
+            sc = re.search(r'\bscale="([^"]*)"', tag)
+            for base in ('.', path):
+                f = os.path.join(base, fm.group(1))
+                if os.path.isfile(f):
+                    return f, float(sc.group(1)) if sc else 1.0
+            print(f'field map {fm.group(1)} not found in . or {path} (load the geometry once to download it)',
+                  file=sys.stderr)
+    return None, 1.0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('-c', '--config', default=os.environ.get('DETECTOR_CONFIG', 'solid'))
@@ -117,6 +155,8 @@ def main():
     ap.add_argument('--segments', type=int, default=72, help='/vis/viewer/set/lineSegmentsPerCircle')
     ap.add_argument('--name', default='{config}_{view}',
                     help="output file name without extension, with {config} and {view} (default '{config}_{view}')")
+    ap.add_argument('--field', default=None, help='2-D field map for the field_yz view (default: the map of the '
+                    "configuration's field fragment)")
     ap.add_argument('--keep', action='store_true', help='keep the work directory with the .prim file')
     ap.add_argument('lineview_args', nargs='*', help='extra arguments passed to solid_lineview (after --)')
     a = ap.parse_args()
@@ -140,6 +180,13 @@ def main():
         if view.startswith('beam_'):
             z_cm = float(view.split('_', 1)[1])
             opts = ['--mode', 'section', '--section', f'z={z_cm}cm', '--view', 'beam', '--fill', '--scale-bar']
+        elif view == 'field_yz':
+            fmap, fscale = (a.field, 1.0) if a.field else find_field_map(compact, path)
+            if not fmap:
+                print('field_yz: no 2-D field map found (use --field MAP), skipped', file=sys.stderr)
+                status |= 1
+                continue
+            opts = FIELD_VIEW + ['--field', fmap, '--field-scale', str(fscale)]
         elif view in VIEWS:
             opts = list(VIEWS[view])
         else:
@@ -150,6 +197,9 @@ def main():
             outs += ['-o', os.path.join(a.outdir, a.name.format(config=a.config, view=view) + '.' + fmt.strip())]
         if view == 'overview':
             titles = ['--title', DISPLAY_NAMES.get(a.config, a.config), '--subtitle', SUBTITLE.format(config=a.config)]
+        elif view == 'field_yz':
+            titles = ['--title', DISPLAY_NAMES.get(a.config, a.config) + ': solenoid field',
+                      '--subtitle', '%s.xml, map %s' % (a.config, os.path.basename(fmap))]
         else:
             titles = ['--title', f'{a.config}: {view}']
         cmd = [sys.executable, lineview, prim] + opts + outs + titles + a.lineview_args
