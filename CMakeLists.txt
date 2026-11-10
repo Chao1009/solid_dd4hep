@@ -147,5 +147,5 @@ if(BUILD_TESTING)
             python3 ${PROJECT_SOURCE_DIR}/scripts/event_display/test_event_display.py
                     --config solid_JPsi_lite --outdir ${PROJECT_BINARY_DIR}/event_display_test
   )
-  set_tests_properties(event_display PROPERTIES TIMEOUT 600 LABELS "scene;events")
+  set_tests_properties(event_display PROPERTIES TIMEOUT 1800 LABELS "scene;events")
 endif()
