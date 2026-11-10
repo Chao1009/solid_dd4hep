@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-solid_lineview -- clean vector line drawings of Geant4 DAWNFILE (.prim) scenes.
+solid_lineview -- clean vector line drawings of Geant4 geometry scenes.
 
-A dependency-light replacement for the DAWN (Fukui Renderer) + DAWNCUT workflow:
+A dependency-light replacement for the DAWN (Fukui Renderer) + DAWNCUT workflow.  The input is either
+a scene file with the Geant4 polyhedra (scene.npz, from solid_scene_dump or ddsim with SOLID_SCENE)
+or a DAWNFILE .prim:
 
-    Geant4 /vis/open DAWNFILE  ->  g4_XXXX.prim  ->  solid_lineview.py  ->  SVG / PDF / EPS / PNG
+    solid_scene_dump           ->  scene.npz     \
+                                                  >  solid_lineview  ->  SVG / PDF / EPS / PNG
+    Geant4 /vis/open DAWNFILE  ->  g4_XXXX.prim  /
 
 Rendering modes
   hlr        3-D hidden-line removal: crease / boundary / silhouette edges, visibility from a
@@ -40,7 +44,7 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 TWO_PI = 2.0 * math.pi
 VERBOSE = 1
@@ -594,6 +598,18 @@ def parse_prim(path):
     return sc
 
 
+def load_scene(path, drawing_style=False):
+    """Read a geometry scene into a PrimScene: a scene.npz (see solid_lineview.scene) or a DAWNFILE .prim.
+
+    The kind of file is taken from its content (a .npz is a zip archive), so the name does not matter.
+    drawing_style applies to scene.npz only, see scene.load_scene_npz().
+    """
+    from . import scene
+    if scene.is_scene_file(path):
+        return scene.load_scene_npz(path, drawing_style=drawing_style)
+    return parse_prim(path)
+
+
 def _parse_facets(fl, nv, sc, lineno):
     m = len(fl)
     if m == 0:
@@ -914,6 +930,46 @@ def clip_triangles_masked(P, fid, fsolid, trims):
             P = np.concatenate([P[~m], Q])
             fid = np.concatenate([fid[~m], f])
     return P, fid
+
+
+def snap_vertices(sc, V, tri, planes, snap, section):
+    """Vertices V of the scene (sc.V or a copy), with those closer than `snap` to one of the planes moved off it by `snap`.
+
+    A face lying in a cut or section plane (the side of a detector sector at x = 0) is otherwise cut,
+    kept or dropped depending on the rounding noise of its coordinates.  Each solid's vertices near a
+    plane all go to the same side:
+      cut plane (section=False)  the kept side if the solid has other vertices there; a solid that only
+                                 touches the plane from the removed side goes away completely
+      section plane              the side that makes a solid touching the plane with a whole face be cut
+                                 along that face, and leaves a solid touching with an edge or corner uncut
+    The shift (1 nm by default) is far below anything visible.  Returns V itself if nothing is near."""
+    if snap <= 0 or not len(V) or not sc.solids:
+        return V
+    vsolid = None
+    out = V
+    for n, d in planes:
+        s = out @ n + d
+        on = np.abs(s) < snap
+        if not on.any():
+            continue
+        if vsolid is None:
+            vsolid = np.repeat(np.arange(len(sc.solids)), [x.v1 - x.v0 for x in sc.solids])
+        nsol = len(sc.solids)
+        above = np.zeros(nsol, bool)
+        below = np.zeros(nsol, bool)
+        above[vsolid[(s > 0) & ~on]] = True
+        below[vsolid[(s < 0) & ~on]] = True
+        if section:
+            face = np.zeros(nsol, bool)                 # solids with a triangle in the plane
+            face[vsolid[tri[on[tri].all(1), 0]]] = True
+            plus = (above & below) | (above & ~face) | (below & ~above & face)
+        else:
+            plus = above
+        if out is V:
+            out = V.copy()
+        target = np.where(plus[vsolid[on]], snap, -snap)
+        out[on] += (target - s[on])[:, None] * np.asarray(n, float)[None, :]
+    return out
 
 
 def section_segments(V, tri, plane):
@@ -1399,7 +1455,7 @@ class Renderer:
         log("  %d of %d solids selected (%d non-occluding)" % (nsel, len(sc.solids),
                                                               int((sel & transp).sum())))
         trims = self.trims = self.resolve_trims(sel)
-        V = sc.V
+        V = snap_vertices(sc, sc.V, mesh.tri, planes, o.plane_snap, False)
         fsel = sel[sc.fsolid] if len(sc.fsolid) else np.zeros(0, bool)
         tri_sel = fsel[mesh.tri_face] if len(mesh.tri_face) else np.zeros(0, bool)
         planes = list(planes)
@@ -1503,8 +1559,9 @@ class Renderer:
         s = min((W - 2 * m) / dx, (H - 2 * m) / dy)
         cy = 0.5 * (y0 + y1)
         if not o.no_crop:
-            W = int(math.ceil(dx * s + 2 * m))
-            H = int(math.ceil(dy * s + 2 * m))
+            # the limiting side is the full size up to rounding: do not let 3000.0000000001 become 3001
+            W = int(math.ceil(dx * s + 2 * m - 1e-6))
+            H = int(math.ceil(dy * s + 2 * m - 1e-6))
             band = title_band_px(o)
             if band:
                 # reserve a band above the drawing so the title never overlaps the geometry
@@ -2326,7 +2383,8 @@ def render_section(sc, o, cam, plane, extra_planes):
     rd.sel, rd.transp = sel, transp
     trims = rd.trims = rd.resolve_trims(sel)
     mesh = rd.mesh
-    V = sc.V
+    V = snap_vertices(sc, sc.V, mesh.tri, extra_planes, o.plane_snap, False)
+    V = snap_vertices(sc, V, mesh.tri, [plane], o.plane_snap, True)
     fsel = sel[sc.fsolid]
     tsel = np.nonzero(fsel[mesh.tri_face])[0]
     with timed("plane section of %d triangles" % len(tsel)):
@@ -3710,22 +3768,25 @@ def parse_label(spec):
 # =============================================================================
 
 EPILOG = r"""
-examples
+examples (scene.npz and g4_XXXX.prim are interchangeable as input)
+  # exact y-z section at x=0 from the scene written by `solid_scene_dump -o scene.npz`
+  solid_lineview scene.npz --mode section --view side --fill -o section_yz.svg
+
   # DAWN-like hidden-line side view of the half detector x>0 (camera at -x), PDF + PNG
-  solid_lineview.py g4_0000.prim --view side --cut 1 0 0 0 -o side.pdf -o side.png
+  solid_lineview g4_0000.prim --view side --cut 1 0 0 0 -o side.pdf -o side.png
 
   # exact y-z section at x=0, coloured fills
-  solid_lineview.py g4_0000.prim --mode section --view side --fill -o section_yz.svg
+  solid_lineview g4_0000.prim --mode section --view side --fill -o section_yz.svg
 
   # what the old views/top_view/generate_eps of this repository did (side view part):
   #   dawncut -1 0 0 1 ; dawn_tweak --mag 10 --draw 3 --theta 165 --phi 75
-  solid_lineview.py g4_0000.prim --dawncut -1 0 0 1 --dawn-angles 75 165 --mode hlr -o view.pdf
+  solid_lineview g4_0000.prim --dawncut -1 0 0 1 --dawn-angles 75 165 --mode hlr -o view.pdf
 
   # read camera + style from an existing .DAWN_1.history
-  solid_lineview.py g4_0000.prim --dawn-history .DAWN_1.history -o top.pdf
+  solid_lineview g4_0000.prim --dawn-history .DAWN_1.history -o top.pdf
 
   # labelled detector overview: cutaway, beam line trimmed to the detector, beam arrow, SoLID labels
-  solid_lineview.py g4_0000.prim --dawncut -1 0 0 0 --view-dir -0.8 0.3 -0.52 --perspective 40m \
+  solid_lineview g4_0000.prim --dawncut -1 0 0 0 --view-dir -0.8 0.3 -0.52 --perspective 40m \
       --trim 'Beamline=auto' --beam-arrow --labels solid --title 'SoLID-Lite J/ψ' -o overview.svg
 
 conventions
@@ -3738,10 +3799,12 @@ conventions
 
 def build_parser():
     p = argparse.ArgumentParser(
-        prog="solid_lineview.py",
-        description="Clean DAWN-style vector line drawings (SVG/PDF/EPS/PNG) from Geant4 DAWNFILE .prim files.",
+        prog="solid_lineview",
+        description="Clean DAWN-style vector line drawings (SVG/PDF/EPS/PNG) of Geant4 geometry: from a scene.npz "
+                    "(solid_scene_dump, or ddsim with SOLID_SCENE) or from a DAWNFILE .prim file.",
         epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("prim", help="input .prim file (Geant4 DAWNFILE output, g4.prim format 2.4)")
+    p.add_argument("prim", metavar="scene", help="input scene: scene.npz (Geant4 polyhedra with names and volume "
+                   "IDs) or a .prim file (Geant4 DAWNFILE output, g4.prim format 2.4); told apart by content")
     p.add_argument("-o", "--output", action="append", default=[],
                    help="output file(s); format from extension: .svg .pdf .eps .png (repeatable)")
     p.add_argument("--mode", choices=["hlr", "section", "wireframe", "surface"], default="hlr")
@@ -3775,6 +3838,12 @@ def build_parser():
                    help="section plane for --mode section (default: from the view preset through the target)")
     g.add_argument("--plane", nargs=4, type=float, metavar=("A", "B", "C", "D"),
                    help="general section plane a*x+b*y+c*z+d=0 for --mode section")
+    g.add_argument("--plane-snap", type=parse_length, default=1e-6, metavar="LEN",
+                   help="vertices closer than LEN to a cut or section plane are moved off it by LEN, each solid "
+                        "to one side, so that faces lying in the plane (sector sides at x = 0) do not depend on "
+                        "rounding noise: a solid touching a section plane with a face is cut along that face, "
+                        "a solid touching a cut plane from the removed side is removed (default 1e-6 mm; 0 = "
+                        "off, as versions before 0.5.0)")
     g.add_argument("--trim", action="append", type=parse_trim, metavar="REGEX=SPEC",
                    help="cut only the volumes matching REGEX; SPEC is 'auto' (z range of all other volumes, "
                         "+- --trim-margin) or a comma list of AXIS<LEN / AXIS>LEN, e.g. 'Beamline=z<5m'; repeatable")
@@ -3798,6 +3867,10 @@ def build_parser():
                    help="volumes with drawn daughters: opaque (physical, default), transparent, hide")
     g.add_argument("--wireframe-volumes", choices=["transparent", "hide"], default="transparent",
                    help="volumes flagged /ForceWireframe 1 (default: drawn, non-occluding)")
+    g.add_argument("--drawing-style", action="store_true",
+                   help="scene.npz only: also treat volumes whose DD4hep VisAttr has drawingStyle=\"wireframe\" "
+                        "as wireframe volumes (DDG4 does not pass drawingStyle to Geant4, so by default they "
+                        "are drawn solid, as in a DAWNFILE .prim)")
     g = p.add_argument_group("edges and style")
     g.add_argument("--crease", type=float, default=35.0,
                    help="feature-edge angle in deg between face normals (default 35; DAWN uses 70)")
@@ -3967,7 +4040,7 @@ def main(argv=None):
 
     t_start = time.perf_counter()
     with timed("parse %s" % args.prim):
-        sc = parse_prim(args.prim)
+        sc = load_scene(args.prim, drawing_style=args.drawing_style)
     log("parsed %s: %d solids, %d facets, %d polylines, %d markers" % (
         os.path.basename(args.prim), len(sc.solids), len(sc.F), len(sc.polylines), len(sc.markers)))
     for w, c in sc.warnings.most_common(10):

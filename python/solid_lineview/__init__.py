@@ -4,11 +4,12 @@
 The package is the renderer behind the ``solid_lineview`` command.  Typical use from Python::
 
     import solid_lineview as slv
-    scene = slv.parse_prim('g4_0000.prim')            # a PrimScene
-    slv.main(['g4_0000.prim', '--mode', 'section', '--section', 'x=0', '-o', 'side.svg'])
+    scene = slv.load_scene('scene.npz')               # a PrimScene, from a scene.npz or a .prim file
+    slv.main(['scene.npz', '--mode', 'section', '--section', 'x=0', '-o', 'side.svg'])
 
 ``python3 -m solid_lineview ...`` is the same as the ``solid_lineview`` command.  Everything lives
-in :mod:`solid_lineview.core`; the names below are the supported interface, helpers with a leading
+in :mod:`solid_lineview.core` (renderer) and :mod:`solid_lineview.scene` (scene.npz reader and
+.prim writer); the names below are the supported interface, helpers with a leading
 underscore are reachable as ``solid_lineview.core._name``.
 """
 from .core import (  # noqa: F401
@@ -21,6 +22,7 @@ from .core import (  # noqa: F401
     Renderer,
     Solid,
     build_parser,
+    load_scene,
     main,
     parse_prim,
     render_section,
