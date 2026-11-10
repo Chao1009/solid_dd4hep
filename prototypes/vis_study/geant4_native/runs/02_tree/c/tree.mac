@@ -1,0 +1,7 @@
+/control/verbose 2
+/vis/ASCIITree/verbose 12
+/vis/drawTree FAECShower_envelope_7 ATree
+/vis/ASCIITree/verbose 2
+/vis/drawTree LiteCherenkov_tank_3 ATree
+/vis/drawTree FAECPreShower_envelope_6 ATree
+/vis/drawTree LAECShower_envelope_5 ATree

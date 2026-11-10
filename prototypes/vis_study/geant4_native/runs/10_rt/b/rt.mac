@@ -1,0 +1,13 @@
+/control/verbose 2
+/vis/verbose confirmations
+/vis/open RayTracer 400x250-0+0
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/zoomTo 1.9
+/vis/viewer/list ! all
+/control/shell date +T0=%s.%N
+/vis/viewer/flush
+/control/shell date +T1=%s.%N

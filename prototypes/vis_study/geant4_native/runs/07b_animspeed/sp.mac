@@ -1,0 +1,45 @@
+/control/verbose 2
+/vis/verbose warnings
+/vis/open TSG_OFFSCREEN 1280x800-0+0
+/vis/tsg/offscreen/set/size 1280 800
+/vis/viewer/set/autoRefresh false
+/vis/tsg/offscreen/set/format zb_png
+/vis/viewer/set/lineSegmentsPerCircle 72
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/zoomTo 1.9
+/vis/viewer/set/style surface
+/vis/scene/add/trajectories rich
+/vis/modeling/trajectories/create/drawByCharge
+/vis/modeling/trajectories/drawByCharge-0/default/setLineWidth 3
+/vis/modeling/trajectories/drawByCharge-0/default/setTimeSliceInterval 0.05 ns
+/vis/scene/endOfEventAction accumulate 10
+/vis/viewer/set/timeWindow/displayHeadTime true -0.85 0.85 24 0 0 0
+/run/beamOn 1
+/control/echo "=== T0"
+/vis/viewer/set/timeWindow/startTime 0 ns 5 ns
+/vis/tsg/offscreen/set/file nocut_rebuild_5ns.png
+/vis/viewer/rebuild
+/control/echo "=== T1"
+/vis/viewer/set/timeWindow/startTime 0 ns 15 ns
+/vis/tsg/offscreen/set/file nocut_refresh_15ns.png
+/vis/viewer/refresh
+/control/echo "=== T2"
+/vis/viewer/set/timeWindow/startTime 0 ns 25 ns
+/vis/tsg/offscreen/set/file nocut_flush_25ns.png
+/vis/viewer/flush
+/control/echo "=== T3"
+/vis/viewer/set/timeWindow/startTime 0 ns 25 ns
+/vis/tsg/offscreen/set/file nocut_rebuild_25ns.png
+/vis/viewer/rebuild
+/control/echo "=== T4"
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/vis/tsg/offscreen/set/file cut_rebuild_25ns.png
+/vis/viewer/rebuild
+/control/echo "=== T5"
+/vis/tsg/offscreen/set/file cut_rebuild2_25ns.png
+/vis/viewer/rebuild
+/control/echo "=== T6"

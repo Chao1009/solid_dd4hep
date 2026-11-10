@@ -1,0 +1,52 @@
+/control/verbose 2
+/vis/verbose warnings
+/vis/open TSG_OFFSCREEN 1600x1000-0+0
+/vis/tsg/offscreen/set/size 3200 2000
+/vis/viewer/set/autoRefresh false
+/vis/tsg/offscreen/set/format zb_png
+/vis/viewer/set/lineSegmentsPerCircle 72
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/zoomTo 1.9
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/control/echo "=== A1 original colours, surface + edges (hlhsr), ortho"
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/edge true
+/vis/tsg/offscreen/set/file a1_hlhsr_colour.png
+/vis/viewer/rebuild
+/control/echo "=== A2 transparency off"
+/vis/tsg/offscreen/set/transparency false
+/vis/tsg/offscreen/set/file a2_hlhsr_colour_notransp.png
+/vis/viewer/rebuild
+/control/echo "=== B1 line drawing: force styles off, black opaque, wireframe+hiddenEdge (hlr)"
+/vis/geometry/set/forceSolid all -1 false
+/vis/geometry/set/colour all -1 0 0 0 1
+/vis/viewer/set/style wireframe
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/edge false
+/vis/tsg/offscreen/set/file b1_hlr_black.png
+/vis/viewer/rebuild
+/control/echo "=== B2 same, gl2ps svg"
+/vis/tsg/offscreen/set/size 1600 1000
+/vis/tsg/offscreen/set/format gl2ps_svg
+/vis/tsg/offscreen/set/file b2_hlr_black.svg
+/vis/viewer/rebuild
+/control/echo "=== B3 same, gl2ps pdf"
+/vis/tsg/offscreen/set/format gl2ps_pdf
+/vis/tsg/offscreen/set/file b3_hlr_black.pdf
+/vis/viewer/rebuild
+/control/echo "=== B4 same, gl2ps eps"
+/vis/tsg/offscreen/set/format gl2ps_eps
+/vis/tsg/offscreen/set/file b4_hlr_black.eps
+/vis/viewer/rebuild
+/control/echo "=== B5 plain wireframe (no hidden edge) png"
+/vis/tsg/offscreen/set/size 3200 2000
+/vis/tsg/offscreen/set/format zb_png
+/vis/viewer/set/hiddenEdge false
+/vis/tsg/offscreen/set/file b5_wire_black.png
+/vis/viewer/rebuild
+/control/echo "=== done"

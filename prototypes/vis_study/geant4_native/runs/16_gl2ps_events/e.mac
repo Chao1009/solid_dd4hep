@@ -1,0 +1,45 @@
+/control/verbose 2
+/vis/verbose warnings
+/vis/open TSG_OFFSCREEN 1600x1000-0+0
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/lineSegmentsPerCircle 72
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/geometry/set/colour all -1 0.93 0.93 0.93 1
+/vis/geometry/set/forceSolid all -1 false
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/edge true
+/vis/scene/add/trajectories rich
+/vis/modeling/trajectories/create/drawByCharge
+/vis/modeling/trajectories/drawByCharge-0/default/setLineWidth 2
+/vis/filtering/trajectories/create/attributeFilter
+/vis/filtering/trajectories/attributeFilter-0/setAttribute IMag
+/vis/filtering/trajectories/attributeFilter-0/addInterval 20 MeV 1000 GeV
+/vis/scene/endOfEventAction accumulate 10
+/run/beamOn 3
+/vis/tsg/offscreen/set/format gl2ps_svg
+/vis/tsg/offscreen/gl2ps/set/options SILENT|OCCLUSION_CULL|BEST_ROOT|DRAW_BACKGROUND|SIMPLE_LINE_OFFSET
+/control/echo "=== E1 cutaway + tracks"
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/lightsVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/set/projection p 25.7 deg
+/vis/viewer/zoomTo 1.75
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/vis/tsg/offscreen/set/file e1_cutaway_tracks.svg
+/control/shell date +T0=%s.%N
+/vis/viewer/rebuild
+/control/shell date +T1=%s.%N
+/control/echo "=== E2 section x=0 side view + tracks"
+/vis/viewer/clearCutawayPlanes
+/vis/viewer/set/projection o
+/vis/viewer/set/sectionPlane on 0 0 0 m -1 0 0
+/vis/viewer/set/lightsVector -1 0 0
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.3 m
+/vis/viewer/zoomTo 1.9
+/vis/tsg/offscreen/set/file e2_section_tracks.svg
+/vis/viewer/rebuild
+/control/shell date +T2=%s.%N

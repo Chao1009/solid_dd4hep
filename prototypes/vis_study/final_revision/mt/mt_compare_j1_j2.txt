@@ -1,0 +1,9 @@
+event 0: IDENTICAL
+   p0 (1.167604022, 0.423390376, 3.802294233)  nMC 1021  {'FAECPreShowerHits': (7, 0.006496556), 'FAECShowerHits': (24, 0.013757037), 'FAMRPCHits': (0, 0.0), 'FASPDHits': (2, 0.000256789), 'GEMTrackerFAHits': (66, 8.3782e-05), 'GEMTrackerLAHits': (4, 3.676e-06), 'LAECPreShowerHits': (0, 0.0), 'LAECShowerHits': (93, 0.518835366), 'LASPDHits': (2, 0.00494569), 'LiteCherenkovHits': (0, 0.0)}
+event 1: IDENTICAL
+   p0 (1.131290645, 0.270013373, 3.827175754)  nMC 904  {'FAECPreShowerHits': (0, 0.0), 'FAECShowerHits': (0, 0.0), 'FAMRPCHits': (1, 6.99e-07), 'FASPDHits': (0, 0.0), 'GEMTrackerFAHits': (6, 2.493e-06), 'GEMTrackerLAHits': (4, 3.789e-06), 'LAECPreShowerHits': (0, 0.0), 'LAECShowerHits': (2, 0.001080583), 'LASPDHits': (0, 0.0), 'LiteCherenkovHits': (0, 0.0)}
+event 2: IDENTICAL
+   p0 (-0.376335214, -0.819941492, 3.896930556)  nMC 5  {'FAECPreShowerHits': (6, 0.061166316), 'FAECShowerHits': (347, 0.819390416), 'FAMRPCHits': (9, 1.707e-06), 'FASPDHits': (1, 0.001079281), 'GEMTrackerFAHits': (7, 7.858e-06), 'GEMTrackerLAHits': (0, 0.0), 'LAECPreShowerHits': (0, 0.0), 'LAECShowerHits': (3, 0.001299924), 'LASPDHits': (0, 0.0), 'LiteCherenkovHits': (0, 0.0)}
+event 3: IDENTICAL
+   p0 (1.518662219, 0.097313734, 3.699215471)  nMC 1109  {'FAECPreShowerHits': (0, 0.0), 'FAECShowerHits': (4, 0.003279603), 'FAMRPCHits': (0, 0.0), 'FASPDHits': (0, 0.0), 'GEMTrackerFAHits': (0, 0.0), 'GEMTrackerLAHits': (4, 4.181e-06), 'LAECPreShowerHits': (3, 0.038593434), 'LAECShowerHits': (312, 0.845449924), 'LASPDHits': (4, 0.005744583), 'LiteCherenkovHits': (0, 0.0)}
+identical events: 4 of 4

@@ -1,0 +1,38 @@
+/control/verbose 2
+/vis/verbose warnings
+/score/create/boxMesh faecMesh
+/score/mesh/boxSize 260 260 30 cm
+/score/mesh/translate/xyz 0 0 440 cm
+/score/mesh/nBin 104 104 1
+/score/quantity/energyDeposit eDep MeV
+/score/close
+/score/create/cylinderMesh faecCyl
+/score/mesh/cylinderSize 260 30 cm
+/score/mesh/translate/xyz 0 0 440 cm
+/score/mesh/nBin 52 1 120
+/score/quantity/energyDeposit eDep MeV
+/score/close
+/vis/open TSG_OFFSCREEN 2000x2000-0+0
+/vis/viewer/set/autoRefresh false
+/vis/tsg/offscreen/set/format zb_png
+/vis/scene/create
+/vis/scene/add/volume FAECShower_envelope_7
+/vis/sceneHandler/attach
+/vis/viewer/set/background white
+/vis/viewer/set/style wireframe
+/vis/geometry/set/forceSolid FAECShower_module 0 false
+/vis/geometry/set/colour FAECShower_module 0 0.55 0.55 0.55 1
+/vis/viewer/set/viewpointVector 0 0 -1
+/vis/viewer/set/upVector 0 1 0
+/vis/scene/endOfEventAction accumulate 10
+/run/beamOn 3
+/score/colorMap/floatMinMax logColorMap
+/vis/viewer/rebuild
+/score/drawProjection faecMesh eDep logColorMap 100
+/vis/tsg/offscreen/set/file s4_boxmesh_xy_log.png
+/vis/viewer/refresh
+/vis/viewer/rebuild
+/score/drawProjection faecCyl eDep logColorMap 1
+/vis/tsg/offscreen/set/file s5_cylmesh_rphi_log.png
+/vis/viewer/refresh
+/control/echo "=== done"

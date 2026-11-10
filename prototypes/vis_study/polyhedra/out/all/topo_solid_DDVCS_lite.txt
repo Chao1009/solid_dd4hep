@@ -1,0 +1,5 @@
+out/all/g4_solid_DDVCS_lite.npz
+   total edges 12748 boundary 0 nonmanifold 0 inconsistent 0; meshes with defects 0 of 56
+out/all/tgeo_solid_DDVCS_lite.npz
+   TGeoCompositeShape     LiteCherenkov_mirror_0_shape_0x5c5b54282f60   edges   1710 boundary     7 nonmanifold    4 inconsistent    0
+   total edges 15538 boundary 7 nonmanifold 4 inconsistent 0; meshes with defects 1 of 56

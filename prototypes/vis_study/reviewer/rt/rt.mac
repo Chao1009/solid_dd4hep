@@ -1,0 +1,16 @@
+/control/verbose 2
+/vis/verbose warnings
+/vis/open RayTracer
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/zoomTo 1.9
+/vis/rayTracer/column 320
+/vis/rayTracer/row 200
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/control/shell date +T0=%s.%N
+/vis/rayTracer/trace rt_mt.jpeg
+/control/shell date +T1=%s.%N
+/control/echo "=== reviewer rt done"

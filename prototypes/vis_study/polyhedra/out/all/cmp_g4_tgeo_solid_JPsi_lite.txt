@@ -1,0 +1,62 @@
+drawn: G4 3546, TGeo 3546, matched by TGeo path 3546; only G4 0, only TGeo 0
+  only G4: []
+  only TGeo: []
+nodes with colour differences: 0
+max world-bbox difference over matched nodes: 1.19 mm; nodes > 0.5 mm: 8
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_7')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_31')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_3')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_27')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_23')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_19')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_15')
+    (1.19, 'LiteCherenkov_tank_3/LiteCherenkov_radiator_0/LiteCherenkov_mirror_0_11')
+G4 solid             TGeo shape           name                                    inst    Vg4  Vtgeo    Fg4  Ftgeo  vol_g4[cm3]     vol_tgeo    dvol%
+G4Polyhedra          TGeoPgon             FAECPreShower_module_shape_0x59cbcbe49  1145     14     14     18     18        406.0        406.0   -0.000
+G4Polyhedra          TGeoPgon             FAECShower_module_shape_0x59cbcc07ecd0  1145     14     14     18     18       4607.7       4607.7    0.000
+G4Polyhedra          TGeoPgon             LAECPreShower_module_shape_0x59cbcbdfb   307     14     14     18     18        406.0        406.0   -0.000
+G4Polyhedra          TGeoPgon             LAECShower_module_shape_0x59cbcbf20bc0   307     14     14     18     18       4607.7       4607.7    0.000
+G4Tubs               TGeoTubeSeg          FASPD_pad_ring1_shape_0x59cbcbeb1470      60      8     16      6     14        143.5        143.7    0.163
+G4Tubs               TGeoTubeSeg          FASPD_pad_ring2_shape_0x59cbcbf4c2f0      60      8     16      6     14        156.8        157.0    0.163
+G4Tubs               TGeoTubeSeg          FASPD_pad_ring3_shape_0x59cbcc22df10      60      8     16      6     14        282.2        282.7    0.163
+G4Tubs               TGeoTubeSeg          FASPD_pad_ring4_shape_0x59cbcc23eed0      60      8     16      6     14        609.3        610.3    0.163
+G4Tubs               TGeoTubeSeg          LASPD_pad_ring1_shape_0x59cbcbeb1180      60      8     16      6     14       1236.0       1238.1    0.163
+G4Trd                TGeoTrd2             GEMTrackerFA_layer1_module_shape_0x59c    30      8      8      6      6       1087.1       1087.1    0.000
+G4Trd                TGeoTrd2             GEMTrackerFA_layer2_module_shape_0x59c    30      8      8      6      6       1369.0       1369.0    0.000
+G4Trd                TGeoTrd2             GEMTrackerFA_layer3_module_shape_0x59c    30      8      8      6      6       1683.4       1683.4    0.000
+G4Trd                TGeoTrd2             GEMTrackerFA_layer4_module_shape_0x59c    30      8      8      6      6       2046.9       2046.9    0.000
+G4Trd                TGeoTrd2             GEMTrackerFA_layer5_module_shape_0x59c    30      8      8      6      6       2472.3       2472.3    0.000
+G4Trd                TGeoTrd2             GEMTrackerLA_layer1_module_shape_0x59c    30      8      8      6      6        823.5        823.5    0.000
+G4Trd                TGeoTrd2             GEMTrackerLA_layer2_module_shape_0x59c    30      8      8      6      6       1086.9       1086.9    0.000
+G4Trd                TGeoTrd2             GEMTrackerLA_layer3_module_shape_0x59c    30      8      8      6      6       1421.5       1421.5    0.000
+G4Trd                TGeoTrd2             GEMTrackerLA_layer4_module_shape_0x59c    30      8      8      6      6       2115.8       2115.8    0.000
+G4SubtractionSolid   TGeoCompositeShape   LiteCherenkov_cone_shape_0x59cbcbdf5e4     8     16     36     28     58        999.2        998.5   -0.072
+G4IntersectionSolid  TGeoCompositeShape   LiteCherenkov_mirror_0_shape_0x59cbcbd     8    380    627    708   1087       1325.8       1326.8    0.075
+G4Box                TGeoBBox             LiteCherenkov_pmt_tile_shape_0x59cbcbd     8      8      8      6      6          0.9          0.9    0.000
+G4SubtractionSolid   TGeoCompositeShape   LiteCherenkov_shield_shape_0x59cbcbdf6     8     16     36     28     52        907.4        907.4    0.000
+G4Box                TGeoBBox             MagnetYoke_SpacerBarsDown_shape_0x59cb     8      8      8      6      6      45350.0      45350.0    0.000
+G4Box                TGeoBBox             MagnetYoke_SpacerBarsUp_shape_0x59cbc6     8      8      8      6      6      45350.0      45350.0    0.000
+G4Polycone           TGeoPcon             Beamline_EntrancePipe_shape_0x59cbcbf3     1    146    146    216    216       1470.8       1470.8    0.000
+G4Polycone           TGeoPcon             Beamline_EntrancePipe_EntranceWindow_s     1    146    146    216    216          0.1          0.1    0.000
+G4Polycone           TGeoPcon             Beamline_ExitPipe_shape_0x59cbcc37ca20     1    146    146    216    216    1036002.4    1036002.4    0.000
+G4Polycone           TGeoPcon             Beamline_ExitPipe_ExitWindow_shape_0x5     1    146    146    216    216          0.2          0.2    0.000
+G4Polycone           TGeoPcon             Beamline_ExitPipe_KillDisk_shape_0x59c     1    146    146    216    216        524.0        524.0    0.000
+G4Tubs               TGeoTubeSeg          FAECPreShower_Radiator_shape_0x59cbcc0     1    288    288    288    288     138368.5     138368.5    0.000
+G4Tubs               TGeoTubeSeg          FAMRPC_module1_shape_0x59cbcbf3b620        1    288    288    288    288     337480.4     337480.4    0.000
+G4Tubs               TGeoTubeSeg          LAECPreShower_Radiator_shape_0x59cbcbd     1    288    288    288    288      41747.7      41747.7    0.000
+G4Polycone           TGeoPcon             LiteCherenkov_tank_shape_0x59cbcbdf706     1    792    864    792    864   23158203.4   23158203.4    0.000
+G4Polycone           TGeoPcon             LiteCherenkov_block_0_shape_0x59cbcbdf     1     14     32     17     30      22419.0      22419.2    0.001
+G4Polycone           TGeoPcon             LiteCherenkov_block_1_shape_0x59cbcbdf     1     14     32     17     30      22419.0      22419.2    0.001
+G4Tubs               TGeoTubeSeg          LiteCherenkov_window_0_shape_0x59cbcbd     1    288    288    288    288       4972.2       4972.2   -0.000
+G4Polycone           TGeoPcon             MagnetCoil_CoilShell_shape_0x59cbcbdeb     1    288    288    288    288    1543072.8    1543072.8    0.000
+G4Polycone           TGeoPcon             MagnetCoil_CoilWinding_shape_0x59cbcbd     1    288    288    288    288    1069732.5    1069732.5    0.000
+G4Polycone           TGeoPcon             MagnetCoil_CryostatFlangeDown_shape_0x     1    288    288    288    288      59865.5      59865.5   -0.000
+G4Polycone           TGeoPcon             MagnetCoil_CryostatFlangeUp_shape_0x59     1    288    288    288    288      59865.5      59865.5    0.000
+G4Polycone           TGeoPcon             MagnetCoil_CryostatInnerWall_shape_0x5     1    288    288    288    288     339130.7     339130.7    0.000
+G4Polycone           TGeoPcon             MagnetCoil_CryostatOuterWall_shape_0x5     1    288    288    288    288     488349.1     488349.1    0.000
+G4SubtractionSolid   TGeoCompositeShape   MagnetYoke_DownstreamCoilCollar_shape_     1    176    495    344    894    3298839.4    3298839.3   -0.000
+G4Polyhedra          TGeoPgon             MagnetYoke_InnerOctagon_shape_0x59cbc6     1     64     80     64     80   24125872.0   24125872.0    0.000
+G4Polyhedra          TGeoPgon             MagnetYoke_OuterOctagon_shape_0x59cbc3     1     32     32     32     32   30571645.7   30571645.7   -0.000
+G4SubtractionSolid   TGeoCompositeShape   MagnetYoke_UpstreamCoilCollar_shape_0x     1    176    495    344    894    3298839.4    3298839.3   -0.000
+G4Tubs               TGeoTubeSeg          Target_Cell_shape_0x59cbcbd47500           1    146    146    216    216        171.0        171.0    0.000
+G4Tubs               TGeoTubeSeg          Target_Liquid_shape_0x59cbcc377630         1    146    146    216    216        167.6        167.6    0.000

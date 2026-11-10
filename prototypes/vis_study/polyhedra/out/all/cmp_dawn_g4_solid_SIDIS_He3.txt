@@ -1,0 +1,10 @@
+parse times: 1.30 s ($SCRATCH/overview_job/prims/solid_SIDIS_He3/g4_0000.prim)  1.53 s (out/all/g4_solid_SIDIS_He3.prim)
+A solids 4519 V 115814 F 150538 {'Polyhedron': 3620, 'Box': 316, 'Trd': 180, 'Cons': 32, 'Tubs': 371} warnings {}
+B solids 4519 V 115814 F 150538 {'Polyhedron': 4519} warnings {}
+same name sequence: True
+names only in A: []
+names only in B: []
+name mismatches in order: 0  colour diffs: 0  depth diffs: 0
+identical meshes (V, F, edge flags): 3620  differing by kind: {('Box', 'Polyhedron'): 316, ('Trd', 'Polyhedron'): 180, ('Cons', 'Polyhedron'): 32, ('Tubs', 'Polyhedron'): 371}  polyhedron-vs-polyhedron diffs: 0
+max bbox difference [mm]: 4.98e-06
+worst: []

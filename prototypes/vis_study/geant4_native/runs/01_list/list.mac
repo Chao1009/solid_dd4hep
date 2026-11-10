@@ -1,0 +1,15 @@
+/control/verbose 2
+/vis/list
+/vis/open TSG_OFFSCREEN
+/vis/list
+/control/manual /vis/tsg
+/control/manual /vis/viewer/set
+/control/manual /vis/viewer/save
+/control/manual /vis/ogl
+/control/manual /vis/rayTracer
+/control/manual /vis/scene/add
+/control/manual /vis/touchable
+/control/manual /vis/set
+/control/manual /vis/modeling/trajectories
+/control/manual /score
+/control/manual /vis/multithreading

@@ -1,0 +1,192 @@
+> Verbatim copy of the events_animation role report, which was returned inline to the workflow on 6 Nov 2026 and saved here by the final-revision step.
+> Corrections in $SCRATCH/vis_study/FEASIBILITY.md section 7 (review log) take precedence over statements they name.
+
+REPORT.md was not written: the harness blocks report files from subagents, so the full report is inline below this summary. My role directory already held an earlier, unfinished attempt of this role with no report. I reused its scripts, checked and extended them, and regenerated every output.
+
+## Summary
+
+- **Feasible: yes, and the event layer does not use DAWNFILE.** The geometry still comes from a geometry-only `.prim`, made once per geometry. Any polyhedron export that gives named, world-placed meshes could replace it.
+- **Trajectories with times (route A, works).** A 116-line DDG4 stepping action, `SolidStepRecorder`, is loaded with `ddsim --action.step`. It stores a point every 20 mm or 0.04 rad (sagitta ≤ 0.1 mm), with the global time.
+  - Cost for 5 × 4 GeV e⁻: 13.8 s with the recorder against 14.1 s without, so no measurable overhead.
+  - Output: 2.2 MB per event with no energy cut, 0.6–0.9 MB with a 5 MeV cut.
+  - Route B, from EDM4hep alone (vertex, SimTrackerHits, endpoint, joined by splines), is good enough for primaries.
+- **Calorimeter mapping with DD4hep.** All four EC readouts are `system:8,sector:5,module:11,layer:8,slice:4`, NoSegmentation.
+  - The CellIDPositionConverter position equals the hit position to 2.4e-4 mm.
+  - VolumeManager returns `module<id>` with 0 mismatches over 3274 hits.
+  - All 2904 module placements match the drawn polygons by name; centres agree to 5e-6 mm.
+- **Static figures.** Four views: ρ-z side section, zoom on the hit calorimeter, beam view of the hexagons, and a 3-D hidden-line cutaway. Each has tracks coloured by particle, hit markers, modules on a log energy scale, a colour bar and a legend.
+  - 5–6 s per event for 4 views in SVG, PNG and PDF; the cutaway takes 2 s of that.
+  - Sizes: PNG 95–650 kB, SVG 220–720 kB, PDF 40–155 kB.
+- **Animation.** 120 frames take 0.04–0.07 s each at 0.6 scale and 0.10–0.21 s at full size, because the geometry layers are cached.
+  - GIF 222–357 kB, lossless WebP 0.23–1.1 MB, WebM (VP9) 135–495 kB.
+  - The animated SVG is one file of 0.40–0.85 MB; headless Firefox renders it consistently with the frames at 8 test times.
+  - **MP4 cannot be made here.** No ffmpeg or imageio on the host or in eic_xl, no H.264/AV1 encoder in GStreamer, and `mp4mux` refuses VP9. Installing ffmpeg fixes it with one command.
+- **Effort to productise: about 10 developer-days (8–13); a minimal version about 5.** The pieces are a recorder plugin with a steering switch, an exporter run in the container, and an event view CLI built on `solid_lineview` with animation outputs.
+
+Samples:
+- $SCRATCH/vis_study/events_animation/out/jpsi1_side.png
+- $SCRATCH/vis_study/events_animation/out/jpsi1_beam.png
+- $SCRATCH/vis_study/events_animation/out/jpsi1_cutaway.png
+- $SCRATCH/vis_study/events_animation/out/jpsi1_side_anim.gif
+- $SCRATCH/vis_study/events_animation/out/jpsi1_side_anim.svg
+
+---
+
+## REPORT (inline): event overlays and animation for the SoLID line drawings
+
+Configuration solid_JPsi_lite, 2026-11-06. The repository was only read.
+
+`W=$SCRATCH/vis_study/events_animation` is used in the commands below. All files are listed with full paths in section 8.
+
+### 1. Commands
+All steps are in `$W/scripts/run_all.sh` (stages: plugin sim bench extract render animate encode svgcheck). Logs with `/usr/bin/time` are in `$W/logs/`.
+
+Container stages run as:
+`singularity exec <sif> bash -c ". /etc/profile; source <install>/bin/thissolid.sh solid_JPsi_lite; export LD_LIBRARY_PATH=$W/plugin:$LD_LIBRARY_PATH SOLID_OPTICAL=0; ..."`
+
+- **Plugin build (4.7 s):**
+  `g++ -O2 -fPIC -shared SolidStepRecorder.cpp -o libSolidStepRecorder.so $(root-config --cflags) $(geant4-config --cflags) -I/opt/local/include -L/opt/local/lib -lDDG4 -lDDCore $(geant4-config --libs) $(root-config --libs) && listcomponents_dd4hep -o libSolidStepRecorder.components libSolidStepRecorder.so`
+- **Simulation:**
+  `nice -n 10 ddsim --steeringFile $DETECTOR_PATH/steering/solid_sim.py --compactFile $DETECTOR_PATH/$DETECTOR_CONFIG.xml -N 5 --random.seed 12345 --outputFile egun5.edm4hep.root --action.step '{"name":"SolidStepRecorder/StepRec","parameter":{"OutputFile":"steps.bin","MaxDistance":20.0,"MaxAngle":0.04}}'`
+- **J/ψ-like events:** the same command with `SOLID_GUN=0 -N 2 --random.seed 777 --inputFiles jpsi_like.hepmc`. The input is a hand-written HepMC3 file with e⁺, e⁻ and p (plus a π⁻ in event 1) from z = −315 cm.
+- **Extraction (container):**
+  `python3 $W/scripts/extract_event.py $DETECTOR_PATH/$DETECTOR_CONFIG.xml egun5.edm4hep.root egun5_event.npz` takes 12–13 s, of which 7.5 s is geometry loading.
+- **Static views (host):**
+  `python3 $W/scripts/evdisp.py --prim <overview_job>/prims/solid_JPsi_lite/g4_0000.prim --geo-cache $W/sim/JPsi_lite_geo_v03.pkl --event-npz ... --steps .../steps.bin -e 2 -o $W/out --tag ev2 --views side,sidezoom,beam,cutaway --formats svg,png,pdf`
+  - Add `--traj edm4hep` for route B, or `--proj ortho` for an orthographic side view.
+- **Animation (host):** the same command with `--animate side,beam,cutaway --frames 120 --frame-scale 0.6 --svg-anim`.
+- **Encoding (host):** `python3 $W/scripts/encode.py frames_ev2_side ev2_side_anim --fps 12 --formats gif,webp,webm,mp4 --webp-lossless`.
+- **SVG check (host):** `python3 $W/scripts/svgcheck.py <anim.svg> $W/out/svgcheck 5 12 22 29`.
+- **Renderer library:** `solid_lineview` is imported from a snapshot of the repository's `bin/solid_lineview` (v0.3.0, md5 f731c82e), or from the path in `$SOLID_LINEVIEW`.
+
+### 2. Trajectories with times
+**Route A: DDG4 stepping action (used for all figures).**
+- Each 48-byte record holds event, track, parent, PDG, flags, x/y/z, global t, kinetic energy and deposited energy.
+- A point is written at the track start, then after 20 mm of travel or a 0.04 rad turn, and at the track end.
+- Optical photons and tracks below `MinEkin` are skipped.
+
+| run | wall time | points written | file size |
+|---|---|---|---|
+| 5 events, no recorder | 14.09 s (5.5 s startup, 0.83 s/event) | – | – |
+| default recorder | 13.76 s | 226,679 of 739,023 steps | 10.9 MB |
+| 50 mm / 0.1 rad / 1 MeV cut | 13.56 s | 104,992 | 5.0 MB |
+
+- An event has about 5,400 tracks, about 400 of them above 5 MeV; the figures draw 270–520 tracks.
+- A 5 MeV cut keeps 24–26 % of the points, about 0.56–0.9 MB per event.
+
+**Route B: EDM4hep only, no simulation change.** It joins the MCParticle vertex, the time-ordered SimTrackerHits (with their times) and the endpoint with Hermite splines.
+- It shows no photons or shower internals, and the path is approximate where hits are sparse.
+- The MCParticle content varies with where the shower happens: FAEC showers kept only 7–11 MCParticles, LAEC showers more than 1000. This is probably DDG4's tracking-region policy; I did not verify it.
+
+**Route C: Geant4 rich trajectories through the vis system.** Not used. It needs a vis driver for every event and gives either polylines without times (DAWNFILE/VRML) or raster time windows. The sibling `geant4_native` study tried TSG_OFFSCREEN time windows (its runs/07_anim directory).
+
+### 3. From cellID to drawn polygon
+- **Readout fields:** all four EC readouts use `system:0:8,sector:8:5,module:13:11,layer:24:8,slice:32:4` with NoSegmentation.
+  - The module field is the ANL id (≤1748). Sectors run 1–30.
+  - Shower hits are layer 1–194, slice 5; preshower hits are layer 1, slice 1.
+  - Systems are 30/31 for the FAEC and 32/33 for the LAEC.
+- **CellIDPositionConverter:** the position equals the EDM4hep hit position to 2.4e-4 mm over 1,663 + 1,611 hits.
+- **VolumeManager:**
+  - `lookupDetElement(cellID)` returns `/world/<det>/module<id>` with 0 mismatches, and its world placement equals the placement map exactly.
+  - `lookupContext(cellID).localToWorld(0)` equals the hit position.
+  - Example: `0x1015bfc20 = system:32,sector:28,module:735,layer:1,slice:1 → /world/LAECPreShower/module735`, sensitive placement `LAECPreShower_PSScint_0`.
+- **Placement map:** 2,904 envelope daughters carry a module volID.
+- **Map to the drawing:** each TGeo node name equals the `.prim` PV name (`FAECShower_module_1144:1144`). All 2,904 match, and polygon centres agree with DD4hep to 4.7e-6 mm.
+- **Colours:** module energy is the sum over (system, module). The animation uses the contribution times.
+
+### 4. Static views
+- **side:** section through the beam axis at the azimuth of the calorimeter energy centroid. Tracks and hits are in ρ-z projection; hit modules that the section misses are drawn translucent, rotated into the plane. The orthographic option instead puts off-plane hits near the beam axis.
+- **sidezoom:** close-up of the shower.
+- **beam:** section 2 cm behind the front of the hit calorimeter (FAEC z = 446.3 cm, LAEC z = −55.7 cm). Tracks and hits upstream of the section are drawn, with hits as rings so the module colours stay visible.
+- **cutaway:** 3-D hidden-line view cut at the event plane. Tracks are hidden by the depth buffer, and modules lying on the cut are coloured.
+- **Style:**
+  - Colours: e⁻ blue, e⁺ orange, γ green dashed, hadrons and μ dark grey, other neutrals grey dotted.
+  - Primaries are drawn wider.
+  - Thresholds: charged 5 MeV, γ 20 MeV, other neutrals 50 MeV.
+  - The energy scale is log, Reds, 0.1 MeV up to a rounded maximum.
+- **Timing:**
+  - The `.prim` (5.5 MB, 3,546 solids, 67,950 facets) parses in 1.14 s, or 0.02 s from the pickle cache.
+  - One event, 4 views in 3 formats: 4.8–6.0 s.
+  - Scene build is 0.1–0.2 s for side and beam, 1.9–2.3 s for the cutaway.
+  - PNG writing takes 0.4–0.85 s; SVG and PDF under 0.13 s.
+
+### 5. Animation
+Frames run from 0 to t_end (last primary point + 2 ns, about 28–29 ns). Tracks are cut at time t with an interpolated head point, hits appear at their own time, and modules show their cumulative energy at t. Geometry layers are cached as cairo surfaces.
+
+| output | result |
+|---|---|
+| frames at 0.6 scale | 0.040–0.074 s per frame |
+| frames at full scale | side 2816×1046 at 0.10 s; cutaway 2816×1356 at 0.21 s |
+| frames on disk | 7–37 MB per 120 frames |
+| GIF (Pillow, global palette) | 222–357 kB, encoded in 9–17 s |
+| lossless WebP | 228 kB to 1.1 MB, 5–9 s |
+| WebM (VP9 via GStreamer) | 135–495 kB, 19–65 s; all 144 frames decode |
+| animated SVG (SMIL) | 0.40–0.85 MB, written in under 0.1 s |
+
+- **SVG check:** headless Firefox 159 was paused and set to fixed times (8 of them, about 1.2 s each). The renderings are consistent with the PNG frames.
+  - The snap-packaged Firefox cannot see `/tmp`, so the check used a temporary directory under `~/snap/firefox/common`, removed afterwards.
+  - One run hung while another session's Firefox was open; I redid it.
+- **MP4:** not produced, because no encoder is available.
+  - There is no ffmpeg or imageio on the host or in eic_xl. eic_xl's ImageMagick can only write MP4 through ffmpeg.
+  - GStreamer has no x264, openh264, avenc or AV1 encoder, and `mp4mux` refuses VP9.
+  - The host has the FFmpeg 4.4 runtime libraries and libx264, but no ffmpeg command or headers.
+  - Once ffmpeg is installed: `ffmpeg -framerate 12 -i f%04d.png -c:v libx264 -pix_fmt yuv420p -crf 20 out.mp4`.
+
+### 6. Limitations
+- The beam-section z positions are hard-coded for this configuration.
+- In the cutaway, only modules lying on the cut are coloured, and hit markers are not hidden behind geometry.
+- In the SVG, dashed photon tracks appear all at once instead of growing; colours change at 12 sampled times; the clock steps by 1 ns.
+- Energy deposited after t_end appears only in the static figures.
+- In multi-threaded runs every thread would write to the same recorder file.
+- The `.prim` must come from the same geometry as the simulation; the name and centre checks detect a mismatch.
+
+### 7. Productising
+1. **Recorder plugin:** `src/SoLIDTrajectoryRecorder.cpp` with `MinEkin`, `MaxDistance`, `MaxAngle`, `KeepOptical` and `OutputFile`, made thread-safe.
+   - A `SOLID_TRAJ=1` switch in `solid_sim.py` turns it on.
+   - Optionally, points could go into the EDM4hep file as a `MCTrajectoryPoints` SimTrackerHit collection instead of a separate file.
+2. **Exporter `bin/solid_evexport` (runs in the container):** writes an event JSON or npz plus a per-geometry module map, so the renderer needs no DD4hep. It should cover every calorimeter-type readout, the SPD/MRPC pads and the muon system.
+3. **Renderer:** make `solid_lineview` importable and add hollow markers.
+   - Add a `solid_evview` CLI with `--views side,zoom,beam,cutaway`, `--proj`, thresholds and the energy scale.
+   - It should take parameters from the geometry, and accept geometry from a `.prim` or any polyhedron export.
+4. **Animation:** `--animate N --fps F --formats gif,webp,webm,mp4,svg`.
+   - Use ffmpeg when present, GStreamer otherwise for WebM.
+   - Improve the SVG: dashed tracks that grow, and smoother colour changes.
+   - `make_solid_views --events` could use this path.
+5. **Docs and CI:** add the docs, plus a CI smoke test (1 event, 2 views, 10 frames).
+
+**Estimate (developer-days):**
+
+| item | days |
+|---|---|
+| recorder plugin | 1.5 (+1.5 for writing points into EDM4hep) |
+| exporter | 2 |
+| renderer and CLI | 3 |
+| animation | 2 |
+| tests and docs | 1.5 |
+| **total** | **about 10 (8–13)** |
+
+A minimal version (static figures + GIF) takes about 5 days.
+
+### 8. Files
+- **Code:**
+  - $SCRATCH/vis_study/events_animation/plugin/SolidStepRecorder.cpp
+  - $SCRATCH/vis_study/events_animation/scripts/extract_event.py
+  - $SCRATCH/vis_study/events_animation/scripts/evdisp.py
+  - $SCRATCH/vis_study/events_animation/scripts/encode.py
+  - $SCRATCH/vis_study/events_animation/scripts/svgcheck.py
+  - $SCRATCH/vis_study/events_animation/scripts/run_all.sh
+- **Data:**
+  - $SCRATCH/vis_study/events_animation/sim/egun5/steps.bin
+  - $SCRATCH/vis_study/events_animation/sim/egun5/egun5_event.npz
+  - $SCRATCH/vis_study/events_animation/inputs/jpsi_like.hepmc
+- **Outputs:**
+  - $SCRATCH/vis_study/events_animation/out/ev2_sidezoom.png
+  - $SCRATCH/vis_study/events_animation/out/ev0_beam.png
+  - $SCRATCH/vis_study/events_animation/out/jpsi1_routeB_side.png
+  - $SCRATCH/vis_study/events_animation/out/jpsi1_ortho_side.png
+  - $SCRATCH/vis_study/events_animation/out/jpsi1_side_anim.webm
+  - $SCRATCH/vis_study/events_animation/out/ev2_cutaway_anim.gif
+- **Checks:**
+  - $SCRATCH/vis_study/events_animation/out/checks/svg_firefox_jpsi1_side.png
+  - $SCRATCH/vis_study/events_animation/out/checks/gif_jpsi1_side_sheet.png
+- **Logs:** $SCRATCH/vis_study/events_animation/logs/

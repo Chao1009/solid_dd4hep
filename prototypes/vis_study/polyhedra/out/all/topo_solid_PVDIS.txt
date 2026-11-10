@@ -1,0 +1,6 @@
+out/all/g4_solid_PVDIS.npz
+   total edges 50467 boundary 0 nonmanifold 0 inconsistent 0; meshes with defects 0 of 231
+out/all/tgeo_solid_PVDIS.npz
+   TGeoCompositeShape     MagnetYoke_EndcapInterface_shape_0x5870db3bf3 edges    898 boundary    22 nonmanifold    0 inconsistent    0
+   TGeoCompositeShape     LightGasCherenkov_mirror1_shape_0x5870db50c5f edges    312 boundary     0 nonmanifold    2 inconsistent    0
+   total edges 59105 boundary 22 nonmanifold 2 inconsistent 0; meshes with defects 2 of 231

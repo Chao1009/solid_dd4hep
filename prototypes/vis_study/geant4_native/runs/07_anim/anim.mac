@@ -1,0 +1,212 @@
+/control/verbose 0
+/vis/verbose warnings
+/vis/open TSG_OFFSCREEN 1280x800-0+0
+/vis/tsg/offscreen/set/size 1280 800
+/vis/viewer/set/autoRefresh false
+/vis/tsg/offscreen/set/format zb_png
+/vis/viewer/set/lineSegmentsPerCircle 72
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/zoomTo 1.9
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/edge true
+/vis/scene/add/trajectories rich
+/vis/modeling/trajectories/create/drawByCharge
+/vis/modeling/trajectories/drawByCharge-0/default/setDrawStepPts false
+/vis/modeling/trajectories/drawByCharge-0/default/setLineWidth 3
+/vis/modeling/trajectories/drawByCharge-0/default/setTimeSliceInterval 0.05 ns
+/vis/filtering/trajectories/create/attributeFilter
+/vis/filtering/trajectories/attributeFilter-0/setAttribute IMag
+/vis/filtering/trajectories/attributeFilter-0/addInterval 5 MeV 1000 GeV
+/vis/scene/endOfEventAction accumulate 10
+/vis/viewer/set/timeWindow/displayHeadTime true -0.85 0.85 24 0 0 0
+/vis/viewer/set/timeWindow/displayLightFront true 0 0 -315 cm 0 ns
+/vis/viewer/set/timeWindow/fadeFactor 0.3
+/run/beamOn 1
+/control/echo "=== START FRAMES"
+/vis/viewer/set/timeWindow/startTime 0 ns 0.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_000.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 1.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_001.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 1.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_002.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 2.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_003.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 2.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_004.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 3.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_005.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 3.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_006.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 4.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_007.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 4.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_008.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 5.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_009.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 5.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_010.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 6.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_011.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 6.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_012.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 7.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_013.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 7.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_014.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 8.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_015.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 8.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_016.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 9.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_017.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 9.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_018.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 10.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_019.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 10.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_020.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 11.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_021.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 11.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_022.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 12.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_023.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 12.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_024.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 13.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_025.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 13.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_026.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 14.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_027.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 14.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_028.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 15.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_029.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 15.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_030.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 16.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_031.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 16.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_032.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 17.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_033.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 17.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_034.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 18.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_035.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 18.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_036.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 19.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_037.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 19.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_038.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 20.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_039.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 20.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_040.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 21.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_041.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 21.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_042.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 22.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_043.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 22.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_044.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 23.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_045.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 23.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_046.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 24.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_047.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 24.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_048.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 25.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_049.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 25.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_050.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 26.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_051.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 26.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_052.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 27.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_053.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 27.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_054.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 28.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_055.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 28.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_056.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 29.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_057.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 29.50 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_058.png
+/vis/viewer/rebuild
+/vis/viewer/set/timeWindow/startTime 0 ns 30.00 ns
+/vis/tsg/offscreen/set/file $SCRATCH/vis_study/geant4_native/runs/07_anim/frames/frame_059.png
+/vis/viewer/rebuild
+/control/echo "=== END FRAMES"

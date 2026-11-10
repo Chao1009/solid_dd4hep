@@ -1,0 +1,46 @@
+/control/verbose 2
+/vis/verbose warnings
+/vis/open TSG_OFFSCREEN 1600x1000-0+0
+/vis/tsg/offscreen/set/size 3200 2000
+/vis/viewer/set/autoRefresh false
+/vis/tsg/offscreen/set/format zb_png
+/vis/viewer/set/lineSegmentsPerCircle 72
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/edge true
+/vis/scene/add/trajectories rich
+/vis/modeling/trajectories/create/drawByCharge
+/vis/modeling/trajectories/drawByCharge-0/default/setLineWidth 2
+/vis/filtering/trajectories/create/attributeFilter
+/vis/filtering/trajectories/attributeFilter-0/setAttribute IMag
+/vis/filtering/trajectories/attributeFilter-0/addInterval 20 MeV 1000 GeV
+/vis/scene/endOfEventAction accumulate 10
+/run/beamOn 3
+/control/execute $SCRATCH/vis_study/geant4_native/runs/08_touch/touch_all.mac
+/vis/geometry/set/colour FAECShower_module 0 0.8 0.8 0.85 0.15
+/vis/geometry/set/colour LAECShower_module 0 0.8 0.8 0.85 0.15
+/vis/geometry/set/visibility FAECPreShower_envelope -1 false
+/vis/geometry/set/visibility LiteCherenkov_tank -1 false
+/control/echo "=== E3 iso zoom on FAEC, cutaway x>0"
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0.6 0 3.6 m
+/vis/viewer/zoomTo 3.2
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/vis/tsg/offscreen/set/file e3_iso_faec_energy.png
+/vis/viewer/rebuild
+/control/echo "=== E4 beam view from downstream: FAEC + trajectories only"
+/vis/viewer/clearCutawayPlanes
+/vis/scene/create
+/vis/scene/add/volume FAECShower_envelope_7
+/vis/scene/add/trajectories rich
+/vis/sceneHandler/attach
+/vis/viewer/set/viewpointVector 0 0 1
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 4.4 m
+/vis/viewer/zoomTo 1.0
+/vis/tsg/offscreen/set/size 2000 2000
+/vis/tsg/offscreen/set/file e4_beamview_energy.png
+/vis/viewer/rebuild

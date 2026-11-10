@@ -1,0 +1,46 @@
+/control/verbose 2
+/vis/verbose warnings
+/control/shell date +T_start=%s
+/score/create/boxMesh faecMesh
+/score/mesh/boxSize 260 260 30 cm
+/score/mesh/translate/xyz 0 0 440 cm
+/score/mesh/nBin 104 104 1
+/score/quantity/energyDeposit eDep MeV
+/score/close
+/score/create/cylinderMesh faecCyl
+/score/mesh/cylinderSize 260 30 cm
+/score/mesh/translate/xyz 0 0 440 cm
+/score/mesh/nBin 26 1 72
+/score/quantity/energyDeposit eDep MeV
+/score/close
+/score/list
+/vis/open TSG_OFFSCREEN 2000x2000-0+0
+/vis/viewer/set/autoRefresh false
+/vis/tsg/offscreen/set/format zb_png
+/vis/scene/create
+/vis/scene/add/volume FAECShower_envelope_7
+/vis/sceneHandler/attach
+/vis/viewer/set/background white
+/vis/viewer/set/style wireframe
+/vis/geometry/set/colour FAECShower_module 0 0.6 0.6 0.6 1
+/vis/viewer/set/viewpointVector 0 0 1
+/vis/viewer/set/upVector 0 1 0
+/vis/scene/endOfEventAction accumulate 10
+/control/shell date +T_run_start=%s.%N
+/run/beamOn 3
+/control/shell date +T_run_end=%s.%N
+/score/dumpQuantityToFile faecMesh eDep faecMesh_eDep.csv
+/score/colorMap/setMinMax ! 0 100
+/vis/tsg/offscreen/set/file s0_geom_only.png
+/vis/viewer/rebuild
+/score/drawProjection faecMesh eDep
+/vis/tsg/offscreen/set/file s1_boxmesh_draw.png
+/vis/viewer/refresh
+/score/drawColumn faecMesh eDep 0 0
+/vis/tsg/offscreen/set/file s2_boxmesh_column.png
+/vis/viewer/refresh
+/vis/viewer/rebuild
+/score/drawProjection faecCyl eDep
+/vis/tsg/offscreen/set/file s3_cylmesh_draw.png
+/vis/viewer/refresh
+/control/echo "=== done"

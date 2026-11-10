@@ -1,0 +1,12 @@
+<!doctype html><html><body style="background:#fff">
+<canvas id="c" width="400" height="300"></canvas><pre id="o"></pre>
+<script>
+const c=document.getElementById('c'); let info={};
+for (const kind of ['webgl2','webgl']) {
+  const gl=c.getContext(kind);
+  if (gl) { info.kind=kind; info.vendor=gl.getParameter(gl.VENDOR); info.renderer=gl.getParameter(gl.RENDERER);
+    const ext=gl.getExtension('WEBGL_debug_renderer_info'); if(ext){info.unmasked=gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);}
+    gl.clearColor(0.2,0.6,0.9,1); gl.clear(gl.COLOR_BUFFER_BIT); break; }
+}
+info.ok=!!info.kind; window.__info=info; document.getElementById('o').textContent=JSON.stringify(info,null,1);
+</script></body></html>

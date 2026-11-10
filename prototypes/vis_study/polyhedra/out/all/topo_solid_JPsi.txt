@@ -1,0 +1,7 @@
+out/all/g4_solid_JPsi.npz
+   total edges 24700 boundary 0 nonmanifold 0 inconsistent 0; meshes with defects 0 of 64
+out/all/tgeo_solid_JPsi.npz
+   TGeoCompositeShape     MagnetYoke_EndcapInterface_shape_0x5a7267bab8 edges    898 boundary    22 nonmanifold    0 inconsistent    0
+   TGeoCompositeShape     LightGasCherenkov_mirror1_shape_0x5a7267be268 edges    312 boundary     0 nonmanifold    2 inconsistent    0
+   TGeoCompositeShape     HeavyGasCherenkov_mirror_1_shape_0x5a7267cd37 edges   1710 boundary     7 nonmanifold    4 inconsistent    0
+   total edges 29181 boundary 29 nonmanifold 6 inconsistent 0; meshes with defects 3 of 64

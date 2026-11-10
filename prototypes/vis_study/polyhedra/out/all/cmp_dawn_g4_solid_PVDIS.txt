@@ -1,0 +1,10 @@
+parse times: 3.02 s ($SCRATCH/overview_job/prims/solid_PVDIS/g4_0000.prim)  3.01 s (out/all/g4_solid_PVDIS.prim)
+A solids 8604 V 171680 F 208814 {'Polyhedron': 8023, 'Box': 286, 'Tubs': 113, 'Trd': 150, 'Cons': 32} warnings {}
+B solids 8604 V 171680 F 208814 {'Polyhedron': 8604} warnings {}
+same name sequence: False
+names only in A: [('<Polyhedron@10938>', 1), ('<Polyhedron@11095>', 1), ('<Polyhedron@11252>', 1), ('<Polyhedron@11409>', 1), ('<Polyhedron@11566>', 1), ('<Polyhedron@11723>', 1), ('<Polyhedron@11880>', 1), ('<Polyhedron@12037>', 1), ('<Polyhedron@12194>', 1), ('<Polyhedron@12351>', 1)]
+names only in B: [('PVDISBaffle_plate1_blade_1:1', 1), ('PVDISBaffle_plate1_blade_2:2', 1), ('PVDISBaffle_plate1_blade_3:3', 1), ('PVDISBaffle_plate1_blade_4:4', 1), ('PVDISBaffle_plate1_blade_5:5', 1), ('PVDISBaffle_plate1_blade_6:6', 1), ('PVDISBaffle_plate1_blade_7:7', 1), ('PVDISBaffle_plate1_blade_8:8', 1), ('PVDISBaffle_plate1_blade_9:9', 1), ('PVDISBaffle_plate1_blade_10:10', 1)]
+name mismatches in order: 330  colour diffs: 0  depth diffs: 0
+identical meshes (V, F, edge flags): 7693  differing by kind: {('Box', 'Polyhedron'): 286, ('Tubs', 'Polyhedron'): 113, ('Trd', 'Polyhedron'): 150, ('Cons', 'Polyhedron'): 32}  polyhedron-vs-polyhedron diffs: 0
+max bbox difference [mm]: 5.9e-06
+worst: []

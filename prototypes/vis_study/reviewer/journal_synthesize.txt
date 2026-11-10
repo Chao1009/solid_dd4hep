@@ -1,0 +1,416 @@
+FEASIBILITY.md was not written: my subagent instructions do not allow writing report `.md` files. The full text is below, ready to save as `$SCRATCH/vis_study/FEASIBILITY.md`.
+
+Files I did write:
+- Overview sheet of the best images (236 KB): `$SCRATCH/vis_study/feasibility/feasibility_overview.png`
+- Script that builds it: `$SCRATCH/vis_study/feasibility/make_sheet.py`
+
+## Summary (≈290 words)
+
+All three goals work headless in eic_xl 26.10 and were demonstrated by prototypes. Events were run on SoLID-Lite J/ψ; geometry was checked on all 7 configurations.
+
+1. **Drawings without DAWNFILE: yes.**
+   - DAWNFILE only writes out what `G4VSolid::GetPolyhedron()` returns. A prototype calls it directly (standalone or as a ddsim hook) and draws with the existing `solid_lineview`.
+   - In all 7 configurations it gives the same volumes, names, colours and vertex/facet totals as the DAWNFILE scenes. Images differ by 0 px for PVDIS and at most 0.09 % for J/ψ-lite.
+   - It also names the 330 PVDIS blades and carries volume IDs: 821/821 hits map to one drawn volume. The scene is 0.13–0.33 MB, against 5.5–14.9 MB for the `.prim`.
+   - Geant4's TSG_OFFSCREEN gives good colour renders but has no true hidden-line mode. OpenGL, RayTracer, REve and DDEve are unusable here. TGeo/RootCsg gets booleans wrong. The web viewers give no line art.
+2. **Event displays with calorimeter modules coloured by energy: yes.** A DDG4 stepping-action recorder (no measurable overhead), a cellID→module mapping (0 mismatches in 3274 hits) and a renderer on top of `solid_lineview` give 4 vector views per event in about 5 s.
+3. **Animation: yes.** It takes 0.04–0.2 s per frame, with GIF, WebP, WebM or SMIL SVG output. MP4 only needs ffmpeg, which neither the host nor eic_xl has.
+
+**Recommendation:** Geant4 polyhedra scene + `solid_lineview` + an event layer, with DAWNFILE kept as a fallback. An interactive web display is optional: a JSROOT page takes 2–3 d, a Firebird app 8–12 d.
+
+**Plan:** phases 0–3 take about 15.5 developer-days (13–19). The cheap path takes about 7 d.
+
+**Decisions needed:** default geometry source, scene format, trajectory storage, packaging, scope, web display, ffmpeg, and which upstream reports to file.
+
+**Open question:** FAEC showers keep 7–11 MCParticles, against more than 1000 for the LAEC. That fits ddsim's TC particle handler, but I did not verify it.
+
+---
+
+# SoLID visualization without DAWNFILE: feasibility study and plan
+
+6 November 2026 · for the SoLID simulation lead · eic_xl 26.10.0-stable (DD4hep 1.38, Geant4 11.4.1, ROOT 6.40.04), no display
+
+**Where this comes from:**
+- Four prototype studies ran in parallel: geant4_native, polyhedra, events_animation and web_interactive.
+- Their reports came back inline to the workflow; there is no REPORT.md on disk.
+- Their scripts, logs and outputs are under `$SCRATCH/vis_study/`. That is session scratch space, so it needs archiving (Phase 0).
+- Nothing was committed to the repository.
+
+**Tags used below:**
+- **[D]** demonstrated: an output file exists.
+- **[I]** inferred, estimated, or read from source code.
+- **[N]** not tested.
+
+![best images]($SCRATCH/vis_study/feasibility/feasibility_overview.png)
+
+Panels (a)–(i) of this sheet are cited below.
+
+## 1. Answers to the three questions
+
+| question | answer |
+|---|---|
+| 1. Clean line/surface drawings without DAWNFILE | **Yes [D].** DAWNFILE only writes out each visible volume's `G4Polyhedron`. A small dump that calls `G4VSolid::GetPolyhedron()` itself feeds the existing `solid_lineview` and reproduces today's drawings, with no vis driver. Geant4's own headless driver does this only **partly**: good colour surface renders, no true hidden-line drawing. |
+| 2. Event displays, calorimeter blocks coloured by energy | **Yes [D].** Trajectories, hits, and modules on a log energy scale, in four vector views, in about 5 s per event. |
+| 3. Animation | **Yes [D].** 0.04–0.2 s per frame; GIF, WebP, WebM and animated SVG. MP4 only needs ffmpeg in the image [I]. |
+
+**This is not a huge task.** The core takes about three developer-weeks, and the cheap path about 7 days (section 4).
+
+**What the evidence covers:**
+- Events: a 4 GeV e⁻ gun and hand-written J/ψ-like HepMC3 events (e⁺e⁻p, one with a π⁻). These are not generator output.
+- Runs: at most 5 events each, single-threaded ddsim, on 4 shared cores.
+
+### 1.1 Drawings without DAWNFILE
+
+**Recommended route: dump the Geant4 polyhedra (polyhedra study).**
+
+- **How it works [D].**
+  - A C++ helper copies the behaviour of `G4PhysicalVolumeModel`: a depth-first walk with the same visibility rules, then `SetNumberOfRotationSteps(72)` and `GetPolyhedron()`. It keeps one mesh per unique solid. In the prototype, cling compiles it at run time.
+  - It runs on its own after DD4hep's `Geant4Converter`, with no physics. It also runs inside ddsim at `/run/initialize` through a steering hook.
+- **Fidelity [D].**
+  - In all 7 configurations it writes the same drawn volumes as DAWNFILE, with the same order, names, colours, depths and vertex/facet totals.
+  - All 628 unique meshes are watertight.
+  - Image difference in the four standard views:
+    - PVDIS: 0 px.
+    - SoLID-Lite J/ψ: 0.04–0.09 % of pixels. All of it comes from the x = 0 section plane passing exactly through mesh vertices; at x = 0.7 mm the images are identical.
+  - Panels (a) and (b). Other `solid_lineview` modes use the same scene object [I].
+- **More than DAWNFILE gives [D].**
+  - It names the 330 PVDIS baffle blades (G4ExtrudedSolid), which DAWNFILE writes without a name.
+  - Every drawn volume carries its DetElement path, readout, and volume ID with a bit mask.
+  - These IDs equal the IDs Geant4 assigns during tracking for 308/308 sensitive drawn volumes.
+  - 821/821 simulated hits (3 events) map to exactly one drawn volume.
+- **Cost [D].**
+
+  | | Geant4 polyhedra dump | DAWNFILE |
+  |---|---|---|
+  | scene file | 0.13–0.33 MB `.npz` | 5.5–14.9 MB `.prim` |
+  | parse time, J/ψ-lite | 0.39 s | 1.25 s |
+  | wall time | 10.7–14.7 s standalone (5.5–6.6 s of it is cling compiling); +3.0 s inside ddsim | 15.8 s ddsim run |
+
+  Compiled ahead of time, the dump should take about 3–4 s [I].
+- **Edge flags [D].** Write every edge as visible, as DAWNFILE does. Keeping Geant4's edge flags erased 3820 px of real outline edges.
+
+**Other routes:**
+
+| route | result |
+|---|---|
+| Geant4 TSG_OFFSCREEN | [D] **Works:** colour and grey "clay" renders, cutaways and sections at 3200×2000, after 7–9 s of ddsim start-up. Sections take under 1 s, cutaways 2.2–4 s. **No hidden-line mode:** TSG's hlr style fills faces in the line colour. **Workaround:** a gl2ps SVG recoloured by a script looks close to `solid_lineview` (panel c). It is 4.3 MB against 153 KB, has no outlines on curved surfaces, and some edges are faint. DD4hep forces solid style and alpha < 1; override with `/vis/geometry/set/forceSolid all -1 false` and `/vis/geometry/set/colour`. |
+| OpenGL/Qt drivers, RayTracer | [D] Unusable without a display. OpenGL and Qt need X; there is no Xvfb, and Qt's offscreen mode gets no OpenGL context. RayTracer segfaults in `G4TheMTRayTracer::StoreUserActions` because ddsim uses a sequential run manager. |
+| VRML2FILE | [D] Works: 2.3 s, 2.06 MB, names and colours, cutaway applied. It loses edge flags, so it is useful only as a fallback input format. |
+| TGeo + RootCsg meshes | [D] Not robust. Boolean meshes crack (1554–7623 open edges) and spheres are stuck at 20 divisions. Even after the prototype's repairs, `MagnetYoke_EndcapInterface` is 52 % too large in all five full-SoLID configurations. |
+| JSROOT, Firebird, Phoenix | [D] They draw shaded WebGL only, no line art. JSROOT's SVG export sorts surfaces in the wrong order. |
+| dusk/duskcut | [N] Not tested here. The earlier evaluation in `docs/visualization.md` found that `npdet_to_step` drops the polyhedra yoke and some booleans. |
+
+**DAWNFILE status [D].** DAWNFILE still ships in Geant4 11.4; only HepRepFile and Qt3D were removed. Nothing forces a switch now. The reasons to move are correct names, volume IDs, smaller files, and a code path we own.
+
+**Best images:**
+- `$SCRATCH/vis_study/polyhedra/img/g4_PVDIS/cutaway.png` (made without DAWNFILE; identical to the DAWNFILE render)
+- `$SCRATCH/vis_study/polyhedra/img/g4_JPsi_lite/section_yz.png`
+- `$SCRATCH/vis_study/polyhedra/img/diff_g4_section_yz.png` (difference map)
+- `$SCRATCH/vis_study/geant4_native/samples/02_vector_hlr_vs_lineview.png` (TSG vector and clay renders against `solid_lineview`)
+- `$SCRATCH/vis_study/polyhedra/img/booleans/cmp3_collars_hlr.png` (Geant4 against raw and repaired TGeo)
+
+### 1.2 Event displays with energy colouring
+
+**Recommended route: overlay on `solid_lineview` (events_animation study).**
+
+- **Trajectories [D].**
+  - A 116-line DDG4 stepping action, loaded with `--action.step`, writes thinned points: one every 20 mm or 0.04 rad (sagitta ≤ 0.1 mm), each with global time and kinetic energy.
+  - It adds no measurable time: 13.8 s with it against 14.1 s without, for 5 events.
+  - Output is 0.6–0.9 MB per event with a 5 MeV cut.
+- **Mapping [D].**
+  - Calorimeter cellIDs are mapped to modules with DD4hep's VolumeManager: 0 mismatches over 3274 hits.
+  - Modules are matched to drawn polygons by volume name: 2904/2904.
+  - Energy is summed per module.
+- **Rendering [D].** 1034 lines on top of `solid_lineview` draw four views:
+  - a section in the event plane;
+  - a zoom on the hit calorimeter;
+  - a beam-view section;
+  - a hidden-line cutaway.
+
+  Each view shows tracks coloured by particle type, hit markers, modules on a log energy scale, a colour bar and a legend. Panels (d)–(f).
+- **Cost [D].** 4.8–6.0 s per event for the four views in SVG, PNG and PDF; each PDF is 40–155 kB.
+
+**Other routes:**
+- **Geant4 native [D].**
+  - Trajectories draw in both raster and vector output.
+  - `/vis/scene/add/hits` draws nothing, because DDG4 hits have no `Draw` method.
+  - Energy colouring works through a generated touchable macro, run as a second pass with the same seed. It costs 0.38 s per module, because each touchable lookup searches 5.08 M volumes, and it has no legend (panel h).
+  - Scoring meshes need a cppyy hook and look crude.
+- **Web [D].**
+  - JSROOT and the hosted Phoenix app show modules coloured by energy (panel i).
+  - Firebird's built-in hit painter ignores energy, so Firebird would need a SoLID painter [I].
+
+**Limits seen [D]:**
+- The cutaway colours only the modules lying on the cut.
+- Hit markers are not depth-tested.
+- Beam-section z positions are hard-coded.
+- The recorder is single-threaded.
+
+**Best images:**
+- `$SCRATCH/vis_study/events_animation/out/jpsi1_side.png`
+- vector version: `$SCRATCH/vis_study/events_animation/out/jpsi1_side.pdf`
+- `$SCRATCH/vis_study/events_animation/out/jpsi1_cutaway.png`
+- `$SCRATCH/vis_study/events_animation/out/jpsi0_beam.png`
+- `$SCRATCH/vis_study/events_animation/out/ev2_sidezoom.png`
+- `$SCRATCH/vis_study/geant4_native/samples/05a_faec_energy_touchables_beamview.png`
+- `$SCRATCH/vis_study/web_interactive/shots2/jsroot_ev2_side_ortho.png`
+
+### 1.3 Animation
+
+- **`solid_lineview` frames [D].**
+  - In each frame, tracks stop at time t with an interpolated head, hits appear at their own time, and modules accumulate energy using the contribution times.
+  - Geometry layers are cached, so a frame takes 0.04–0.07 s at 0.6 scale and 0.10–0.21 s at full size.
+  - Sizes for 120 frames:
+    - GIF: 222–357 kB
+    - lossless WebP: 0.23–1.1 MB
+    - WebM (VP9, GStreamer on the host): 135–495 kB
+    - SMIL SVG: 0.40–0.85 MB; headless Firefox shows the same picture as the frames.
+  - Panel (g).
+- **Geant4 time windows [D].**
+  - Time slices and the head-time label work; the light front does not.
+  - `refresh` writes stale frames, so every frame needs a full rebuild: 2.5–3.4 s per frame with a cutaway, 0.3 s without.
+  - From the source, `G4ToolsSGOffscreenViewer::DrawView` never calls `ProcessTransients()` [I]. The upstream fix would be one line.
+- **Firebird [D].** It has a native time slider in ns, and tracks grow over time. Motion is coarse when a track has few points. 14 headless frames made a 333 kB GIF.
+- **MP4.**
+  - Neither the host nor eic_xl has ffmpeg or imageio, and GStreamer has no H.264 encoder [D].
+  - eic_xl is Debian 13 with apt-get [D], so `apt-get install ffmpeg` in `containers/Dockerfile` should be enough [I].
+
+**Best files:**
+- `$SCRATCH/vis_study/events_animation/out/jpsi1_side_anim.gif` (the `.webm` and `.svg` next to it are the same animation)
+- `$SCRATCH/vis_study/events_animation/out/ev2_cutaway_anim.gif`
+- `$SCRATCH/vis_study/events_animation/out/checks/gif_jpsi1_side_sheet.png`
+- `$SCRATCH/vis_study/geant4_native/samples/07a_anim_640x400_60f.gif`
+- `$SCRATCH/vis_study/web_interactive/shots2/firebird_ev0_anim.gif`
+
+## 2. Options compared
+
+| option | publication figures | events + calorimeter energy | animation | headless / CI | interactive | effort (d) | maintenance risk |
+|---|---|---|---|---|---|---|---|
+| **A. Polyhedra scene + `solid_lineview` + event layer (recommended)** | vector line art, identical to today [D] | yes, 4 vector views [D] | yes, 0.04–0.2 s/frame [D] | yes. numpy, scipy, pycairo, Pillow and uproot are all in eic_xl [D]. CI already renders views weekly. | no (static or animated SVG) | ≈15 (13–19) [I] | low. Uses the same polyhedra as every Geant4 driver; about 2–2.5 k new lines we own [I]. The fragile point is the DD4hep internal maps used for IDs. |
+| B. Keep DAWNFILE `.prim` + same event layer | as today [D] | yes [D] | yes [D] | yes | no | ≈10 (8–13) | medium. Unnamed extruded solids, no edge flags, no IDs; names matched through DD4hep. |
+| C. Geant4 TSG_OFFSCREEN | good colour/clay; line art only via the gl2ps workaround [D] | tracks yes; energy via touchables, 0.38 s/module, no legend [D] | 2.5–3.4 s/frame [D] | yes; one ddsim per batch | no (needs X) | 10–14 | medium. Vis commands change (`/score/draw` renamed in 11.4); refresh bug; DD4hep forces styles. |
+| D. JSROOT page | slides only | yes [D] | no | screenshots need a browser | rotate, clip, orthographic | 2–3 | low (ships with ROOT, MIT) |
+| E. Firebird SoLID app + JSROOT fallback | slides only | tracks and hits [D]; energy painter to write [I] | yes, interactive [D] | browser | full | 10–12 (core 8–9) | medium–high. Beta, one main developer, licence unclear (GPL-3.0 repo, MIT npm). |
+| F. Phoenix app | slides only | yes [D] | intro only | browser | full, including VR/AR | 6–9 | medium–low (HSF) |
+| G. TGeo/RootCsg meshes → `solid_lineview` | one boolean still wrong after repairs [D] | as A | as A | yes | no | A + 5–8 | high |
+| H. REve, DDEve, OpenGL, RayTracer | – | – | – | blocked [D]. REve crashes inside civetweb when a browser connects; DDEve and OpenGL need X; RayTracer segfaults. | – | – | – |
+
+Efforts are the investigators' estimates. For A, I merged the polyhedra (5.5 d) and events_animation (10 d) estimates and removed their overlap [I].
+
+## 3. Recommended architecture
+
+```
+ddsim + steering/solid_sim.py
+ |- SOLID_SCENE=f.npz -> scene dump: G4 walk + G4Polyhedron + volume IDs -----------> scene.npz
+ |                       (same code standalone: bin/solid_scene_dump <compact>, no physics)
+ |- SOLID_TRAJ=1      -> SoLIDTrajectoryRecorder (DDG4 stepping action) ------------> traj file (x,y,z,t,Ekin)
+ '- EDM4hep output: MCParticles, SimTracker/SimCalorimeterHits + contributions ----> sim.edm4hep.root
+bin/solid_evexport  (uproot or podio; hit -> volume by (cellID & mask) == volID) --> event.npz
+bin/solid_lineview  (existing renderer; reads .prim or scene.npz)
+bin/solid_evview    (new, imports solid_lineview): views, legend, colour bar, --animate
+                     -> SVG/PDF/PNG, GIF/WebP, MP4/WebM (ffmpeg), animated SVG
+bin/make_solid_views: scene by default, --dawnfile fallback, --events N -> solid_evview
+optional web/: dd_web_display export + pruning; event.npz -> JSROOT/Firebird input; GitHub Pages
+```
+
+**New code in solid_dd4hep:**
+- The C++ scene helper and the trajectory recorder, built as a small DDG4 plugin library. DDG4 is already a `find_package` component.
+- The `SOLID_SCENE` and `SOLID_TRAJ` switches in `solid_sim.py`.
+- Three command-line tools: `solid_scene_dump`, `solid_evexport` and `solid_evview`.
+- CI jobs in `.github/workflows/ci.yml`, which already renders line views of all 7 configurations every week.
+- Docs.
+- Suggested split [I]: C++ walks, tessellates and encodes IDs; Python writes the npz through the ROOT/cppyy bindings, so no zip writer is needed in C++.
+
+**Reused from `solid_lineview` 0.3.0.** The events prototype imports the repository's current file unchanged; the md5 matches.
+- Reused as is:
+  - the `PrimScene` model;
+  - exact sections with capped cuts;
+  - depth-buffer hidden-line removal to vector polylines;
+  - wireframe and surface modes;
+  - dawncut half-spaces and camera presets;
+  - labels, trimming and the beam arrow;
+  - SVG, PDF, EPS and PNG output.
+- Small additions:
+  - `load_scene()`;
+  - float64 vertices;
+  - a small shift of section planes that pass exactly through vertices;
+  - per-volume colour and alpha overrides;
+  - hollow markers.
+
+**External dependencies:**
+- Geant4, DDG4 and DD4hep (`G4Polyhedron`, `IDDescriptor`).
+- uproot or podio for reading EDM4hep; both are in eic_xl.
+- Pillow.
+- ffmpeg (to be added) or GStreamer.
+- Optional: JSROOT, which ships with ROOT, and a pinned Firebird version.
+
+**Scene schema v1, as in the prototype:**
+- **Unique meshes:** float64 vertices; facets as 1-based indices, with the sign carrying the edge flag.
+- **Placements**, in depth-first order: name, copy number, depth, parent, mesh index, 3×4 matrix, RGBA, visible and wireframe flags.
+- **IDs:** DetElement path, readout, volume ID, mask, sensitive flag.
+- **Metadata:** configuration, software versions, number of segments.
+
+## 4. Phased plan
+
+**[first]** marks steps that are cheap and high value. Efforts are in developer-days.
+
+**Phase 0 [first]: set-up, 0.5 d**
+- Deliverables:
+  - Archive the four prototype directories out of `/tmp`, for example to a `vis-prototypes` branch on the fork.
+  - Take decisions D1–D4 (section 5).
+  - Add `apt-get install ffmpeg` to `containers/Dockerfile`.
+- Done when: the prototypes are stored persistently and `ffmpeg -version` runs in solid_xl.
+
+**Phase 1a [first]: driver-free geometry, minimal version, 2.5 d**
+- Deliverables:
+  - The prototype dump, including IDs, as `bin/solid_scene_dump`, still compiled by cling (11–15 s).
+  - An `.npz` loader in `solid_lineview`; a short prototype already exists.
+  - `make_solid_views --source scene|dawnfile`.
+- Depends on: nothing.
+- Risks: cling start-up time. `make_solid_views -n` (trajectories) still needs DAWNFILE until Phase 2a.
+- Done when, for all 7 configurations:
+  - volume counts, names, colours and depths equal DAWNFILE's;
+  - the 4 standard views differ by at most 0.1 % of pixels, and by none for PVDIS;
+  - `docs/images` can be regenerated;
+  - 100 % of the hits in 3 events of 2 configurations map to one drawn volume.
+
+**Phase 1b: driver-free geometry, complete, 3 d**
+- Deliverables:
+  - the helper compiled ahead of time;
+  - the `SOLID_SCENE` hook;
+  - an optional `.prim` writer;
+  - a comparison against DAWNFILE in the CI geometry matrix;
+  - docs.
+- Depends on: 1a.
+- Risks: the mapping from Geant4 volumes to DetElements uses DD4hep internals (`g4Placements`, `g4VolumeImprints`, the converter run outside a run manager), which may change between releases. The weekly CI against new eic_xl tags would catch this.
+- Done when:
+  - the dump takes at most 5 s standalone and at most 3 s extra inside ddsim;
+  - the scene from the hook equals the standalone scene;
+  - CI is green for all 7 configurations.
+
+**Phase 2a [first]: static event figures, minimal version, 4 d**
+- Deliverables:
+  - the recorder plugin (single-threaded) with `SOLID_TRAJ`;
+  - an exporter for the four EC readouts;
+  - side and beam views with legend and colour bar;
+  - `make_solid_views -n` switched to the recorder.
+- Depends on: 1a.
+- Risks: trajectory volume in hadron showers (handled with thresholds); a single ρ–z plane is a compromise for events with several tracks.
+- Done when:
+  - module energy sums equal the hit energy sums;
+  - 100 % of EC hits are mapped over at least 100 events;
+  - the recorder costs at most 5 % of run time and at most 1 MB per event;
+  - you sign off 3 sample events: FAEC, LAEC and J/ψ.
+
+**Phase 2b: event displays, complete, 3 d**
+- Deliverables:
+  - a thread-safe recorder;
+  - all readouts: SPD, MRPC, GEM and muon, plus PMTs when optical physics is on;
+  - zoom and cutaway views;
+  - section planes taken from the scene instead of hard-coded;
+  - a CI smoke test.
+- Depends on: 2a.
+- Risks: multi-threaded ddsim; the cutaway colours only the modules on the cut (a design choice).
+- Done when:
+  - 2-thread runs give the same figures as 1-thread runs;
+  - 4 views take at most 6 s per event;
+  - the smoke test (1 event, 2 views) passes.
+
+**Phase 3: animation, 2.5 d**
+- Deliverables:
+  - `solid_evview --animate`;
+  - GIF and WebP;
+  - MP4 and WebM through ffmpeg, with GStreamer as fallback;
+  - SMIL SVG;
+  - optionally a moving camera.
+- Depends on: 2a and ffmpeg.
+- Risks: a moving camera needs hidden-line removal on every frame, about 2 s per frame [I]. ifarm has no ffmpeg unless solid_xl is used.
+- Done when:
+  - 120 frames take at most 15 s per view at 0.6 scale;
+  - the GIF is at most 1 MB;
+  - the MP4 plays in PowerPoint and Keynote;
+  - the last frame matches the static view.
+
+**Phase 4 (optional): web display, 2–3 d for JSROOT or 8–12 d for Firebird**
+- Deliverables:
+  - geometry export for all 7 configurations (`dd_web_display --export`, removal of the ECal layers, colour map);
+  - conversion from `event.npz`;
+  - a GitHub Pages site;
+  - for Firebird, an energy painter and camera presets.
+- Depends on: 2a.
+- Risks: Firebird is beta and its licence is unclear; the web viewers' own boolean (CSG) handling has not been checked on our geometry.
+- Done when: the page loads in at most 3 s, shows events with a legend, and deep links work.
+
+**Phase 5 (optional): native Geant4 and upstream work, 3–4 d plus review**
+- Deliverables:
+  - colour and clay renders through `--backend tsg`;
+  - the upstream reports or PRs listed under D8.
+
+**Totals:**
+
+| scope | effort |
+|---|---|
+| Phases 0–3 | about **15.5 d** (13–19) |
+| [first] path: 0, 1a, 2a, plus the prototype's GIF output | about **7 d**; removes DAWNFILE from the geometry views and gives energy-coloured event figures |
+| JSROOT page, optional | +2–3 d |
+| Firebird app, optional | +8–12 d |
+
+## 5. Decisions for you, and open questions
+
+**Decisions:**
+- **D1. Default geometry source.**
+  - Make the polyhedra scene the default and keep DAWNFILE as a fallback and regression reference?
+  - Keep a `.prim` writer for dawn/dawncut users?
+  - Recommended: yes to both.
+- **D2. Scene format.** Use `.npz` v1 now (numpy only, smallest). Add glTF/JSON only if a web viewer should use our meshes.
+- **D3. Trajectory storage.** A sidecar file, as in the prototype, or an EDM4hep collection (+1.5 d), which travels with the simulation output?
+- **D4. Packaging.** Keep `solid_lineview` a single-file CLI that `solid_evview` imports, or make both an installed Python package?
+- **D5. Scope.**
+  - Detectors: EC first, then SPD, MRPC, GEM and muon. PMTs need optical physics on.
+  - Configurations: Lite first?
+  - Physics samples: real J/ψ generator events, DIS, background mixing?
+- **D6. Interactive web display.** None, a JSROOT page, Firebird or Phoenix? Hosted where, for example JeffersonLab GitHub Pages?
+- **D7. ffmpeg.** Add it to the solid_xl image, ask eic_xl upstream, or encode on the host?
+- **D8. Upstream reports.**
+  - Geant4: the offscreen `ProcessTransients` bug; a TSG hidden-line mode; DAWNFILE writing extruded solids without a name.
+  - DD4hep: the VisAttr drawingStyle is not passed to Geant4; `Geant4VolumeManager::volumeDescriptor(path)` returns "Insensitive" for the 300 SPD pads placed through assemblies.
+  - eic_xl: the REve/civetweb crash; pyrobird 2026.03rc1 writing empty EDM4hep events.
+
+**Open questions:**
+- **Q1. Wireframe drawing style.**
+  - DDG4 maps a VisAttr's *lineStyle* to Geant4's forced solid or wireframe. The default, solid, forces solid on most volumes. The *drawingStyle* is ignored, so the Cherenkov tanks' `drawingStyle="wireframe"` never reaches DAWNFILE [D].
+  - Should the dump honour drawingStyle, which changes today's pictures, or stay identical to DAWNFILE?
+- **Q2. Very different MCParticle records [D].** FAEC showers keep 7–11 MCParticles; LAEC showers keep more than 1000.
+  - **Likely cause [I, not verified]:** ddsim's default `Geant4TCUserParticleHandler`, combined with `tracker_region_zmax = 3.5 m` and `rmax = 2.6 m` in `compact/definitions.xml`. The FAEC (z ≈ 4.4 m) lies outside that region and the LAEC (z ≈ −0.6 m) inside.
+  - **To decide:** is this intended for production? The recorder route does not depend on it.
+- **Q3. Multi-threading.** Will event displays be made from multi-threaded ddsim runs?
+- **Q4. Booleans in web viewers [N].** JSROOT and Firebird use their own CSG code. Do they handle correctly the booleans that RootCsg gets wrong?
+- **Q5. Firebird licence.** The repository says GPL-3.0, the npm package says MIT. Which applies?
+- **Q6. dusk.** Revisit dusk (exact B-rep hidden lines) once `npdet_to_step` handles polyhedra and booleans [N]?
+
+## 6. Prototype code to start from
+
+**Scene dump:**
+- `$SCRATCH/vis_study/polyhedra/solidvis_g4.h`
+- `$SCRATCH/vis_study/polyhedra/g4poly.py`
+- `$SCRATCH/vis_study/polyhedra/polydump_steer.py`
+- `$SCRATCH/vis_study/polyhedra/lineview_npz.py`
+- `$SCRATCH/vis_study/polyhedra/hitmap_check.py`
+- Scenes for all 7 configurations: `$SCRATCH/vis_study/polyhedra/out/all/`
+
+**Events and animation:**
+- `$SCRATCH/vis_study/events_animation/plugin/SolidStepRecorder.cpp`
+- `$SCRATCH/vis_study/events_animation/scripts/extract_event.py`
+- `$SCRATCH/vis_study/events_animation/scripts/evdisp.py`
+- `$SCRATCH/vis_study/events_animation/scripts/encode.py`
+- `$SCRATCH/vis_study/events_animation/scripts/run_all.sh`
+
+**Geant4 native:**
+- `$SCRATCH/vis_study/geant4_native/bin/run_vis.sh`
+- `$SCRATCH/vis_study/geant4_native/bin/gl2ps_svg_hlr.py`
+- `$SCRATCH/vis_study/geant4_native/bin/hits_to_touchables.py`
+
+**Web:**
+- `$SCRATCH/vis_study/web_interactive/scripts/edm4hep2web.py`
+- `$SCRATCH/vis_study/web_interactive/scripts/make_display_geo.py`
+- `$SCRATCH/vis_study/web_interactive/pages/jsroot_event.html`

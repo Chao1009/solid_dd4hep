@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SoLID JSROOT event</title>
+<script type="importmap">{ "imports": { "jsroot": "/jsroot/modules/main.mjs" } }</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #ffffff; }
+  #d { position: absolute; inset: 0; }
+  #legend { position: absolute; left: 12px; bottom: 12px; font: 13px sans-serif; background: rgba(255,255,255,.85);
+            padding: 6px 10px; border: 1px solid #bbb; border-radius: 4px; }
+  #legend .bar { width: 220px; height: 12px; margin: 4px 0;
+                 background: linear-gradient(90deg, rgb(59,13,107), rgb(191,26,89) 35%, rgb(250,115,26) 65%, rgb(255,242,89)); }
+  #legend .ticks { display: flex; justify-content: space-between; width: 220px; }
+</style>
+</head>
+<body>
+<div id="d"></div>
+<div id="legend" style="display:none">
+  ECal module energy (sum of layers)
+  <div class="bar"></div>
+  <div class="ticks"><span>1 MeV</span><span>30 MeV</span><span>1 GeV</span></div>
+</div>
+<script type="module">
+import { openFile, draw, settings, constants } from 'jsroot';
+window.__status = 'start';
+const t0 = performance.now();
+try {
+  const p = new URLSearchParams(location.search);
+  if (p.get('svg')) settings.Render3D = constants.Render3D.SVG;
+  const geo = await openFile(p.get('geo'));
+  const gm = await geo.readObject(p.get('geoitem') || 'default;1');
+  window.__status = 'geo read';
+  const painter = await draw('d', gm, p.get('opt') || '');
+  window.__painter = painter;
+  window.__tgeo = performance.now() - t0;
+  window.__status = 'geo drawn';
+  if (p.get('ev')) {
+    const ef = await openFile(p.get('ev'));
+    const ev = await ef.readObject(p.get('item') || 'ev0;1');
+    await painter.drawExtras(ev, 'event');
+    document.getElementById('legend').style.display = '';
+    window.__status = 'event drawn';
+  }
+  window.__ttotal = performance.now() - t0;
+} catch (e) {
+  window.__status = 'error: ' + e + ' ' + (e.stack || '');
+}
+window.__done = true;
+</script>
+</body>
+</html>

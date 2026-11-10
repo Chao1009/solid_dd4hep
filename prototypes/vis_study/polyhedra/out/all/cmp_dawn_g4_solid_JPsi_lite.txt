@@ -1,0 +1,10 @@
+parse times: 1.16 s ($SCRATCH/overview_job/prims/solid_JPsi_lite/g4_0000.prim)  1.24 s (out/all/g4_solid_JPsi_lite.prim)
+A solids 3546 V 53874 F 67950 {'Polyhedron': 2946, 'Box': 24, 'Trd': 270, 'Tubs': 306} warnings {}
+B solids 3546 V 53874 F 67950 {'Polyhedron': 3546} warnings {}
+same name sequence: True
+names only in A: []
+names only in B: []
+name mismatches in order: 0  colour diffs: 0  depth diffs: 0
+identical meshes (V, F, edge flags): 2946  differing by kind: {('Box', 'Polyhedron'): 24, ('Trd', 'Polyhedron'): 270, ('Tubs', 'Polyhedron'): 306}  polyhedron-vs-polyhedron diffs: 0
+max bbox difference [mm]: 4.98e-06
+worst: []

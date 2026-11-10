@@ -1,0 +1,31 @@
+/control/verbose 2
+/vis/verbose warnings
+/vis/open TSG_OFFSCREEN 1600x1000-0+0
+/vis/tsg/offscreen/set/size 1600 1000
+/vis/viewer/set/autoRefresh false
+/vis/viewer/set/lineSegmentsPerCircle 72
+/vis/drawVolume
+/vis/viewer/set/background white
+/vis/viewer/set/viewpointVector -0.75 0.48 -0.45
+/vis/viewer/set/upVector 0 1 0
+/vis/viewer/set/targetPoint 0 0 0.6 m
+/vis/viewer/zoomTo 1.9
+/vis/viewer/addCutawayPlane 0 0 0 m 1 0 0
+/vis/viewer/set/style surface
+/vis/viewer/set/hiddenEdge true
+/vis/viewer/set/edge true
+/vis/tsg/offscreen/set/format zb_png
+/vis/tsg/offscreen/set/file rev_zb.png
+/control/shell date +T0=%s.%N
+/vis/viewer/rebuild
+/control/shell date +T1=%s.%N
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByCharge
+/vis/scene/endOfEventAction accumulate 10
+/run/beamOn 2
+/vis/tsg/offscreen/set/format gl2ps_svg
+/vis/tsg/offscreen/set/file rev_gl2ps.svg
+/control/shell date +T2=%s.%N
+/vis/viewer/rebuild
+/control/shell date +T3=%s.%N
+/control/echo "=== reviewer done"

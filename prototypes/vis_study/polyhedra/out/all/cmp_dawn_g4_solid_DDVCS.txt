@@ -1,0 +1,10 @@
+parse times: 1.36 s ($SCRATCH/overview_job/prims/solid_DDVCS/g4_0000.prim)  1.56 s (out/all/g4_solid_DDVCS.prim)
+A solids 4794 V 115838 F 149998 {'Polyhedron': 3618, 'Box': 328, 'Trd': 270, 'Cons': 32, 'Tubs': 546} warnings {}
+B solids 4794 V 115838 F 149998 {'Polyhedron': 4794} warnings {}
+same name sequence: True
+names only in A: []
+names only in B: []
+name mismatches in order: 0  colour diffs: 0  depth diffs: 0
+identical meshes (V, F, edge flags): 3618  differing by kind: {('Box', 'Polyhedron'): 328, ('Trd', 'Polyhedron'): 270, ('Cons', 'Polyhedron'): 32, ('Tubs', 'Polyhedron'): 546}  polyhedron-vs-polyhedron diffs: 0
+max bbox difference [mm]: 4.98e-06
+worst: []

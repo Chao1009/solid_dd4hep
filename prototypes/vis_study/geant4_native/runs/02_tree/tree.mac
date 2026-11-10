@@ -1,0 +1,4 @@
+/vis/ASCIITree/verbose 4
+/vis/drawTree ! ATree
+/vis/ASCIITree/verbose 1
+/vis/drawTree ! ATree

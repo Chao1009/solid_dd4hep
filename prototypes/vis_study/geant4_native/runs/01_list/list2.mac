@@ -1,0 +1,19 @@
+/control/manual /vis/viewer
+/control/manual /vis/scene
+/control/manual /vis/drawTree
+/control/manual /vis/geometry
+/control/manual /vis/open
+/vis/open RayTracer
+/control/manual /vis/rayTracer
+/vis/open VRML2FILE
+/control/manual /vis/vrml
+/vis/open gMocrenFile
+/control/manual /vis/gMocren
+/control/manual /vis/viewer/default
+/control/manual /vis/plot
+/control/manual /vis/reviewKeptEvents
+/control/manual /vis/modeling/trajectories/create
+/vis/modeling/trajectories/create/drawByCharge
+/control/manual /vis/modeling/trajectories/drawByCharge-0/default
+/control/manual /vis/modeling/trajectories/drawByCharge-0
+/control/manual /vis/filtering/trajectories

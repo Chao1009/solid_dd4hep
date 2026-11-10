@@ -1,0 +1,28 @@
+{
+ "nodes": 4615,
+ "drawn": 4537,
+ "invisible": 78,
+ "unique_meshes": 89,
+ "failed": 0,
+ "vertices_instanced": 126143,
+ "facets_instanced": 162947,
+ "vertices_unique": 23861,
+ "facets_unique": 28105,
+ "kinds": {
+  "0": 4615
+ },
+ "timings": {
+  "walk": 0.117,
+  "nodes_to_numpy": 1.021,
+  "tessellate_total": 0.331,
+  "tessellate_cpp": 0.182,
+  "ids": 1.648
+ },
+ "drawn_with_readout": 4470,
+ "drawn_with_detelement": 4537,
+ "drawn_sensitive": 330,
+ "sensitive_with_g4_volume_id": 330,
+ "g4_vs_dd4hep_volume_id_mismatch": 330,
+ "collect_seconds": 3.128,
+ "mesh_fail": []
+}
