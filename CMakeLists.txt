@@ -46,11 +46,13 @@ target_compile_options(${a_lib_name} PRIVATE -Wall -Wextra -Wno-unused-parameter
 # Simulation-side plugins (DDG4, Geant4): libsolid_ddg4.so. They are kept out of the geometry library so that
 # loading the detector description (reconstruction, displays) does not pull in Geant4.
 #   src/sim/SceneDump*: geometry scene for drawings (bin/solid_scene_dump, SOLID_SCENE in steering/solid_sim.py)
+#   src/sim/TrajectoryRecorder.cpp: trajectory points with times for event displays (SOLID_TRAJ)
 find_package(Geant4 REQUIRED)
 find_package(ZLIB)
 set(a_sim_lib_name ${PROJECT_NAME}_ddg4)
 dd4hep_add_plugin(${a_sim_lib_name}
   SOURCES ${PROJECT_SOURCE_DIR}/src/sim/SceneDump.cpp ${PROJECT_SOURCE_DIR}/src/sim/SceneDumpPlugins.cpp
+          ${PROJECT_SOURCE_DIR}/src/sim/TrajectoryRecorder.cpp
   USES DD4hep::DDCore DD4hep::DDG4 ROOT::Core ROOT::Geom ${Geant4_LIBRARIES}
 )
 target_include_directories(${a_sim_lib_name} PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/sim)

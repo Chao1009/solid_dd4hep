@@ -13,6 +13,11 @@ Environment switches (all optional):
     SOLID_SCENE=FILE    write the geometry scene for drawings (scene.npz for solid_lineview / make_solid_views)
                         when the run is initialised; the same file as `solid_scene_dump -o FILE` writes without
                         ddsim. SOLID_SCENE_SEGMENTS=N sets the line segments per circle (default 72).
+    SOLID_TRAJ=FILE|1   record trajectory points with time and kinetic energy for event displays (solid_evexport,
+                        solid_evview): the SoLIDTrajectoryRecorder stepping action writes FILE (1: solid_traj.bin).
+                        SOLID_TRAJ_MINEKIN=E keeps secondaries born with at least E MeV (default 5);
+                        SOLID_TRAJ_MAXDIST (mm, default 20) and SOLID_TRAJ_MAXANGLE (rad, default 0.04) set the
+                        point spacing. Works with -j N: all threads write the one file.
 Command-line options of ddsim override everything set here.
 """
 import os
@@ -96,6 +101,21 @@ if _scene:
         return None
 
     SIM.physics.setupUserPhysics(setup_scene_dump)
+
+# --------------------------------------------------------------------------------------
+# trajectories for event displays: the SoLIDTrajectoryRecorder stepping action (libsolid_ddg4). It does not
+# touch the particle handler, so the MCParticle content of the output is the same with and without it.
+_traj = os.environ.get('SOLID_TRAJ', '')
+if _traj and _traj != '0':
+    SIM.action.step = {
+        'name': 'SoLIDTrajectoryRecorder/TrajectoryRecorder',
+        'parameter': {
+            'OutputFile': os.path.abspath('solid_traj.bin' if _traj == '1' else _traj),
+            'MinEkin': float(os.environ.get('SOLID_TRAJ_MINEKIN', '5')),
+            'MaxDistance': float(os.environ.get('SOLID_TRAJ_MAXDIST', '20')),
+            'MaxAngle': float(os.environ.get('SOLID_TRAJ_MAXANGLE', '0.04')),
+        },
+    }
 
 # --------------------------------------------------------------------------------------
 # default particle gun: electrons from the target center into the SoLID acceptance
