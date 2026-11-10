@@ -65,6 +65,9 @@ install(DIRECTORY steering/ DESTINATION ${SOLID_SHARE_DIR}/steering OPTIONAL)
 install(DIRECTORY macro/ DESTINATION ${SOLID_SHARE_DIR}/macro OPTIONAL)
 install(DIRECTORY bin/ DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS
   FILES_MATCHING PATTERN "*" PATTERN "*.in" EXCLUDE)
+# python packages (solid_lineview): <prefix>/python, put on PYTHONPATH by thissolid.sh
+install(DIRECTORY python/ DESTINATION python
+  FILES_MATCHING PATTERN "*.py" PATTERN "__pycache__" EXCLUDE)
 
 #-----------------------------------------------------------------------------------
 # Environment script: source <prefix>/bin/thissolid.sh [configuration]

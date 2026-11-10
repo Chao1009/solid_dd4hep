@@ -30,4 +30,10 @@ case ":${PATH}:" in
   *":${_solid_bindir}:"*) ;;
   *) export PATH=${_solid_bindir}:${PATH} ;;
 esac
-unset _solid_libdir _solid_bindir
+## python packages of this install (solid_lineview)
+_solid_pydir=@CMAKE_INSTALL_PREFIX@/python
+case ":${PYTHONPATH}:" in
+  *":${_solid_pydir}:"*) ;;
+  *) export PYTHONPATH=${_solid_pydir}${PYTHONPATH:+:${PYTHONPATH}} ;;
+esac
+unset _solid_libdir _solid_bindir _solid_pydir
