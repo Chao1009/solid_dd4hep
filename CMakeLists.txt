@@ -94,7 +94,7 @@ install(DIRECTORY steering/ DESTINATION ${SOLID_SHARE_DIR}/steering OPTIONAL)
 install(DIRECTORY macro/ DESTINATION ${SOLID_SHARE_DIR}/macro OPTIONAL)
 install(DIRECTORY bin/ DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS
   FILES_MATCHING PATTERN "*" PATTERN "*.in" EXCLUDE)
-# python packages (solid_lineview): <prefix>/python, put on PYTHONPATH by thissolid.sh
+# python packages (solid_lineview, solid_evdisplay): <prefix>/python, put on PYTHONPATH by thissolid.sh
 install(DIRECTORY python/ DESTINATION python
   FILES_MATCHING PATTERN "*.py" PATTERN "__pycache__" EXCLUDE)
 
@@ -135,4 +135,17 @@ if(BUILD_TESTING)
                     --compact ${PROJECT_SOURCE_DIR}/test/test_scene_dump.xml
   )
   set_tests_properties(scene_dump PROPERTIES TIMEOUT 300 LABELS scene)
+
+  # event display chain: 1 gun event with the trajectory recorder, solid_evexport, solid_evview (2 views and a
+  # short animation). Uses ddsim, about 30 s.
+  add_test(NAME event_display
+    COMMAND ${CMAKE_COMMAND} -E env
+            DETECTOR_PATH=${PROJECT_SOURCE_DIR}
+            LD_LIBRARY_PATH=${PROJECT_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}
+            PYTHONPATH=${PROJECT_SOURCE_DIR}/python:$ENV{PYTHONPATH}
+            PYTHONDONTWRITEBYTECODE=1
+            python3 ${PROJECT_SOURCE_DIR}/scripts/event_display/test_event_display.py
+                    --config solid_JPsi_lite --outdir ${PROJECT_BINARY_DIR}/event_display_test
+  )
+  set_tests_properties(event_display PROPERTIES TIMEOUT 600 LABELS "scene;events")
 endif()
