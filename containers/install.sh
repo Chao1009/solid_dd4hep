@@ -5,7 +5,11 @@
 #
 #   containers/install.sh [options]
 #
-#   -t, --tag TAG      eic_xl release (default: 26.10.0-stable, the one this repository is tested with)
+#   -t, --tag TAG      image release (default: 26.10.0-stable for eic_xl, the one this repository is tested with;
+#                      latest for solid_xl)
+#       --solid-xl [OWNER]  get solid_xl instead: eic_xl plus ffmpeg, gmsh and a preinstalled SoLID geometry,
+#                      from ghcr.io/OWNER/solid_xl (default OWNER: chao1009). It is not on CVMFS, so it is
+#                      always downloaded, also on ifarm (choose a /work or /volatile directory with -d)
 #   -d, --dir DIR      where to store the .sif image (default: <repo>/containers/images). The image is about 5 GB;
 #                      the download needs about 15 GB free in DIR while it runs
 #   -i, --image IMAGE  use an image you already have instead: a .sif file, a /cvmfs/... directory or docker://...
@@ -19,13 +23,15 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "${here}/.." && pwd)"
-tag="26.10.0-stable"
+tag=""
 dir="${repo}/containers/images"
 image=""
 source="docker://eicweb/eic_xl"   # --source: another image repository (for testing)
 use_cvmfs=1
 build=0
 force=0
+solid_xl=0
+owner="chao1009"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -33,13 +39,21 @@ while [[ $# -gt 0 ]]; do
     -d|--dir)    dir="$2"; shift 2 ;;
     -i|--image)  image="$2"; shift 2 ;;
     --source)    source="$2"; shift 2 ;;
+    --solid-xl)  solid_xl=1
+                 if [[ $# -gt 1 && "$2" != -* ]]; then owner="$2"; shift 2; else shift; fi ;;
     --no-cvmfs)  use_cvmfs=0; shift ;;
     --build)     build=1; shift ;;
     -f|--force)  force=1; shift ;;
-    -h|--help)   sed -n '3,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)   sed -n '3,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)           echo "install.sh: unknown option '$1' (see --help)" >&2; exit 2 ;;
   esac
 done
+
+if [[ ${solid_xl} -eq 1 ]]; then
+  source="docker://ghcr.io/${owner,,}/solid_xl"
+  tag="${tag:-latest}"
+fi
+tag="${tag:-26.10.0-stable}"
 
 say() { echo "install.sh: $*"; }
 

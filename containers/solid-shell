@@ -7,8 +7,8 @@
 #   -i IMAGE   container image: a .sif file, a /cvmfs/singularity.opensciencegrid.org/... directory, or docker://...
 #              default: $SOLID_SHELL_IMAGE, else the image saved by containers/install.sh (solid-shell.local),
 #              else the newest containers/images/*.sif, else /cvmfs/.../eicweb/eic_xl:26.10.0-stable
-#   -p PREFIX  solid_dd4hep install prefix (holds bin/thissolid.sh); default $SOLID_PREFIX or <repo>/install;
-#              ignored when the image already provides /opt/solid (solid_xl)
+#   -p PREFIX  solid_dd4hep install prefix (holds bin/thissolid.sh); default $SOLID_PREFIX or <repo>/install.
+#              Without an install there, the geometry preinstalled in a solid_xl image (/opt/solid) is used
 #   -c CONFIG  geometry configuration, e.g. solid_JPsi_lite (default: solid = SIDIS 3He)
 #   -b PATH    extra bind path (repeatable); /home, /tmp and $PWD are bound by apptainer by default
 #
@@ -60,10 +60,10 @@ rc="$(mktemp "${TMPDIR:-/tmp}/solid-shell-rc.XXXXXX")"
 trap 'rm -f "${rc}"' EXIT
 cat > "${rc}" <<RC
 [ -f /etc/profile ] && . /etc/profile
-if [ -f /opt/solid/bin/thissolid.sh ]; then
-  . /opt/solid/bin/thissolid.sh ${config}
-elif [ -f "${prefix}/bin/thissolid.sh" ]; then
+if [ -f "${prefix}/bin/thissolid.sh" ]; then
   . "${prefix}/bin/thissolid.sh" ${config}
+elif [ -f /opt/solid/bin/thissolid.sh ]; then
+  . /opt/solid/bin/thissolid.sh ${config}
 else
   case \$- in *i*) echo "solid-shell: no ${prefix}/bin/thissolid.sh yet (run containers/install.sh --build)" >&2 ;; esac
 fi
