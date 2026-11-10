@@ -86,7 +86,7 @@ scripts/geometry/  check_geometry.py, solid_geo_dump.py, compare_gemc.py, gemc_t
 bin/               solid_lineview, make_solid_views (installed with thissolid.sh)
 magnet_field/      2D magnet solver: field maps computed from the DD4hep magnet geometry
 test/              stand-alone test configurations per subsystem
-containers/        install.sh, solid-shell launcher, solid_xl Dockerfile (eic_xl + solid_dd4hep, optional Gaudi)
+containers/        install.sh, solid-shell launcher, solid_xl image (eic_xl + ffmpeg + gmsh + solid_dd4hep)
 docs/              design, comparison, visualization, reconstruction
 benchmarks/        LGC optical-photon study; ECal (Juggler era, to be ported to EICrecon)
 ```
