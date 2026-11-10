@@ -10,7 +10,8 @@ A drawn volume of the scene carries the readout it belongs to and the volume ID 
 down to it, with their mask. A hit of that readout lies in the volume if (cellID & mask) == id. Several nested
 volumes can match (a calorimeter module and the plate it stands on); the hit belongs to the most specific one,
 the match with the most mask bits. The test fails if a hit matches no drawn volume, or if two volumes tie for
-the most specific match. An event display relies on this rule to colour volumes by deposited energy.
+the most specific match. An event display relies on this rule to colour volumes by deposited energy; the
+rule itself is implemented once, in python/solid_evdisplay/hitmap.py, which solid_evexport uses as well.
 
 Without --scene/--hits the script runs ddsim with steering/solid_sim.py, SOLID_SCENE (so the scene comes from
 the same Geant4 session as the hits), SOLID_OPTICAL=0 and the default particle gun, for EVENTS events
@@ -26,12 +27,8 @@ import sys
 import numpy as np
 
 
-def popcount(x):
-    x = np.asarray(x, np.uint64)
-    n = np.zeros(x.shape, np.int64)
-    for k in range(64):
-        n += ((x >> np.uint64(k)) & np.uint64(1)).astype(np.int64)
-    return n
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), 'python'))
 
 
 def run_ddsim(config, events, outdir):
@@ -66,11 +63,8 @@ def main():
         if not scene:
             return 2
 
-    z = np.load(scene)
-    readout = z['node_readout']
-    vid, mask = z['node_volume_id'].astype(np.uint64), z['node_volume_mask'].astype(np.uint64)
-    drawn = (z['node_mesh'] >= 0) & (mask != 0)
-    bits = popcount(mask)
+    from solid_evdisplay.hitmap import NO_MATCH, TIE, VolumeMap   # the rule solid_evexport uses
+    vmap = VolumeMap(scene)
     tree = uproot.open(hits)['events']
     collections = sorted({k.split('/')[0] for k in tree.keys() if k.endswith('.cellID') and not k.startswith('_')})
     total = bad = 0
@@ -80,21 +74,10 @@ def main():
         cid = np.concatenate(list(per_event)).astype(np.uint64) if len(per_event) else np.zeros(0, np.uint64)
         if len(cid) == 0:
             continue
-        cand = np.nonzero(drawn & (readout == c))[0]
-        nmatch = np.zeros(len(cid), np.int64)
-        best = np.full(len(cid), -1, np.int64)       # most mask bits among the matches
-        nbest = np.zeros(len(cid), np.int64)         # how many matches have that many
-        for i in cand:
-            m = (cid & mask[i]) == vid[i]
-            nmatch += m
-            better = m & (bits[i] > best)
-            same = m & (bits[i] == best)
-            nbest[better] = 1
-            best[better] = bits[i]
-            nbest[same] += 1
-        none = int((nmatch == 0).sum())
-        tie = int((nbest > 1).sum())
-        unique = int((nbest == 1).sum())
+        node, nmatch = vmap.match(c, cid)
+        none = int((node == NO_MATCH).sum())
+        tie = int((node == TIE).sum())
+        unique = int((node >= 0).sum())
         dist = dict(zip(*[x.tolist() for x in np.unique(nmatch, return_counts=True)]))
         print('%-22s %7d %9d %9d %9d  %s' % (c, len(cid), unique, none, tie, dist))
         total += len(cid)
