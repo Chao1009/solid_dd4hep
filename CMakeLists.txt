@@ -43,6 +43,33 @@ target_include_directories(${a_lib_name} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_compile_options(${a_lib_name} PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
 #-----------------------------------------------------------------------------------
+# Simulation-side plugins (DDG4, Geant4): libsolid_ddg4.so. They are kept out of the geometry library so that
+# loading the detector description (reconstruction, displays) does not pull in Geant4.
+#   src/sim/SceneDump*: geometry scene for drawings (bin/solid_scene_dump, SOLID_SCENE in steering/solid_sim.py)
+find_package(Geant4 REQUIRED)
+find_package(ZLIB)
+set(a_sim_lib_name ${PROJECT_NAME}_ddg4)
+dd4hep_add_plugin(${a_sim_lib_name}
+  SOURCES ${PROJECT_SOURCE_DIR}/src/sim/SceneDump.cpp ${PROJECT_SOURCE_DIR}/src/sim/SceneDumpPlugins.cpp
+  USES DD4hep::DDCore DD4hep::DDG4 ROOT::Core ROOT::Geom ${Geant4_LIBRARIES}
+)
+target_include_directories(${a_sim_lib_name} PRIVATE ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/sim)
+target_include_directories(${a_sim_lib_name} SYSTEM PRIVATE ${Geant4_INCLUDE_DIRS})
+target_compile_definitions(${a_sim_lib_name} PRIVATE SOLID_VERSION="${PROJECT_VERSION}")
+target_compile_options(${a_sim_lib_name} PRIVATE -Wall -Wextra -Wno-unused-parameter)
+if(ZLIB_FOUND)
+  # compressed scene files; without zlib they are written uncompressed
+  target_link_libraries(${a_sim_lib_name} PRIVATE ZLIB::ZLIB)
+  target_compile_definitions(${a_sim_lib_name} PRIVATE SOLID_HAVE_ZLIB)
+endif()
+
+# solid_scene_dump <compact> -o scene.npz: the scene without ddsim (calls the SoLID_SceneDump plugin)
+add_executable(solid_scene_dump ${PROJECT_SOURCE_DIR}/src/sim/solid_scene_dump.cpp)
+target_link_libraries(solid_scene_dump PRIVATE DD4hep::DDCore)
+target_compile_options(solid_scene_dump PRIVATE -Wall -Wextra)
+install(TARGETS solid_scene_dump RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+#-----------------------------------------------------------------------------------
 # Install the detector description: compact fragments, top-level configurations, field maps
 set(SOLID_SHARE_DIR ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME})
 

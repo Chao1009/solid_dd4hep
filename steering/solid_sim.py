@@ -10,6 +10,9 @@ Environment switches (all optional):
     SOLID_OPTICAL=0|1   enable Cherenkov + optical-photon physics and photon-counting readout for the
                         gas Cherenkovs (default 1; set 0 for fast tracking/calorimetry studies)
     SOLID_GUN=0|1       use the built-in particle gun (default 1) - disable when using --inputFiles
+    SOLID_SCENE=FILE    write the geometry scene for drawings (scene.npz for solid_lineview / make_solid_views)
+                        when the run is initialised; the same file as `solid_scene_dump -o FILE` writes without
+                        ddsim. SOLID_SCENE_SEGMENTS=N sets the line segments per circle (default 72).
 Command-line options of ddsim override everything set here.
 """
 import os
@@ -74,6 +77,25 @@ if os.environ.get('SOLID_OPTICAL', '1') != '0':
         SIM.action.mapActions[det] = 'Geant4OpticalTrackerAction'
     # keep the photon -> hit association
     SIM.part.userParticleHandler = ''
+
+# --------------------------------------------------------------------------------------
+# geometry scene for drawings: the SoLIDSceneDump plugin (libsolid_ddg4) walks the Geant4 geometry of this job
+_scene = os.environ.get('SOLID_SCENE', '')
+if _scene:
+
+    # ddsim executes this file and calls the function later, without the module globals: bind the values now
+    def setup_scene_dump(kernel, output=os.path.abspath(_scene), config=_cfg,
+                         segments=int(os.environ.get('SOLID_SCENE_SEGMENTS', '72'))):
+        import DDG4
+        master = DDG4.Geant4(kernel).master()
+        dump = DDG4.DetectorConstruction(master, 'SoLIDSceneDump/SceneDump')
+        dump.Output = output
+        dump.Segments = segments
+        dump.Config = config
+        master.detectorConstruction(True).adopt(dump)
+        return None
+
+    SIM.physics.setupUserPhysics(setup_scene_dump)
 
 # --------------------------------------------------------------------------------------
 # default particle gun: electrons from the target center into the SoLID acceptance
