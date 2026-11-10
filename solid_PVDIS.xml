@@ -51,7 +51,7 @@
   </display>
 
   <!-- ======================= magnetic field ======================= -->
-  <include ref="${DETECTOR_PATH}/compact/fields/field_CLEOv9.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/fields/field_SoLID_v4c_2D.xml"/>
 
   <!-- ======================= detectors ======================= -->
   <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_v4.xml"/>

@@ -3,7 +3,8 @@
   Full SoLID magnet: CLEO-II coil + cryostat (cleo_coil_cryostat.xml, DetElement MagnetCoil) and the modified
   CLEO-II iron yoke "v4c" (DetElement MagnetYoke) = GEMC magnet_moved variation v4 ("longer endcap", 6" endcap
   plates; J. Benesch JLab-TN 22-011/014, 2022) with the octagon radii CORRECTED to the real CLEO-II flats.
-  Used by solid_SIDIS_He3, solid_SIDIS_NH3, solid_PVDIS, solid_JPsi, solid_DDVCS (field map: fields/field_CLEOv9.xml).
+  Used by solid_SIDIS_He3, solid_SIDIS_NH3, solid_PVDIS, solid_JPsi, solid_DDVCS (field map: fields/field_SoLID_v4c_2D.xml,
+  computed from this geometry with magnet_field/).
 
   All radii of "oct" surfaces are APOTHEMS (distance to the flats); flats are normal to x, y and the diagonals
   (Polyhedra phi0 = -22.5 deg), as on the real CLEO-II yoke (NIM A320 p.70: joints at 22.5 deg from vertical).

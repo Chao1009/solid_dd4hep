@@ -26,11 +26,11 @@ geometry with `make_solid_views --views overview`. The other configurations are 
 
 | compact file | experiment | magnet / field | GEMC reference | overview |
 |---|---|---|---|---|
-| `solid.xml` = `solid_SIDIS_He3.xml` | SIDIS, polarized 3He (40 cm, z = -350 cm) | CLEO-II, longer endcap (v4c) / CLEOv9 | solid_SIDIS_He3_moved_full | [drawing](docs/images/overview_solid_SIDIS_He3.svg) |
-| `solid_SIDIS_NH3.xml` | SIDIS, polarized NH3 (+ 5 T target field) | v4c / CLEOv9 | solid_SIDIS_NH3_moved_full | [drawing](docs/images/overview_solid_SIDIS_NH3.svg) |
-| `solid_PVDIS.xml` | PVDIS, 40 cm LD2 (z = +10 cm), baffles | v4c / CLEOv9 | solid_PVDIS_LD2_moved_full | [drawing](docs/images/overview_solid_PVDIS.svg) |
-| `solid_JPsi.xml` | J/psi, 15 cm LH2 (z = -315 cm) | v4c / CLEOv9 | solid_JPsi_LH2_moved_full | [drawing](docs/images/overview_solid_JPsi.svg) |
-| `solid_DDVCS.xml` | J/psi + DDVCS forward muon detector | v4c / CLEOv9 | solid_JPsi_DDVCS_LH2_moved_full | [drawing](docs/images/overview_solid_DDVCS.svg) |
+| `solid.xml` = `solid_SIDIS_He3.xml` | SIDIS, polarized 3He (40 cm, z = -350 cm) | CLEO-II, longer endcap (v4c) / v4c 2D map | solid_SIDIS_He3_moved_full | [drawing](docs/images/overview_solid_SIDIS_He3.svg) |
+| `solid_SIDIS_NH3.xml` | SIDIS, polarized NH3 (+ 5 T target field) | v4c / v4c 2D map | solid_SIDIS_NH3_moved_full | [drawing](docs/images/overview_solid_SIDIS_NH3.svg) |
+| `solid_PVDIS.xml` | PVDIS, 40 cm LD2 (z = +10 cm), baffles | v4c / v4c 2D map | solid_PVDIS_LD2_moved_full | [drawing](docs/images/overview_solid_PVDIS.svg) |
+| `solid_JPsi.xml` | J/psi, 15 cm LH2 (z = -315 cm) | v4c / v4c 2D map | solid_JPsi_LH2_moved_full | [drawing](docs/images/overview_solid_JPsi.svg) |
+| `solid_DDVCS.xml` | J/psi + DDVCS forward muon detector | v4c / v4c 2D map | solid_JPsi_DDVCS_LH2_moved_full | [drawing](docs/images/overview_solid_DDVCS.svg) |
 | `solid_JPsi_lite.xml` | **SoLID-Lite** J/psi (stage 1) | CLEO-II iron as built / CLEOv10 | solid_JPsi_LH2_lite_full | [drawing](docs/images/overview_solid_JPsi_lite.svg) |
 | `solid_DDVCS_lite.xml` | **SoLID-Lite** DDVCS | CLEO-II iron as built / CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full | [drawing](docs/images/overview_solid_DDVCS_lite.svg) |
 | `solid_beamtest.xml` | beam-test placeholder (telescope Cherenkov) | none | – | – |
@@ -84,6 +84,7 @@ src/               DD4hep plugins: SoLID_CLEOMagnet, SoLID_FieldMapB, SoLID_Beam
 steering/          ddsim steering
 scripts/geometry/  check_geometry.py, solid_geo_dump.py, compare_gemc.py, gemc_txt.py
 bin/               solid_lineview, make_solid_views (installed with thissolid.sh)
+magnet_field/      2D magnet solver: field maps computed from the DD4hep magnet geometry
 test/              stand-alone test configurations per subsystem
 containers/        install.sh, solid-shell launcher, solid_xl Dockerfile (eic_xl + solid_dd4hep, optional Gaudi)
 docs/              design, comparison, visualization, reconstruction
@@ -98,8 +99,9 @@ detector. Deliberate deviations from GEMC are listed in `docs/geometry_compariso
 octagonal yoke uses the real flat-to-flat dimensions, where GEMC builds it about 8 % too large.
 
 Open items:
-- the 3D field map of the v4 yoke is missing upstream;
-- there is no field map for the SoLID-Lite SIDIS magnet stage;
+- the field maps are 2D: the 3D TOSCA map of the v4 yoke is missing upstream, and `magnet_field/` computes 2D maps
+  from the DD4hep magnet geometry;
+- the SoLID-Lite SIDIS magnet (stage 2) and its map are provisional, and there is no SIDIS-lite configuration yet;
 - the lite forward-angle segment azimuths are still under discussion;
 - the beam-test geometry has not been ported;
 - the ACTS material map has to be regenerated.

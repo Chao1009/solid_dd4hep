@@ -1,0 +1,49 @@
+{
+  "_comment": [
+    "SPDX-License-Identifier: LGPL-3.0-or-later",
+    "Current distribution used by extract_rz_model.py. The DD4hep coil volumes are passive (no current): the",
+    "geometry gives where the conductor is, this file gives how the ampere-turns are distributed in it.",
+    "main_coil: the CLEO-II winding (DD4hep MagnetCoil/CoilWinding, r 151.70-154.90 cm, z +-173.75 cm) holds",
+    "  n_layers equal radial layers (2 x 1.6 cm conductor). Each layer carries its current in a sheet of",
+    "  sheet_thickness_cm centred on the layer mid-radius (the Cu/NbTi insert in the middle of the Al-stabilised",
+    "  conductor), i.e. 152.30-152.70 and 153.90-154.30 cm, as in CLEOv8/9/10.am. null = uniform over the layer.",
+    "  The axial grading (turns per section and section edges) is taken from CLEOv10.am; the section edges are",
+    "  mapped linearly from the deck coil length (+-173.8) onto the DD4hep winding length.",
+    "aux_coils: conductor volumes that exist in the DD4hep yoke (matched by volume-name regex).",
+    "addon_coils: coils that are NOT in the DD4hep geometry, added only on request (--addon-coil NAME)."
+  ],
+  "main_coil": {
+    "volume_regex": "CoilWinding$",
+    "current_A": 3266.0,
+    "layer_names": ["Inner", "Outer"],
+    "section_names": ["Upstream", "Central", "Downstream"],
+    "turns_per_layer": [166, 309, 166],
+    "section_edges_ref_cm": [-173.8, -85.5, 85.5, 173.8],
+    "sheet_thickness_cm": 0.4,
+    "source": "solid_gemc/field/CLEOv10.am (also CLEOv8/v9.am): 1282 turns x 3266 A, 2 x (166 + 309 + 166) turns, current sheets r 152.3-152.7 / 153.9-154.3 cm, z +-173.8 / +-85.5 cm"
+  },
+  "aux_coils": [
+    {
+      "name": "CorrectionCoil",
+      "volume_regex": "CorrectionCoil$",
+      "NI_At": 0.0,
+      "source": "solenoid_v4.xml CorrectionCoil (GEMC v4 'coilcorr', Cu, r 40-49 cm, z -277..-268 cm). Its current in the 2022 TOSCA v4 model (J. Benesch, JLab-TN 22-011/014) is not available (solenoid_v4.dat and the notes are not in the repositories), so the default is 0 A-turns (air). Set it with --aux-ni CorrectionCoil=<A-turns>."
+    }
+  ],
+  "addon_coils": {
+    "cleov11_correction_coil": {
+      "z_cm": [-286.5, -266.5],
+      "r_cm": [40.0, 47.5],
+      "NI_At": -16240.0,
+      "J_A_per_cm2": -108.27,
+      "source": "'CLEO-II Stage 1 and 2.html' (POISSON runs 2026-10-31), CLEOv11 (stage 2A) region 'Correction coil': mat=1, cur=-16240, z -286.5..-266.5, r 40.0-47.5 (150 cm2, J = 108.3 A/cm2, 1.17 kW, air cooled) on an aluminium support ring r 38.937-39.572 (non-magnetic, not modelled). Tuned for the CLEOv11 plug (z -266.5..-240.375, 25 deg bore), which is not the iron of solenoid_lite_sidis.xml."
+    },
+    "cleov12_correction_coil": {
+      "z_cm": [-286.5, -266.5],
+      "r_cm": [40.0, 47.5],
+      "NI_At": -16166.0,
+      "J_A_per_cm2": -107.77,
+      "source": "'CLEO-II Stage 1 and 2.html', CLEOv12 (stage 2B) 'Correction coil': cur=-16166 (J = 107.8 A/cm2), same geometry as CLEOv11."
+    }
+  }
+}

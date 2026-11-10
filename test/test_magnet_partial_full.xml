@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
-<!-- magnet integration test (full): stage fragments of test_partial_full.xml + solenoid_v4 + CLEOv9 map (no GEM/target/beamline yet) -->
+<!-- magnet integration test (full): stage fragments of test_partial_full.xml + solenoid_v4 + v4c 2D map (no GEM/target/beamline yet) -->
 <lccdd>
-  <info name="test_magnet_partial_full" title="magnet integration test: full-SoLID SIDIS stage fragments + solenoid_v4 + CLEOv9" author="SoLID collaboration" url="https://github.com/JeffersonLab/solid_dd4hep" status="development" version="v0.3 2026-11">
+  <info name="test_magnet_partial_full" title="magnet integration test: full-SoLID SIDIS stage fragments + solenoid_v4 + v4c 2D map" author="SoLID collaboration" url="https://github.com/JeffersonLab/solid_dd4hep" status="development" version="v0.3 2026-11">
     <comment>overlap check of the magnet against the other subsystems, field read-back</comment>
   </info>
   <std_conditions type="NTP"/>
@@ -28,7 +28,7 @@
     <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
     <include ref="${DETECTOR_PATH}/compact/display.xml"/>
   </display>
-  <include ref="${DETECTOR_PATH}/compact/fields/field_CLEOv9.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/fields/field_SoLID_v4c_2D.xml"/>
   <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_v4.xml"/>
   <include ref="${DETECTOR_PATH}/compact/cherenkov/lgc_SIDIS.xml"/>
   <include ref="${DETECTOR_PATH}/compact/cherenkov/hgc_SIDIS.xml"/>

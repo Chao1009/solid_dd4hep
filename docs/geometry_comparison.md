@@ -453,10 +453,10 @@ These are for the collaboration and the subsystem groups.
   - FAEC to nose: 4.2 cm.
   - LGC and HGC fit inside the endcap (r 270).
 - **Open issues:**
-  - The 3D TOSCA map `solenoid_v4.dat` is missing, so v4c runs with CLEOv9 (a mismatch). Full-size 3D float storage is about 1.1 GB.
-  - No stage-2 map exists.
+  - The 3D TOSCA map `solenoid_v4.dat` is missing. v4c runs with a 2D map of its own iron (`magnet_field/`, `field_SoLID_v4c_2D.xml`), with the octagon at its flats; an equal-area octagon changes the field by 0.2–1.3 %.
+  - The stage-2 map (`field_SoLIDlite_stage2_2D.xml`) is as provisional as the stage-2 iron.
   - Still unconfirmed: shell thickness, the cryostat diameter (11.8 ft), and bars vs ring.
-  - CLEOv9 ends at z = 600 (B = 0 in the muon region).
+  - The v4c map reaches z = 800 cm, over the muon system; the muon iron itself is not magnetized.
 
 **Targets and beamlines**
 
@@ -486,7 +486,7 @@ These are for the collaboration and the subsystem groups.
 
 - Collaboration questions: the 2022 extZmid_7.5/modNose optics (Q1), the cut-cone apex offset (Q3, parameter `apex_z`), and the sector phase (Q4, parameter `LGC_phi_sec1`).
 - Not modelled: tank walls and supports, the preCDR steel shield, the real 6.08 mm H12700 pixels, and the virtual planes.
-- Physics checks still to do: a run with the CLEOv9 field, a comparison with GEMC using the same gun, and digitization (QE, packing, trigger).
+- Physics checks still to do: a run with the full-SoLID field, a comparison with GEMC using the same gun, and digitization (QE, packing, trigger).
 
 **Heavy gas Cherenkov (HGC) and SoLID-Lite CO2 Cherenkov**
 

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
 <lccdd>
-  <info name="test_magnet_v4" title="magnet test: solenoid_v4.xml + field_CLEOv9.xml"
+  <info name="test_magnet_v4" title="magnet test: solenoid_v4.xml + field_SoLID_v4c_2D.xml"
         author="SoLID collaboration"
         url="https://github.com/JeffersonLab/solid_dd4hep"
         status="development"
@@ -51,7 +51,7 @@
   </display>
 
   <!-- ======================= magnetic field ======================= -->
-  <include ref="${DETECTOR_PATH}/compact/fields/field_CLEOv9.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/fields/field_SoLID_v4c_2D.xml"/>
 
   <!-- ======================= detectors ======================= -->
   <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_v4.xml"/>

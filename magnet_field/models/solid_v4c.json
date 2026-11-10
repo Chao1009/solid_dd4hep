@@ -1,0 +1,1339 @@
+{
+ "title": "SoLID CLEO-II r-z model solid_v4c (DD4hep test_magnet_v4.xml)",
+ "generated": "2026-11-06T18:03:53-06:00",
+ "generator": "magnet_field/extract_rz_model.py",
+ "dd4hep": "v01-38",
+ "root": "6.40.04",
+ "compact": "test/test_magnet_v4.xml",
+ "git": {
+  "commit": "aa239990f855934aec38a95dac0d0ce99eacd2d4",
+  "date": "2026-11-06 17:26:46 -0600",
+  "branch": "main"
+ },
+ "dirty_files": [],
+ "paths": "relative to the repository root; ${VAR}/... = under that environment variable (container)",
+ "files": [
+  {
+   "path": "test/test_magnet_v4.xml",
+   "sha256": "eda875271b23cbb4889267f3820c1f79628591503743d3f8248b73733203befa",
+   "geometry_sha256": "96f4d0be8e9bf937c092339777c105644a66674b96a3166abbf59d6075540c5d"
+  },
+  {
+   "path": "${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml",
+   "sha256": "e54242c3ee38e06a6bd85c16d7a31105d6ee659b44c4e821408a5154bfa27bff",
+   "geometry_sha256": "1be7406abd14114e34c34d7712f7886fdf9e8c4b7baaebf1ca8fc6fe0f2bbd12"
+  },
+  {
+   "path": "compact/definitions.xml",
+   "sha256": "9619240d775639c7cf65a29ba41f8519c0c7590d28b5d91f82e9d24a54c9421e",
+   "geometry_sha256": "0e9422fe0dde43a6d9570088ca4db81028a745980c6f913ac14e92fcbcb5d229"
+  },
+  {
+   "path": "${DD4hepINSTALL}/DDDetectors/compact/elements.xml",
+   "sha256": "d1b324a152c2c8cc78f466441499139dd073e0b93cf38e55383025a86562742e",
+   "geometry_sha256": "8499b7c86cbdfe20f0a37c2ddea376b9a9d2e9eb9f5b6546590c1feb1a67aa86"
+  },
+  {
+   "path": "compact/materials.xml",
+   "sha256": "551cdb49a694b7e34b86e1eb6599d20312e4693f306da6faf2860f7758fed4e3",
+   "geometry_sha256": "38dbf5ad333ce91e10b5d1c2a3b8ddad52cc50e9dbcc3d33e31a01d57aa81933"
+  },
+  {
+   "path": "compact/optics.xml",
+   "sha256": "d3a116e4b3782cf86716abeeea43bbee8c7dac6e62dec7a6a53780dd2c1755c5",
+   "geometry_sha256": "cf827118a7c94279ee0adcc5526aca6867c090172aa524676da840406a0d39ae"
+  },
+  {
+   "path": "compact/colors.xml",
+   "sha256": "3d071f04a95c639f691b321728f7cdb552e4c9963ce83decd3a73f342febc3b4",
+   "geometry_sha256": "8d425e5a43fa76a19461cab36a3db411890f68e84e450e1c1cbc2089901fa309"
+  },
+  {
+   "path": "compact/display.xml",
+   "sha256": "724ea0c583f03b4c7362c0c52b5a44f5bdc690255941491e141543eb98133c96",
+   "geometry_sha256": "2a9e76c150e49b5222c9558958940d4b9356c50d997b4e972430407d6a6f5157"
+  },
+  {
+   "path": "compact/magnet/solenoid_v4.xml",
+   "sha256": "545162c29bb8d438a26669caa2f0ac7b801f60553fd045ac72f2087f28ea20a4",
+   "geometry_sha256": "51b420185b247e1d073376f533afa4107eb36f10fbcbe6fbf55d15ec8bd8034d"
+  },
+  {
+   "path": "compact/magnet/magnet_materials.xml",
+   "sha256": "7f1b426e5ae8233f8fcbb6dae2d61d612e056a1047f5d1a1b07123c1a25d8ee7",
+   "geometry_sha256": "fd9d55cfa797cae21025e8a6a993ae94dc6337d1d997e8f81a3e7c622dff189a"
+  },
+  {
+   "path": "compact/magnet/cleo_coil_cryostat.xml",
+   "sha256": "8731b94b22c504e07f0ed1a71e4a3d23c668b7a789acff51f117e87cf88132b9",
+   "geometry_sha256": "67e04aae82fb316edb7fca590cfe49046b3b846b79a59e067a9af317274f4c30"
+  },
+  {
+   "path": "src/CLEOMagnet_geo.cpp",
+   "sha256": "0456176629924462d0ae0775a9599bbad5f7741beb5f9a1fd7dc91faf4d28e0e",
+   "role": "plugin source"
+  }
+ ],
+ "options": {
+  "no_field": true,
+  "convention": "flat",
+  "bars": "length",
+  "ring_anchor": "outer",
+  "snap": 0.5,
+  "merge": true,
+  "iron_min_fe": 0.9,
+  "sampling": [
+   0.25,
+   0.5,
+   360
+  ],
+  "coil_params": "magnet_field/models/cleo2_coils.json",
+  "aux_ni": {},
+  "addon_coil": [],
+  "commented_addon": []
+ },
+ "box": {
+  "r": [
+   0.0,
+   500.0
+  ],
+  "z": [
+   -500.0,
+   800.0
+  ]
+ },
+ "main_coil": {
+  "winding_r": [
+   151.7,
+   154.9
+  ],
+  "winding_z": [
+   -173.75,
+   173.75
+  ],
+  "layer_width": 1.6000000000000085,
+  "sheet_thickness": 0.4,
+  "section_edges": [
+   -173.75,
+   -85.47540276179515,
+   85.47540276179518,
+   173.75
+  ],
+  "total_turns": 1282,
+  "total_At": 4187012.0
+ },
+ "regions": [
+  {
+   "name": "Upstream coil Inner",
+   "mat": 1,
+   "cur": 542156.0,
+   "pts": [
+    [
+     152.3,
+     -173.75
+    ],
+    [
+     152.3,
+     -85.47540276179515
+    ],
+    [
+     152.7,
+     -85.47540276179515
+    ],
+    [
+     152.7,
+     -173.75
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "Central coil Inner",
+   "mat": 1,
+   "cur": 1009194.0,
+   "pts": [
+    [
+     152.3,
+     -85.47540276179515
+    ],
+    [
+     152.3,
+     85.47540276179518
+    ],
+    [
+     152.7,
+     85.47540276179518
+    ],
+    [
+     152.7,
+     -85.47540276179515
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "Downstream coil Inner",
+   "mat": 1,
+   "cur": 542156.0,
+   "pts": [
+    [
+     152.3,
+     85.47540276179518
+    ],
+    [
+     152.3,
+     173.75
+    ],
+    [
+     152.7,
+     173.75
+    ],
+    [
+     152.7,
+     85.47540276179518
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "Upstream coil Outer",
+   "mat": 1,
+   "cur": 542156.0,
+   "pts": [
+    [
+     153.9,
+     -173.75
+    ],
+    [
+     153.9,
+     -85.47540276179515
+    ],
+    [
+     154.29999999999998,
+     -85.47540276179515
+    ],
+    [
+     154.29999999999998,
+     -173.75
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "Central coil Outer",
+   "mat": 1,
+   "cur": 1009194.0,
+   "pts": [
+    [
+     153.9,
+     -85.47540276179515
+    ],
+    [
+     153.9,
+     85.47540276179518
+    ],
+    [
+     154.29999999999998,
+     85.47540276179518
+    ],
+    [
+     154.29999999999998,
+     -85.47540276179515
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "Downstream coil Outer",
+   "mat": 1,
+   "cur": 542156.0,
+   "pts": [
+    [
+     153.9,
+     85.47540276179518
+    ],
+    [
+     153.9,
+     173.75
+    ],
+    [
+     154.29999999999998,
+     173.75
+    ],
+    [
+     154.29999999999998,
+     85.47540276179518
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "CorrectionCoil (DD4hep CorrectionCoil)",
+   "mat": 1,
+   "cur": 0.0,
+   "pts": [
+    [
+     40.0,
+     -277.0
+    ],
+    [
+     40.0,
+     -268.0
+    ],
+    [
+     49.0,
+     -268.0
+    ],
+    [
+     49.0,
+     -277.0
+    ]
+   ],
+   "pieces": null
+  },
+  {
+   "name": "Iron group 1",
+   "mat": 2,
+   "cur": 0.0,
+   "pts": [
+    [
+     50.8,
+     -278.0
+    ],
+    [
+     50.8,
+     -266.7
+    ],
+    [
+     38.94,
+     -266.7
+    ],
+    [
+     63.32,
+     -214.25
+    ],
+    [
+     144.14,
+     -214.25
+    ],
+    [
+     144.14,
+     -189.23
+    ],
+    [
+     176.53,
+     -189.23
+    ],
+    [
+     176.53,
+     189.23
+    ],
+    [
+     144.0,
+     189.23
+    ],
+    [
+     144.0,
+     199.23
+    ],
+    [
+     164.45,
+     224.79
+    ],
+    [
+     200.17,
+     224.79
+    ],
+    [
+     212.62,
+     209.23
+    ],
+    [
+     212.62,
+     -266.7
+    ],
+    [
+     51.435,
+     -266.7
+    ],
+    [
+     51.435,
+     -278.0
+    ]
+   ],
+   "pieces": [
+    "InnerOctagon",
+    "UpstreamCoilCollar",
+    "UpstreamPlug",
+    "DownstreamCoilCollar",
+    "CorrectorRing"
+   ]
+  },
+  {
+   "name": "Iron group 2",
+   "mat": 2,
+   "cur": 0.0,
+   "pts": [
+    [
+     212.62,
+     -266.7
+    ],
+    [
+     212.62,
+     -236.76991135121932
+    ],
+    [
+     221.51,
+     -236.76991135121932
+    ],
+    [
+     221.51,
+     179.2999113512193
+    ],
+    [
+     212.62,
+     179.2999113512193
+    ],
+    [
+     212.62,
+     209.22999999999996
+    ],
+    [
+     270.0,
+     209.22999999999996
+    ],
+    [
+     270.0,
+     529.59
+    ],
+    [
+     85.0,
+     529.59
+    ],
+    [
+     85.0,
+     416.04
+    ],
+    [
+     59.16,
+     189.23
+    ],
+    [
+     19.0,
+     189.23
+    ],
+    [
+     28.31,
+     416.04
+    ],
+    [
+     35.0,
+     575.31
+    ],
+    [
+     113.76,
+     575.31
+    ],
+    [
+     129.0,
+     560.07
+    ],
+    [
+     285.24,
+     560.07
+    ],
+    [
+     285.24,
+     170.67
+    ],
+    [
+     257.61,
+     170.67
+    ],
+    [
+     257.61,
+     -266.7
+    ]
+   ],
+   "pieces": [
+    "OuterOctagon",
+    "EndcapInterface",
+    "SpacerBarsUp",
+    "SpacerBarsDown",
+    "EndcapCylinder",
+    "EndcapNoseCone",
+    "Endplate1",
+    "Endplate2",
+    "ConePlate"
+   ]
+  }
+ ],
+ "pieces": [
+  {
+   "name": "InnerOctagon",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_InnerOctagon_0"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPgon(8 sides, apothems)",
+   "polygonal": true,
+   "loops": [
+    [
+     [
+      180.34,
+      -266.7
+     ],
+     [
+      180.34,
+      -189.23
+     ],
+     [
+      176.53,
+      -189.23
+     ],
+     [
+      176.53,
+      189.23
+     ],
+     [
+      180.34,
+      189.23
+     ],
+     [
+      180.34,
+      224.79
+     ],
+     [
+      200.17,
+      224.79
+     ],
+     [
+      212.62,
+      209.23
+     ],
+     [
+      212.62,
+      -266.7
+     ]
+    ]
+   ],
+   "real_volume_cm3": 22230425.854255036,
+   "real_mass_t": 174.95345147298715,
+   "model_volume_cm3": 21075765.285720564,
+   "sampled_volume_cm3": 22221586.80428986,
+   "sampled_over_real": 0.9996023895348147,
+   "ring": null
+  },
+  {
+   "name": "OuterOctagon",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_OuterOctagon_1"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPgon(8 sides, apothems)",
+   "polygonal": true,
+   "loops": [
+    [
+     [
+      221.51,
+      -266.7
+     ],
+     [
+      221.51,
+      209.23
+     ],
+     [
+      257.61,
+      209.23
+     ],
+     [
+      257.61,
+      -266.7
+     ]
+    ]
+   ],
+   "real_volume_cm3": 27277771.358946092,
+   "real_mass_t": 214.67606059490578,
+   "model_volume_cm3": 25860948.883651696,
+   "sampled_volume_cm3": 27284712.716553275,
+   "sampled_over_real": 1.0002544693815283,
+   "ring": null
+  },
+  {
+   "name": "UpstreamCoilCollar",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_UpstreamCoilCollar_2"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic (TGeoPgon(8 sides, apothems) - TGeoPcon)",
+   "polygonal": true,
+   "loops": [
+    [
+     [
+      144.14,
+      -266.7
+     ],
+     [
+      144.14,
+      -189.23
+     ],
+     [
+      180.34,
+      -189.23
+     ],
+     [
+      180.34,
+      -266.7
+     ]
+    ]
+   ],
+   "real_volume_cm3": 3292423.908243538,
+   "real_mass_t": 25.911376157876646,
+   "model_volume_cm3": 2858774.716769508,
+   "sampled_volume_cm3": 3294397.364925126,
+   "sampled_over_real": 1.0005993932545099,
+   "ring": null
+  },
+  {
+   "name": "UpstreamPlug",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_UpstreamPlug_3"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      38.94,
+      -266.7
+     ],
+     [
+      63.32,
+      -214.25
+     ],
+     [
+      144.14,
+      -214.25
+     ],
+     [
+      144.14,
+      -266.7
+     ]
+    ]
+   ],
+   "real_volume_cm3": 2984520.037552774,
+   "real_mass_t": 23.48817269554033,
+   "model_volume_cm3": 2984520.037552774,
+   "sampled_volume_cm3": 2984535.030187182,
+   "sampled_over_real": 1.0000050234658235,
+   "ring": null
+  },
+  {
+   "name": "DownstreamCoilCollar",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_DownstreamCoilCollar_4"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic (TGeoPgon(8 sides, apothems) - TGeoPcon)",
+   "polygonal": true,
+   "loops": [
+    [
+     [
+      144.0,
+      189.23
+     ],
+     [
+      144.0,
+      199.23
+     ],
+     [
+      164.45,
+      224.79
+     ],
+     [
+      180.34,
+      224.79
+     ],
+     [
+      180.34,
+      189.23
+     ]
+    ]
+   ],
+   "real_volume_cm3": 1268124.5113566874,
+   "real_mass_t": 9.98013990437713,
+   "model_volume_cm3": 1069072.4234669688,
+   "sampled_volume_cm3": 1269043.3973869095,
+   "sampled_over_real": 1.0007246023730265,
+   "ring": null
+  },
+  {
+   "name": "EndcapInterface",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_EndcapInterface_5"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic (TGeoPcon - TGeoPgon(8 sides, apothems))",
+   "polygonal": true,
+   "loops": [
+    [
+     [
+      257.61,
+      170.67
+     ],
+     [
+      257.61,
+      209.23
+     ],
+     [
+      285.24,
+      209.23
+     ],
+     [
+      285.24,
+      170.67
+     ]
+    ]
+   ],
+   "real_volume_cm3": 1376532.9367005916,
+   "real_mass_t": 10.833314211833656,
+   "model_volume_cm3": 1816969.448903821,
+   "sampled_volume_cm3": 1376485.9829158206,
+   "sampled_over_real": 0.999965889821072,
+   "ring": null
+  },
+  {
+   "name": "EndcapCylinder",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_EndcapCylinder_6"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      270.0,
+      209.23
+     ],
+     [
+      270.0,
+      529.59
+     ],
+     [
+      285.24,
+      529.59
+     ],
+     [
+      285.24,
+      209.23
+     ]
+    ]
+   ],
+   "real_volume_cm3": 8516357.230484428,
+   "real_mass_t": 67.02373140391245,
+   "model_volume_cm3": 8516357.230484428,
+   "sampled_volume_cm3": 8516546.93944375,
+   "sampled_over_real": 1.000022275833926,
+   "ring": null
+  },
+  {
+   "name": "EndcapNoseCone",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_EndcapNoseCone_7"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      19.0,
+      189.23
+     ],
+     [
+      28.31,
+      416.04
+     ],
+     [
+      35.0,
+      575.31
+     ],
+     [
+      85.0,
+      575.31
+     ],
+     [
+      85.0,
+      416.04
+     ],
+     [
+      59.16,
+      189.23
+     ]
+    ]
+   ],
+   "real_volume_cm3": 6449698.109692406,
+   "real_mass_t": 50.759124123279236,
+   "model_volume_cm3": 6449698.109692406,
+   "sampled_volume_cm3": 6449723.964235286,
+   "sampled_over_real": 1.000004008643884,
+   "ring": null
+  },
+  {
+   "name": "Endplate1",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_Endplate1_8"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      85.0,
+      529.59
+     ],
+     [
+      85.0,
+      544.83
+     ],
+     [
+      285.24,
+      544.83
+     ],
+     [
+      285.24,
+      529.59
+     ]
+    ]
+   ],
+   "real_volume_cm3": 3549514.981673026,
+   "real_mass_t": 27.934682905766714,
+   "model_volume_cm3": 3549514.981673026,
+   "sampled_volume_cm3": 3549585.829920608,
+   "sampled_over_real": 1.0000199599798698,
+   "ring": null
+  },
+  {
+   "name": "Endplate2",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_Endplate2_9"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      85.0,
+      544.83
+     ],
+     [
+      85.0,
+      560.07
+     ],
+     [
+      285.24,
+      560.07
+     ],
+     [
+      285.24,
+      544.83
+     ]
+    ]
+   ],
+   "real_volume_cm3": 3549514.981673026,
+   "real_mass_t": 27.934682905766714,
+   "model_volume_cm3": 3549514.981673026,
+   "sampled_volume_cm3": 3549588.4367605327,
+   "sampled_over_real": 1.0000206944013157,
+   "ring": null
+  },
+  {
+   "name": "ConePlate",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_ConePlate_10"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      85.0,
+      560.07
+     ],
+     [
+      85.0,
+      575.31
+     ],
+     [
+      113.76,
+      575.31
+     ],
+     [
+      129.0,
+      560.07
+     ]
+    ]
+   ],
+   "real_volume_cm3": 360398.7283692511,
+   "real_mass_t": 2.836337992266006,
+   "model_volume_cm3": 360398.7283692511,
+   "sampled_volume_cm3": 360387.171251973,
+   "sampled_over_real": 0.9999679324138284,
+   "ring": null
+  },
+  {
+   "name": "CorrectorRing",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_CorrectorRing_11"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "analytic TGeoPcon",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      50.8,
+      -278.0
+     ],
+     [
+      50.8,
+      -266.7
+     ],
+     [
+      51.435,
+      -266.7
+     ],
+     [
+      51.435,
+      -278.0
+     ]
+    ]
+   ],
+   "real_volume_cm3": 2304.632291805216,
+   "real_mass_t": 0.018137456136507052,
+   "model_volume_cm3": 2304.632291805216,
+   "sampled_volume_cm3": 2303.460983379321,
+   "sampled_over_real": 0.9994917590844926,
+   "ring": null
+  },
+  {
+   "name": "SpacerBarsUp",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_SpacerBarsUp_0",
+    "MagnetYoke_SpacerBarsUp_1",
+    "MagnetYoke_SpacerBarsUp_2",
+    "MagnetYoke_SpacerBarsUp_3",
+    "MagnetYoke_SpacerBarsUp_4",
+    "MagnetYoke_SpacerBarsUp_5",
+    "MagnetYoke_SpacerBarsUp_6",
+    "MagnetYoke_SpacerBarsUp_7"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "sampled ring (8 copies, TGeoBBox)",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      212.62,
+      -266.7
+     ],
+     [
+      212.62,
+      -236.76991135121932
+     ],
+     [
+      221.51,
+      -236.76991135121932
+     ],
+     [
+      221.51,
+      -266.7
+     ]
+    ]
+   ],
+   "real_volume_cm3": 362893.70530828985,
+   "real_mass_t": 2.855973460776241,
+   "model_volume_cm3": 362893.70530828985,
+   "sampled_volume_cm3": 362588.74843620067,
+   "sampled_over_real": 0.9991596523510098,
+   "ring": {
+    "n_copies": 8,
+    "ray_r_in": 212.62,
+    "ray_r_out": 221.51,
+    "ray_z": [
+     -266.7,
+     -232.66000000000003
+    ],
+    "r_far": 233.8400842456229,
+    "phi_deg": [
+     0.0,
+     44.99999999999999,
+     90.0,
+     135.0,
+     180.0,
+     -135.00000000000003,
+     -90.00000000000001,
+     -45.00000000000002
+    ],
+    "sampled_volume_cm3": 362893.70530828985,
+    "capacity_cm3": 362799.7905279994,
+    "sampled_over_capacity": 1.0002588611756191,
+    "leak_check": 0.0,
+    "model_radii": [
+     212.62,
+     221.51
+    ],
+    "coverage": 0.8792622987303377,
+    "model_z": [
+     -266.7,
+     -236.76991135121932
+    ],
+    "bar_mode": "length",
+    "anchor": "outer",
+    "grid": {
+     "hr": 0.1,
+     "hz": 0.4933333333333328,
+     "nphi": 2048
+    }
+   }
+  },
+  {
+   "name": "SpacerBarsDown",
+   "det": "MagnetYoke",
+   "nodes": [
+    "MagnetYoke_SpacerBarsDown_0",
+    "MagnetYoke_SpacerBarsDown_1",
+    "MagnetYoke_SpacerBarsDown_2",
+    "MagnetYoke_SpacerBarsDown_3",
+    "MagnetYoke_SpacerBarsDown_4",
+    "MagnetYoke_SpacerBarsDown_5",
+    "MagnetYoke_SpacerBarsDown_6",
+    "MagnetYoke_SpacerBarsDown_7"
+   ],
+   "material": "Magnet_YokeSteel",
+   "density": 7.87,
+   "method": "sampled ring (8 copies, TGeoBBox)",
+   "polygonal": false,
+   "loops": [
+    [
+     [
+      212.62,
+      179.2999113512193
+     ],
+     [
+      212.62,
+      209.22999999999996
+     ],
+     [
+      221.51,
+      209.22999999999996
+     ],
+     [
+      221.51,
+      179.2999113512193
+     ]
+    ]
+   ],
+   "real_volume_cm3": 362893.7053082899,
+   "real_mass_t": 2.8559734607762417,
+   "model_volume_cm3": 362893.70530828985,
+   "sampled_volume_cm3": 362621.7356919077,
+   "sampled_over_real": 0.9992505529514457,
+   "ring": {
+    "n_copies": 8,
+    "ray_r_in": 212.62,
+    "ray_r_out": 221.51,
+    "ray_z": [
+     175.19,
+     209.22999999999996
+    ],
+    "r_far": 233.8400842456229,
+    "phi_deg": [
+     0.0,
+     44.99999999999999,
+     90.0,
+     135.0,
+     180.0,
+     -135.00000000000003,
+     -90.00000000000001,
+     -45.00000000000002
+    ],
+    "sampled_volume_cm3": 362893.7053082899,
+    "capacity_cm3": 362799.7905279994,
+    "sampled_over_capacity": 1.0002588611756194,
+    "leak_check": 0.0,
+    "model_radii": [
+     212.62,
+     221.51
+    ],
+    "coverage": 0.8792622987303379,
+    "model_z": [
+     179.2999113512193,
+     209.22999999999996
+    ],
+    "bar_mode": "length",
+    "anchor": "outer",
+    "grid": {
+     "hr": 0.1,
+     "hz": 0.4933333333333328,
+     "nphi": 2048
+    }
+   }
+  }
+ ],
+ "coils": [
+  {
+   "name": "Upstream coil Inner",
+   "cur": 542156.0,
+   "bbox": [
+    152.3,
+    152.7,
+    -173.75,
+    -85.47540276179515
+   ],
+   "overlap_iron_cm2": 0
+  },
+  {
+   "name": "Central coil Inner",
+   "cur": 1009194.0,
+   "bbox": [
+    152.3,
+    152.7,
+    -85.47540276179515,
+    85.47540276179518
+   ],
+   "overlap_iron_cm2": 0
+  },
+  {
+   "name": "Downstream coil Inner",
+   "cur": 542156.0,
+   "bbox": [
+    152.3,
+    152.7,
+    85.47540276179518,
+    173.75
+   ],
+   "overlap_iron_cm2": 0
+  },
+  {
+   "name": "Upstream coil Outer",
+   "cur": 542156.0,
+   "bbox": [
+    153.9,
+    154.29999999999998,
+    -173.75,
+    -85.47540276179515
+   ],
+   "overlap_iron_cm2": 0
+  },
+  {
+   "name": "Central coil Outer",
+   "cur": 1009194.0,
+   "bbox": [
+    153.9,
+    154.29999999999998,
+    -85.47540276179515,
+    85.47540276179518
+   ],
+   "overlap_iron_cm2": 0
+  },
+  {
+   "name": "Downstream coil Outer",
+   "cur": 542156.0,
+   "bbox": [
+    153.9,
+    154.29999999999998,
+    85.47540276179518,
+    173.75
+   ],
+   "overlap_iron_cm2": 0
+  },
+  {
+   "name": "CorrectionCoil (DD4hep CorrectionCoil)",
+   "cur": 0.0,
+   "bbox": [
+    40.0,
+    49.0,
+    -277.0,
+    -268.0
+   ],
+   "overlap_iron_cm2": 0
+  }
+ ],
+ "commented_coils": [],
+ "non_magnetic": [
+  {
+   "node": "MagnetCoil_CryostatInnerWall_0",
+   "material": "Magnet_StainlessSteel",
+   "fe_fraction": 0.68
+  },
+  {
+   "node": "MagnetCoil_CryostatOuterWall_1",
+   "material": "Magnet_StainlessSteel",
+   "fe_fraction": 0.68
+  },
+  {
+   "node": "MagnetCoil_CryostatFlangeUp_2",
+   "material": "Magnet_StainlessSteel",
+   "fe_fraction": 0.68
+  },
+  {
+   "node": "MagnetCoil_CryostatFlangeDown_3",
+   "material": "Magnet_StainlessSteel",
+   "fe_fraction": 0.68
+  },
+  {
+   "node": "MagnetCoil_CoilShell_5",
+   "material": "Aluminum",
+   "fe_fraction": 0.0
+  }
+ ],
+ "snaps": [],
+ "merges": [
+  {
+   "merged": [
+    "Endplate1",
+    "Endplate2"
+   ],
+   "contact_cm": 200.24
+  },
+  {
+   "merged": [
+    "InnerOctagon",
+    "UpstreamCoilCollar"
+   ],
+   "contact_cm": 81.28000000000009
+  },
+  {
+   "merged": [
+    "InnerOctagon",
+    "UpstreamCoilCollar",
+    "UpstreamPlug"
+   ],
+   "contact_cm": 52.44999999999993
+  },
+  {
+   "merged": [
+    "Endplate1",
+    "Endplate2",
+    "ConePlate"
+   ],
+   "contact_cm": 43.99999999999997
+  },
+  {
+   "merged": [
+    "EndcapNoseCone",
+    "Endplate1",
+    "Endplate2",
+    "ConePlate"
+   ],
+   "contact_cm": 45.72000000000003
+  },
+  {
+   "merged": [
+    "InnerOctagon",
+    "UpstreamCoilCollar",
+    "UpstreamPlug",
+    "DownstreamCoilCollar"
+   ],
+   "contact_cm": 39.36999999999989
+  },
+  {
+   "merged": [
+    "OuterOctagon",
+    "EndcapInterface"
+   ],
+   "contact_cm": 38.56000000000006
+  },
+  {
+   "merged": [
+    "OuterOctagon",
+    "EndcapInterface",
+    "SpacerBarsUp"
+   ],
+   "contact_cm": 29.93008864878061
+  },
+  {
+   "merged": [
+    "OuterOctagon",
+    "EndcapInterface",
+    "SpacerBarsUp",
+    "SpacerBarsDown"
+   ],
+   "contact_cm": 29.930088648780725
+  },
+  {
+   "merged": [
+    "OuterOctagon",
+    "EndcapInterface",
+    "SpacerBarsUp",
+    "SpacerBarsDown",
+    "EndcapCylinder"
+   ],
+   "contact_cm": 15.240000000000009
+  },
+  {
+   "merged": [
+    "OuterOctagon",
+    "EndcapInterface",
+    "SpacerBarsUp",
+    "SpacerBarsDown",
+    "EndcapCylinder",
+    "EndcapNoseCone",
+    "Endplate1",
+    "Endplate2",
+    "ConePlate"
+   ],
+   "contact_cm": 15.240000000000009
+  },
+  {
+   "merged": [
+    "InnerOctagon",
+    "UpstreamCoilCollar",
+    "UpstreamPlug",
+    "DownstreamCoilCollar",
+    "CorrectorRing"
+   ],
+   "contact_cm": 0.6350000000001046
+  }
+ ],
+ "small_features": [],
+ "warnings": [],
+ "notes": [
+  "CorrectionCoil: NI = 0 (current unknown, region kept as air; set --aux-ni CorrectionCoil=<A-turns>)"
+ ],
+ "iron_mass_real_t": 642.0611587462008,
+ "iron_mass_model_t": 620.3104634737142,
+ "runtime_s": 27.629975
+}

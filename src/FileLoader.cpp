@@ -24,6 +24,7 @@ void usage(int argc, char** argv)
                "     cache:<string>           cache location (may be read-only)                    \n"
                "     file:<string>            file location                                        \n"
                "     url:<string>             url location                                         \n"
+               "     sha256:<string>          optional SHA-256 (64 hex digits) the file must have  \n"
                "\tArguments given: "
             << arguments(argc, argv) << std::endl;
   std::exit(EINVAL);
@@ -35,7 +36,7 @@ void usage(int argc, char** argv)
 long load_file(Detector& /* desc */, int argc, char** argv)
 {
   // argument parsing
-  std::string cache, file, url;
+  std::string cache, file, url, sha256;
   for (int i = 0; i < argc && argv[i]; ++i) {
     if (0 == std::strncmp("cache:", argv[i], 6))
       cache = (argv[i] + 6);
@@ -43,6 +44,8 @@ long load_file(Detector& /* desc */, int argc, char** argv)
       file = (argv[i] + 5);
     else if (0 == std::strncmp("url:", argv[i], 4))
       url = (argv[i] + 4);
+    else if (0 == std::strncmp("sha256:", argv[i], 7))
+      sha256 = (argv[i] + 7);
     else {
       std::cerr << "Unexpected argument \"" << argv[i] << "\"" << std::endl;
       usage(argc, argv);
@@ -60,7 +63,7 @@ long load_file(Detector& /* desc */, int argc, char** argv)
     printout(WARNING, "FileLoader", "no url specified");
   }
 
-  const std::string path = EnsureFileFromURLExists(url, file, cache, true);
+  const std::string path = EnsureFileFromURLExists(url, file, cache, true, sha256);
   printout(INFO, "FileLoader", "file " + file + " available as " + path);
 
   return 1;
