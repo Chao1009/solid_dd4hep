@@ -22,9 +22,11 @@ from .core import (  # noqa: F401
     Renderer,
     Solid,
     build_parser,
+    cairo_draw_items,
     load_scene,
     main,
     parse_prim,
     render_section,
+    svg_items,
     write_outputs,
 )
