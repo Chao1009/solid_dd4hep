@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Standard SoLID line drawings: run ddsim with the Geant4 DAWNFILE driver, then render with solid_lineview.
+"""Standard SoLID line drawings: write the geometry scene, then render it with solid_lineview.
 
 usage (inside eic-shell / solid-shell, after `source thissolid.sh <config>`):
-    make_solid_views [-c CONFIG] [-o OUTDIR] [-n EVENTS] [--prim FILE] [--views v1,v2,...] [--formats svg,pdf,png]
-                     [--name FORMAT] [--field MAP]
+    make_solid_views [-c CONFIG] [-o OUTDIR] [--source scene|dawnfile] [--scene FILE | --prim FILE] [-n EVENTS]
+                     [--views v1,v2,...] [--formats svg,pdf,png] [--name FORMAT] [--field MAP] [--animate]
+
+Geometry source (--source):
+    scene        (default) solid_scene_dump writes scene.npz: the Geant4 polyhedra of all visible volumes with
+                 names, colours and DD4hep volume IDs. No ddsim run, no vis driver; a few seconds.
+    dawnfile     ddsim runs with the Geant4 DAWNFILE vis driver, which writes a g4_XXXX.prim file. The fallback
+                 and reference: the same drawings, without volume IDs. With -n EVENTS it draws the Geant4
+                 trajectories and hit markers the driver writes (no times, no energies).
+--scene FILE or --prim FILE draws an existing file of either kind instead (the two options are synonyms).
 
 Views (all in the GEMC hall frame, beam from left to right):
     section_yz   exact cut at x = 0, filled with the vis colors (the classic SoLID side-view layout)
@@ -23,11 +31,22 @@ Views (all in the GEMC hall frame, beam from left to right):
                  $DETECTOR_PATH/fieldmaps after the first run); --field MAP names another one. Other fields of
                  the configuration (the NH3 target magnet) are not drawn.
                      make_solid_views --views field_yz --formats svg,png --name '{view}_{config}' -o docs/images
-With -n EVENTS > 0 the default particle gun of steering/solid_sim.py shoots EVENTS electrons and their trajectories
-are drawn on top of the section/lines views.
+Events (-n EVENTS > 0): ddsim runs the default particle gun of steering/solid_sim.py with the geometry scene
+(SOLID_SCENE) and the trajectory recorder (SOLID_TRAJ), solid_evexport writes one event file per event, and
+solid_evview draws them: tracks coloured by particle type, hit markers, volumes coloured by deposited energy,
+with a legend and a colour bar. Several events are overlaid in one figure. Views with events:
+    event_side   section through the beam axis in the event plane (one event) or at x = 0 (several)
+    event_zoom   the same around the volume with the largest energy deposit
+    event_beam   beam-eye section just behind the front face of that volume
+    event_cutaway  3-D hidden-line drawing cut at that plane
+    section_yz, section_xz, cutaway, beam_<z>   the standard views with the events on top
+These are the default views with -n: event_side, event_beam, event_cutaway. lines_yz, overview and field_yz are
+drawn without events. --animate adds an animation of event_side (GIF and animated SVG, see solid_evview --help).
+--keep keeps the simulation output and the event files. docs/event_display.md describes the tools.
 
-The .prim file is written by Geant4 (DAWNFILE driver); G4DAWNFILE_VIEWER is set to 'true' so that the legacy
-DAWN program is not started.  Rendering needs only numpy (+ pycairo or matplotlib for PNG).
+With --source dawnfile G4DAWNFILE_VIEWER is set to 'true' so that the legacy DAWN program is not started. For
+dawn or dawncut, `solid_scene_dump --prim FILE` writes a .prim from the scene. Rendering needs only numpy
+(+ pycairo or matplotlib for PNG). --keep keeps the work directory with the scene.npz or .prim file.
 """
 import argparse
 import os
@@ -55,6 +74,13 @@ FIELD_VIEW = ['--mode', 'section', '--section', 'x=0', '--view', 'side', '--scal
               '--size', '2000x1000', '--dpi', '150', '--lw', '0.5', '--title-bold', '--title-size', '13']
 
 DEFAULT_VIEWS = 'section_yz,section_xz,cutaway,lines_yz'
+DEFAULT_EVENT_VIEWS = 'event_side,event_beam,event_cutaway'
+# views drawn by solid_evview when events were simulated: its view and the plane azimuth (None: the event plane)
+EVENT_VIEWS = {
+    'event_side': ('side', None), 'event_zoom': ('zoom', None), 'event_beam': ('beam', None),
+    'event_cutaway': ('cutaway', None),
+    'section_yz': ('side', 90.0), 'section_xz': ('side', 0.0), 'cutaway': ('cutaway', 90.0),
+}
 
 # figure titles and subtitle of the 'overview' view (other views are titled '<config>: <view>')
 DISPLAY_NAMES = {
@@ -94,6 +120,60 @@ def find_lineview():
         if cand and os.path.exists(cand):
             return cand
     sys.exit('make_solid_views: solid_lineview not found next to this script or on PATH')
+
+
+def find_tool(name):
+    for cand in (os.path.join(HERE, name), shutil.which(name) or ''):
+        if cand and os.path.exists(cand):
+            return cand
+    sys.exit('make_solid_views: %s not found next to this script or on PATH' % name)
+
+
+def make_events(compact, workdir, events, segments, steering):
+    """ddsim with the scene producer and the trajectory recorder, then solid_evexport: (scene.npz, event dir)"""
+    scene = os.path.join(workdir, 'scene.npz')
+    traj = os.path.join(workdir, 'traj.bin')
+    sim = os.path.join(workdir, 'views_sim.edm4hep.root')
+    env = dict(os.environ, SOLID_SCENE=scene, SOLID_SCENE_SEGMENTS=str(segments), SOLID_TRAJ=traj, SOLID_OPTICAL='0')
+    cmd = ['ddsim', '--steeringFile', steering, '--compactFile', compact, '-N', str(events), '--outputFile', sim]
+    print('+', ' '.join(cmd), flush=True)
+    with open(os.path.join(workdir, 'ddsim.log'), 'w') as log:
+        r = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, env=env, cwd=workdir, timeout=36000,
+                           check=False)
+    if r.returncode != 0 or not all(os.path.isfile(f) for f in (scene, traj, sim)):
+        sys.exit(f'make_solid_views: ddsim failed or wrote no scene or trajectories, see {workdir}/ddsim.log '
+                 '(--source dawnfile uses the Geant4 DAWNFILE driver instead)')
+    evdir = os.path.join(workdir, 'events')
+    cmd = [sys.executable, find_tool('solid_evexport'), sim, '--scene', scene, '--traj', traj, '-o', evdir]
+    print('+', ' '.join(cmd), flush=True)
+    if subprocess.run(cmd).returncode != 0:
+        print('make_solid_views: solid_evexport reported hits without a unique drawn volume', file=sys.stderr)
+    return scene, evdir
+
+
+def find_scene_dump():
+    """solid_scene_dump: installed next to this script, on PATH, or in the build tree of a source checkout"""
+    for cand in (os.path.join(HERE, 'solid_scene_dump'), shutil.which('solid_scene_dump') or '',
+                 os.path.join(os.path.dirname(HERE), 'build', 'bin', 'solid_scene_dump')):
+        if cand and os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
+def make_scene(compact, workdir, segments):
+    tool = find_scene_dump()
+    if not tool:
+        sys.exit('make_solid_views: solid_scene_dump not found (build and install solid_dd4hep, or use '
+                 '--source dawnfile)')
+    scene = os.path.join(workdir, 'scene.npz')
+    cmd = [tool, compact, '-o', scene, '--segments', str(segments)]
+    print('+', ' '.join(cmd), flush=True)
+    with open(os.path.join(workdir, 'solid_scene_dump.log'), 'w') as log:
+        r = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=workdir, timeout=3600, check=False)
+    if r.returncode != 0 or not os.path.isfile(scene):
+        sys.exit(f'make_solid_views: no scene produced, see {workdir}/solid_scene_dump.log '
+                 '(--source dawnfile uses the Geant4 DAWNFILE driver instead)')
+    return scene
 
 
 def make_prim(compact, workdir, events, segments, steering):
@@ -148,16 +228,22 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('-c', '--config', default=os.environ.get('DETECTOR_CONFIG', 'solid'))
     ap.add_argument('-o', '--outdir', default='views_out')
-    ap.add_argument('-n', '--events', type=int, default=0, help='events with trajectories (default 0 = geometry only)')
-    ap.add_argument('--prim', default=None, help='use an existing .prim file instead of running ddsim')
-    ap.add_argument('--views', default=DEFAULT_VIEWS, help='comma list; beam_<z_cm> for x-y sections')
+    ap.add_argument('-n', '--events', type=int, default=0, help='events to simulate and draw (default 0 = '
+                    'geometry only)')
+    ap.add_argument('--animate', action='store_true', help='with -n: also animate the event_side view')
+    ap.add_argument('--source', choices=('scene', 'dawnfile'), default='scene',
+                    help='geometry source: scene (solid_scene_dump, default) or dawnfile (ddsim + DAWNFILE driver)')
+    ap.add_argument('--scene', '--prim', dest='prim', default=None, metavar='FILE',
+                    help='draw an existing scene.npz or .prim file instead of producing one')
+    ap.add_argument('--views', default=None, help='comma list; beam_<z_cm> for x-y sections (default: '
+                    f'{DEFAULT_VIEWS}; with -n EVENTS: {DEFAULT_EVENT_VIEWS})')
     ap.add_argument('--formats', default='svg,pdf,png')
-    ap.add_argument('--segments', type=int, default=72, help='/vis/viewer/set/lineSegmentsPerCircle')
+    ap.add_argument('--segments', type=int, default=72, help='line segments per full circle (default 72)')
     ap.add_argument('--name', default='{config}_{view}',
                     help="output file name without extension, with {config} and {view} (default '{config}_{view}')")
     ap.add_argument('--field', default=None, help='2-D field map for the field_yz view (default: the map of the '
                     "configuration's field fragment)")
-    ap.add_argument('--keep', action='store_true', help='keep the work directory with the .prim file')
+    ap.add_argument('--keep', action='store_true', help='keep the work directory with the scene.npz or .prim file')
     ap.add_argument('lineview_args', nargs='*', help='extra arguments passed to solid_lineview (after --)')
     a = ap.parse_args()
 
@@ -167,16 +253,43 @@ def main():
     compact = os.path.join(path, a.config + '.xml')
     steering = os.path.join(path, 'steering', 'solid_sim.py')
 
-    workdir = None
+    workdir = evdir = None
     if a.prim:
         prim = os.path.abspath(a.prim)
     else:
         workdir = tempfile.mkdtemp(prefix=f'views_{a.config}_', dir=os.path.abspath(a.outdir))
-        prim = make_prim(compact, workdir, a.events, a.segments, steering)
-    print('prim file:', prim, flush=True)
+        if a.events > 0 and a.source == 'scene':
+            prim, evdir = make_events(compact, workdir, a.events, a.segments, steering)
+        elif a.source == 'scene':
+            prim = make_scene(compact, workdir, a.segments)
+        else:
+            prim = make_prim(compact, workdir, a.events, a.segments, steering)
+    print('scene file:', prim, flush=True)
+    if a.views is None:
+        a.views = DEFAULT_EVENT_VIEWS if evdir else DEFAULT_VIEWS
 
     status = 0
     for view in [v.strip() for v in a.views.split(',') if v.strip()]:
+        if evdir and (view in EVENT_VIEWS or view.startswith('beam_')):
+            # events on the drawing: solid_evview (several events are overlaid)
+            kind, phi = EVENT_VIEWS.get(view, ('beam', None))
+            cmd = [sys.executable, find_tool('solid_evview'), evdir, '--scene', prim, '-o', a.outdir,
+                   '--views', kind, '--formats', a.formats, '--name', a.name.format(config=a.config, view=view),
+                   '--title', '%s: %s, %d event%s' % (a.config, view, a.events, 's' if a.events > 1 else '')]
+            if a.events > 1:
+                cmd.append('--overlay')
+            if phi is not None:
+                cmd += ['--phi', str(phi)]
+            if view.startswith('beam_'):
+                cmd += ['--zsec', '%scm' % float(view.split('_', 1)[1])]
+            if a.animate and view == 'event_side':
+                cmd += ['--animate', 'side']
+            print('+', ' '.join(cmd), flush=True)
+            status |= subprocess.run(cmd).returncode
+            continue
+        if view.startswith('event_'):
+            print(f'{view}: needs -n EVENTS with --source scene, skipped', file=sys.stderr)
+            continue
         if view.startswith('beam_'):
             z_cm = float(view.split('_', 1)[1])
             opts = ['--mode', 'section', '--section', f'z={z_cm}cm', '--view', 'beam', '--fill', '--scale-bar']

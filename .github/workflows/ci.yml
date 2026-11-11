@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Build the SoLID geometry in the EIC container (via CVMFS, as ePIC does), check every configuration for load
-# errors and overlaps, compare its envelopes with solid_gemc, and render line views.
+# errors and overlaps, compare its envelopes with solid_gemc, check the geometry scene and the event display, and
+# render line views.
 name: ci
 
 on:
@@ -25,9 +26,12 @@ jobs:
         with:
           platform-release: ${{ env.EIC_PLATFORM }}
           run: |
-            cmake -B build -S . -DCMAKE_INSTALL_PREFIX=${PWD}/install -DBUILD_TESTING=OFF
+            cmake -B build -S . -DCMAKE_INSTALL_PREFIX=${PWD}/install
             cmake --build build -j4
             cmake --install build
+            # geometry scene of a small test geometry; one simulated event exported, drawn and animated
+            # (the load_* tests are covered by the geometry job below)
+            ctest --test-dir build -R 'scene_dump|event_display' --output-on-failure
       - uses: actions/upload-artifact@v4
         with:
           name: install
@@ -55,6 +59,8 @@ jobs:
         with:
           name: install
           path: install/
+      - name: Restore the execute bits (artifacts do not keep them)
+        run: chmod +x install/bin/*
       - uses: cvmfs-contrib/github-action-cvmfs@v4
       - name: Load, overlap check and GEMC comparison
         uses: eic/run-cvmfs-osg-eic-shell@main
@@ -66,13 +72,23 @@ jobs:
             python3 scripts/geometry/check_geometry.py ${DETECTOR_PATH}/${{ matrix.config }}.xml | tee doc/${{ matrix.config }}_overlaps.txt
             python3 scripts/geometry/compare_gemc.py ${{ matrix.config }} --gemc ${PWD}/solid_gemc \
                     --md doc/${{ matrix.config }}_vs_gemc.md
+      - name: Geometry scene against the stored reference
+        uses: eic/run-cvmfs-osg-eic-shell@main
+        with:
+          platform-release: ${{ env.EIC_PLATFORM }}
+          run: |
+            # fails when the drawn geometry, its colours or its volume IDs changed; after an intended change run
+            # scripts/geometry/check_scene_hash.py --update and commit scene_hashes.json
+            source install/bin/thissolid.sh ${{ matrix.config }}
+            python3 scripts/geometry/check_scene_hash.py ${{ matrix.config }}
       - name: Line views
         uses: eic/run-cvmfs-osg-eic-shell@main
         with:
           platform-release: ${{ env.EIC_PLATFORM }}
           run: |
             source install/bin/thissolid.sh ${{ matrix.config }}
-            bin/make_solid_views -c ${{ matrix.config }} -o doc/views || echo "views failed (non-fatal)"
+            bin/make_solid_views -c ${{ matrix.config }} -o doc/views \
+                --views section_yz,section_xz,cutaway,lines_yz,overview,field_yz || echo "views failed (non-fatal)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

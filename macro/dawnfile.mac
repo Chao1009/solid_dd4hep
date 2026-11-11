@@ -1,7 +1,8 @@
 # Write the current geometry to a Geant4 DAWNFILE scene (g4_XXXX.prim) for bin/solid_lineview.
 #   echo exit | G4DAWNFILE_VIEWER=true ddsim --compactFile $DETECTOR_PATH/$DETECTOR_CONFIG.xml \
 #        --runType vis --macroFile macro/dawnfile.mac
-# (bin/make_solid_views does this for you, optionally with trajectories)
+# (bin/make_solid_views --source dawnfile does this for you, optionally with trajectories; its default source is
+#  the scene file of solid_scene_dump, which needs no vis driver)
 /vis/open DAWNFILE
 /vis/viewer/set/lineSegmentsPerCircle 72
 /vis/scene/create

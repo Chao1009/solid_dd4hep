@@ -1,0 +1,60 @@
+{
+ "comment": "Reference scene hashes, written by scripts/geometry/check_scene_hash.py --update. Update after an intended change of the geometry, its colours or its volume IDs.",
+ "configurations": {
+  "solid_DDVCS": {
+   "drawn": 4794,
+   "geometry_hash": "54f42be3cc2ecc5275a500633904db473fb6442a9ffc64fd208ecbea7f1b5a89",
+   "meshes": 72,
+   "nodes": 4879,
+   "segments": 72
+  },
+  "solid_DDVCS_lite": {
+   "drawn": 3828,
+   "geometry_hash": "00c83b36f2d661d2eba9b0debb09d3e31028e9aaeabc327b85fe994f78216b8c",
+   "meshes": 56,
+   "nodes": 3872,
+   "segments": 72
+  },
+  "solid_JPsi": {
+   "drawn": 4512,
+   "geometry_hash": "b48925d2b54619a8e7f650330ab6720e7213e09c6f6963d0ca10d50df05d143e",
+   "meshes": 64,
+   "nodes": 4587,
+   "segments": 72
+  },
+  "solid_JPsi_lite": {
+   "drawn": 3546,
+   "geometry_hash": "b0b9e1f8f8d5b9196bd271feb3752b0aef2560be0e533f29aacc935e5d7b81fd",
+   "meshes": 48,
+   "nodes": 3580,
+   "segments": 72
+  },
+  "solid_PVDIS": {
+   "drawn": 8604,
+   "geometry_hash": "68e722060a69040eaa83374707936cd0a945b4c081d380e23e0a1584f5b231ea",
+   "meshes": 231,
+   "nodes": 8846,
+   "segments": 72
+  },
+  "solid_SIDIS_He3": {
+   "drawn": 4519,
+   "geometry_hash": "888a3d322c4a722ed2009795598415a7347d45b2b2b7c413c268bffd8c844d21",
+   "meshes": 68,
+   "nodes": 4598,
+   "segments": 72
+  },
+  "solid_SIDIS_NH3": {
+   "drawn": 4537,
+   "geometry_hash": "eb05754d8df9e0cee4a08e67f31245c421a3c285407d13287ec0163f9b7c7f06",
+   "meshes": 89,
+   "nodes": 4615,
+   "segments": 72
+  }
+ },
+ "versions": {
+  "dd4hep": "v01-38",
+  "geant4": "geant4-11-04-patch-01 [MT]",
+  "root": "6.40.04",
+  "solid_dd4hep": "0.3.0"
+ }
+}
