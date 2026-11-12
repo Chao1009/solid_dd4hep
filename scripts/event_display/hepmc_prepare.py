@@ -11,7 +11,8 @@ What it does to every event, and why:
     length unit mm    DD4hep 1.38 (eic_xl 26.10) reads the position of the primary vertex without the length
                       unit of the file: a vertex written in cm at z = -315 lands at z = -315 mm. Files in mm
                       are read correctly. (Fixed on the DD4hep master branch; harmless to keep.)
-    event numbers     0, 1, 2, ... (from --first-event). ddsim copies the HepMC3 event number into the
+    event numbers     0, 1, 2, ... (from --first-event; with --skip N --first-event N the events keep the
+                      numbers they have without --skip). ddsim copies the HepMC3 event number into the
                       EDM4hep EventHeader, and solid_evexport names and matches events by it. lAger 3.7.0
                       writes event number 0 for every event.
     --shift X Y Z     moves all vertices by this vector, in cm (for generators that produce events at the
@@ -55,13 +56,13 @@ def main():
         if reader.failed():
             break
         nread += 1
+        # one raster point per event read, so that an event gets the same one with and without --skip
+        r, phi = 10.0 * a.raster * math.sqrt(rng.random()), 2.0 * math.pi * rng.random()
         if nread <= a.skip:
             continue
         ev.set_units(hm.Units.GEV, hm.Units.MM)
         dx, dy, dz = [10.0 * v for v in a.shift] if a.shift else (0.0, 0.0, 0.0)
-        if a.raster > 0.0:
-            r, phi = 10.0 * a.raster * math.sqrt(rng.random()), 2.0 * math.pi * rng.random()
-            dx, dy = dx + r * math.cos(phi), dy + r * math.sin(phi)
+        dx, dy = dx + r * math.cos(phi), dy + r * math.sin(phi)
         if dx or dy or dz:
             ev.shift_position_by(hm.FourVector(dx, dy, dz, 0.0))
         ev.set_event_number(a.first_event + nout)
