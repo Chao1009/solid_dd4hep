@@ -244,10 +244,10 @@ def main(argv=None):
     sim = SimFile(a.sim)
     if len(set(sim.event_number.tolist())) != sim.entries:
         # event files are named by this number, and trajectories are matched to hits by it
-        print("solid_evexport: the event numbers in %s are not unique (%d different numbers in %d events).\n"
+        print("solid_evexport: the event numbers in %s are not unique (%d events, %d distinct numbers).\n"
               "ddsim copies them from the generator file: number its events first, for example with\n"
               "scripts/event_display/hepmc_prepare.py (lAger 3.7.0 writes 0 for every event)." % (
-                  a.sim, len(set(sim.event_number.tolist())), sim.entries), file=sys.stderr)
+                  a.sim, sim.entries, len(set(sim.event_number.tolist()))), file=sys.stderr)
         return 1
     scene = np.load(a.scene, allow_pickle=False)
     vmap = VolumeMap(scene, sensitive_only=a.sensitive_only)
