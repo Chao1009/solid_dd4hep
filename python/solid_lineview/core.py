@@ -942,7 +942,7 @@ def snap_vertices(sc, V, tri, planes, snap, section):
                                  touches the plane from the removed side goes away completely
       section plane              the side that makes a solid touching the plane with a whole face be cut
                                  along that face, and leaves a solid touching with an edge or corner uncut
-    The shift (1 nm by default) is far below anything visible.  Returns V itself if nothing is near."""
+    The shift (1 um by default) is far below anything visible.  Returns V itself if nothing is near."""
     if snap <= 0 or not len(V) or not sc.solids:
         return V
     vsolid = None
@@ -4329,12 +4329,12 @@ def build_parser():
                    help="section plane for --mode section (default: from the view preset through the target)")
     g.add_argument("--plane", nargs=4, type=float, metavar=("A", "B", "C", "D"),
                    help="general section plane a*x+b*y+c*z+d=0 for --mode section")
-    g.add_argument("--plane-snap", type=parse_length, default=1e-6, metavar="LEN",
+    g.add_argument("--plane-snap", type=parse_length, default=1e-3, metavar="LEN",
                    help="vertices closer than LEN to a cut or section plane are moved off it by LEN, each solid "
                         "to one side, so that faces lying in the plane (sector sides at x = 0) do not depend on "
                         "rounding noise: a solid touching a section plane with a face is cut along that face, "
-                        "a solid touching a cut plane from the removed side is removed (default 1e-6 mm; 0 = "
-                        "off, as versions before 0.5.0)")
+                        "a solid touching a cut plane from the removed side is removed (default 1e-3 mm, "
+                        "above the coordinate precision of a DAWNFILE .prim; 0 = off, as versions before 0.5.0)")
     g.add_argument("--trim", action="append", type=parse_trim, metavar="REGEX=SPEC",
                    help="cut only the volumes matching REGEX; SPEC is 'auto' (z range of all other volumes, "
                         "+- --trim-margin) or a comma list of AXIS<LEN / AXIS>LEN, e.g. 'Beamline=z<5m'; repeatable")
