@@ -26,9 +26,9 @@ page is drawn from the DD4hep geometry by the tools in this repository:
 <img src="docs/images/event_solid_SIDIS_He3_cutaway.svg" width="100%" alt="SoLID SIDIS 3He: one simulated event on the cutaway drawing">
 
 *Simulated events on the line drawings: tracks by particle type, calorimeter modules coloured by deposited energy.
-From the top: a J/ψ → e⁺e⁻ event in SoLID-Lite (from a toy generator, for display) as a cutaway, as an animation
-and in the beam view, and an event in SoLID SIDIS ³He. `make_solid_views -n 5` draws events of a run, and
-`--animate` adds the animation. → [docs/event_display.md](docs/event_display.md)*
+From the top: the electroproduction of a J/ψ decaying to e⁺e⁻ in SoLID-Lite, an event from the lAger generator, as
+a cutaway, as an animation and in the beam view, and an event in SoLID SIDIS ³He. `make_solid_views -n 5` draws
+events of a run, and `--animate` adds the animation. → [docs/event_display.md](docs/event_display.md)*
 
 ## Magnetic field on the detector
 

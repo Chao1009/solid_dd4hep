@@ -4,7 +4,7 @@ Simulated events can be drawn on the [line drawings](visualization.md) of the de
 particle type, hit markers, and detector volumes coloured by the energy deposited in them. The same event can be
 animated in simulation time. Nothing here uses a Geant4 vis driver or DAWNFILE.
 
-![SoLID-Lite J/psi: a toy J/psi -> e+ e- event, cutaway](images/event_solid_JPsi_lite_cutaway.svg)
+![SoLID-Lite J/psi: electroproduction of a J/psi decaying to e+ e-, an event from the lAger generator, cutaway](images/event_solid_JPsi_lite_cutaway.svg)
 
 ```
 ddsim + steering/solid_sim.py
@@ -266,16 +266,26 @@ None of them is in the CI workflow yet. The smoke test needs ddsim, numpy, uproo
 
 ## Figures in this document
 
-The files `docs/images/event_*` were made with the installed tools from the toy J/ψ sample below (event 7 of
-`toy_jpsi.py -n 120 --seed 7 --lepton-theta 8 26`, ddsim seed 2026) and from a `solid_SIDIS_He3` gun event:
+The files `docs/images/event_*` were made with the installed tools from the lAger J/ψ sample of
+[Generators](#generators) (event 102 of the 500 events of `lager -r 1`, ddsim seed 2026), from the same event
+simulated again together with 10 000 beam electrons, and from a `solid_SIDIS_He3` gun event:
 
 ```bash
 solid_evexport sim.edm4hep.root --scene scene.npz --traj traj.bin -o events --select pair
-solid_evview events -e 7 --views side,beam,cutaway --labels --formats svg --name 'event_{config}_{view}' \
-    --title 'SoLID-Lite J/ψ: toy J/ψ → e⁺e⁻ event with recoil proton' --animate side --anim-formats gif -o docs/images
+solid_evview events -e 102 --views side,beam,cutaway --labels --formats svg --name 'event_{config}_{view}' \
+    --title 'SoLID-Lite J/ψ: electroproduction of a J/ψ decaying to e⁺e⁻, an event from the lAger generator' \
+    --animate side --anim-formats gif -o docs/images
+solid_evview events_background --views side --labels --formats png --size 2000x1250 \
+    --name 'event_{config}_background_{view}' -o docs/images \
+    --title 'SoLID-Lite J/ψ: the same lAger event with 10 000 beam electrons on the target (0.5 ns at 3 µA)'
 solid_evview events_he3 -e 0 --views cutaway --labels --formats svg --name 'event_{config}_{view}' \
     --title 'SoLID SIDIS ³He: 4 GeV electron from the particle gun' -o docs/images
 ```
+
+In the event of the figures the positron (6.0 GeV, 14°) goes through five GEM planes into the forward
+calorimeter and the electron (3.4 GeV, 27°) through three into the large-angle calorimeter; the recoil proton
+(1.0 GeV) reaches the forward calorimeter, and the scattered beam electron (1.2 GeV, 0.7°) leaves through the
+exit beam pipe.
 
 ![SIDIS 3He: a gun electron, cutaway](images/event_solid_SIDIS_He3_cutaway.svg)
 
