@@ -615,10 +615,11 @@ class EventView:
     def track_polylines(self, tmax=None):
         """[(kind, primary, polyline px)] of the tracks up to time tmax (None: complete)"""
         out = []
+        frame = (0.0, float(self.title_band), float(self.W), float(self.H))    # below the title, inside the canvas
         for kind, prim, xy, T in self.track_pieces():
             P = clip_track_time(xy, T, tmax)
             if len(P) >= 2:
-                out.append((kind, prim, P))
+                out += [(kind, prim, q) for q in lv.clip_polyline_rect(P, frame)]
         return out
 
     def _add_tracks(self, dl, tmax):

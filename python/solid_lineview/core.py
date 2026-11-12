@@ -1386,6 +1386,22 @@ def clip_segments_rect(x0, y0, x1, y1, rect):
     return (x0[src] + a * dx[src], y0[src] + a * dy[src], x0[src] + b * dx[src], y0[src] + b * dy[src], src)
 
 
+def clip_polyline_rect(xy, rect):
+    """Open polyline (n, 2) clipped to rect = (xa, ya, xb, yb): the list of its pieces inside."""
+    if len(xy) < 2:
+        return []
+    xa, ya, xb, yb = rect
+    if xy[:, 0].min() >= xa and xy[:, 0].max() <= xb and xy[:, 1].min() >= ya and xy[:, 1].max() <= yb:
+        return [xy]
+    x0, y0, x1, y1, src = clip_segments_rect(xy[:-1, 0], xy[:-1, 1], xy[1:, 0], xy[1:, 1], rect)
+    if len(src) == 0:
+        return []
+    # a piece continues the previous one if it is the next segment and starts where that one ended
+    brk = np.nonzero((np.diff(src) != 1) | (np.abs(x0[1:] - x1[:-1]) > 1e-9) | (np.abs(y0[1:] - y1[:-1]) > 1e-9))[0] + 1
+    return [np.stack([np.append(x0[g], x1[g[-1]]), np.append(y0[g], y1[g[-1]])], 1)
+            for g in np.split(np.arange(len(src)), brk)]
+
+
 def clip_polygon_rect(P, rect):
     """Closed 2-D polygon (n, 2) clipped to rect = (xa, ya, xb, yb) (Sutherland-Hodgman); may be empty."""
     xa, ya, xb, yb = rect
@@ -3539,8 +3555,11 @@ def _glyph_outline(ch, bold=False):
 
 
 def _outlined(ch, bold=False):
-    """Greek letters are drawn as outlines in SVG/PDF/EPS when an outline is available."""
-    return ch in _GREEK and _glyph_outline(ch, bold) is not None
+    """Characters Helvetica does not have are drawn as outlines in SVG/PDF/EPS when an outline is
+    available: Greek letters, and anything beyond Latin-1 such as arrows.  As text they would come
+    from a fallback font of the viewer, with another width than the layout assumes (a browser then
+    squeezes the neighbouring spaces to keep the given text length)."""
+    return (ch in _GREEK or (ord(ch) > 0xFF and ch not in _SYMBOL)) and _glyph_outline(ch, bold) is not None
 
 
 def _glyph_width(ch, bold=False):

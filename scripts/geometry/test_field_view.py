@@ -42,7 +42,7 @@ def check(ok, what):
 
 
 def test_lines():
-    from solid_lineview.core import clip_polygon_rect, clip_segments_rect, merge_collinear
+    from solid_lineview.core import clip_polygon_rect, clip_polyline_rect, clip_segments_rect, merge_collinear
 
     def run(segs, prio=None, style=None):
         s = np.array(segs, float)
@@ -82,6 +82,10 @@ def test_lines():
                                              (0.0, 0.0, 10.0, 10.0))
     check(src.tolist() == [0, 1, 3] and np.allclose([x0[0], x1[0]], [0, 5]) and np.allclose([y0[2], y1[2]], [0, 10]),
           'segments are clipped to a window (inside, crossing, outside)')
+    pieces = clip_polyline_rect(np.array([[-5.0, 5.0], [5.0, 5.0], [5.0, 15.0], [8.0, 15.0], [8.0, 5.0], [20.0, 5.0]]),
+                                (0.0, 0.0, 10.0, 10.0))
+    check(len(pieces) == 2 and np.allclose(pieces[0], [[0, 5], [5, 5], [5, 10]])
+          and np.allclose(pieces[1], [[8, 10], [8, 5], [10, 5]]), 'a polyline leaving and re-entering a window gives two pieces')
     sq = np.array([[-5.0, -5.0], [5.0, -5.0], [5.0, 5.0], [-5.0, 5.0]])
     c = clip_polygon_rect(sq, (0.0, 0.0, 10.0, 10.0))
     area = 0.5 * abs(np.dot(c[:, 0], np.roll(c[:, 1], -1)) - np.dot(c[:, 1], np.roll(c[:, 0], -1)))
