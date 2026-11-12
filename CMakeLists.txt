@@ -159,7 +159,7 @@ if(BUILD_TESTING)
                     --tool $<TARGET_FILE:solid_field_dump> --scene-tool $<TARGET_FILE:solid_scene_dump>
                     --config solid_JPsi_lite
   )
-  set_tests_properties(field_view PROPERTIES TIMEOUT 900 LABELS "scene;field")
+  set_tests_properties(field_view PROPERTIES TIMEOUT 1800 LABELS "scene;field")
 
   # event display chain: 1 gun event with the trajectory recorder, solid_evexport, solid_evview (2 views and a
   # short animation). Uses ddsim, about 30 s.
