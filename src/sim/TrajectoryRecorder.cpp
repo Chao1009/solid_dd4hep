@@ -17,7 +17,7 @@
 // File format (little endian; python/solid_evdisplay/trajfile.py reads it with numpy)
 //   40-byte header:  char[8] "SOLIDTRJ", int32 version (1), int32 record size (40), float32 MinEkin [MeV],
 //                    float32 MaxDistance [mm], float32 MaxAngle [rad], 12 bytes reserved (0)
-//   40-byte records: int32 event (Geant4 event ID), int32 track, int32 parent, int32 pdg,
+//   40-byte records: int32 event (see below), int32 track, int32 parent, int32 pdg,
 //                    float32 x, y, z [mm], float32 t [ns, global time], float32 ekin [MeV],
 //                    int32 flags (bit 0: first point of the track, bit 1: last point)
 //   so numpy.fromfile(path, dtype, offset=40) gives all points.  The points of one event are contiguous, and
@@ -25,12 +25,19 @@
 //   resumes them).  Events appear in the order they finish, which is not the event order in a multi-threaded
 //   run: select them by the event field.
 //
+// Event number
+//   The event field is the number ddsim writes into the EDM4hep EventHeader: the Geant4 event ID for the
+//   particle gun, the event number of the input file when an input reader passed one on (HepMC3: the number
+//   on the E line).  With input files it is therefore the generator's numbering, which must be unique for
+//   solid_evexport to match trajectories and hits.  ddsim's --meta.eventNumberOffset is not applied here.
+//
 // Threads
 //   ddsim creates one instance per worker thread.  Each instance buffers the points of its current event and
 //   appends them to the file in one write at the end of the event, under a lock shared by all instances that
 //   write the same file.
 
 #include <DD4hep/InstanceCount.h>
+#include <DDG4/EventParameters.h>
 #include <DDG4/Factories.h>
 #include <DDG4/Geant4Context.h>
 #include <DDG4/Geant4EventAction.h>
@@ -219,6 +226,9 @@ private:
     }
     m_event = evt;
     m_track = -1;
+    // the number Geant4Output2EDM4hep gives this event: the one an input reader passed on, else the Geant4 ID
+    const auto* par = context()->event().extension<dd4hep::sim::EventParameters>(false);
+    m_number        = par != nullptr ? par->eventNumber() : evt;
   }
 
   void end_event(const G4Event*)
@@ -237,7 +247,7 @@ private:
 
   void put(const G4Track* track, const G4ThreeVector& p, double t, double ekin, int flags)
   {
-    m_buffer.push_back(TrajPoint{m_event, track->GetTrackID(), track->GetParentID(),
+    m_buffer.push_back(TrajPoint{m_number, track->GetTrackID(), track->GetParentID(),
                                  track->GetDefinition()->GetPDGEncoding(), float(p.x()), float(p.y()), float(p.z()),
                                  float(t), float(ekin), flags});
     ++m_npoints;
@@ -250,7 +260,8 @@ private:
   double                    m_cosMaxAngle = 1.0;
   std::shared_ptr<TrajFile> m_file;
   std::vector<TrajPoint>    m_buffer;
-  int                       m_event = -1;
+  int                       m_event  = -1; // Geant4 event ID of the event being recorded
+  int                       m_number = -1; // its number in the output file
   int                       m_track = -1;
   bool                      m_skip  = false;
   G4ThreeVector             m_lastPos, m_lastDir;
