@@ -23,12 +23,15 @@ page is drawn from the DD4hep geometry by the tools in this repository:
 
 <img src="docs/images/event_solid_JPsi_lite_beam.svg" width="100%" alt="Beam view of the same event: hexagonal calorimeter modules coloured by deposited energy">
 
+<img src="docs/images/event_solid_JPsi_lite_background_side.png" width="100%" alt="The same J/psi event simulated together with 10 000 beam electrons on the target">
+
 <img src="docs/images/event_solid_SIDIS_He3_cutaway.svg" width="100%" alt="SoLID SIDIS 3He: one simulated event on the cutaway drawing">
 
 *Simulated events on the line drawings: tracks by particle type, calorimeter modules coloured by deposited energy.
 From the top: the electroproduction of a J/ψ decaying to e⁺e⁻ in SoLID-Lite, an event from the lAger generator, as
-a cutaway, as an animation and in the beam view, and an event in SoLID SIDIS ³He. `make_solid_views -n 5` draws
-events of a run, and `--animate` adds the animation. → [docs/event_display.md](docs/event_display.md)*
+a cutaway, as an animation and in the beam view; the same event with 10 000 beam electrons on the target (0.5 ns
+of beam at 3 µA); and a 4 GeV electron in SoLID SIDIS ³He. `make_solid_views -n 5` draws events of a run, and
+`--animate` adds the animation. → [docs/event_display.md](docs/event_display.md)*
 
 ## Magnetic field on the detector
 
@@ -123,12 +126,14 @@ src/sim/           simulation-side plugins (libsolid_ddg4): geometry scene for t
                    solid_scene_dump and solid_field_dump
 python/            solid_lineview (renderer) and solid_evdisplay (event displays), installed as Python packages
 steering/          ddsim steering
-scripts/           geometry/ (overlap check, GEMC comparison, scene checks), event_display/ (tests, toy J/psi generator)
+scripts/           geometry/ (overlap check, GEMC comparison, scene and field checks), event_display/ (tests,
+                   lAger configurations, converters and helpers for generator events)
 bin/               make_solid_views, solid_lineview, solid_evexport, solid_evview (installed with thissolid.sh,
                    next to the compiled solid_scene_dump and solid_field_dump)
 magnet_field/      2D magnet solver: field maps computed from the DD4hep magnet geometry
 test/              stand-alone test configurations per subsystem
-containers/        install.sh, solid-shell launcher, solid_xl image (eic_xl + ffmpeg + gmsh + solid_dd4hep)
+containers/        install.sh, solid-shell launcher, solid_xl image (eic_xl + ffmpeg + gmsh + a working lAger +
+                   solid_dd4hep)
 docs/              design, comparison, visualization, event display, reconstruction; images/ (the figures above)
 benchmarks/        LGC optical-photon study; ECal (Juggler era, to be ported to EICrecon)
 ```

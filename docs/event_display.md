@@ -509,7 +509,8 @@ needs ddsim, numpy, uproot, pycairo and Pillow.
 
 The files `docs/images/event_*` were made with the installed tools from the lAger J/ψ sample of
 [Generators](#generators) (event 102 of the 500 events of `lager -r 1`, ddsim seed 2026), from the same event
-simulated again together with 10 000 beam electrons, and from a `solid_SIDIS_He3` gun event:
+simulated again together with 10 000 beam electrons, and from a `solid_SIDIS_He3` gun event (event 0 of 8, ddsim
+seed 2026), with `solid_lineview` 0.6.0:
 
 ```bash
 solid_evexport sim.edm4hep.root --scene scene.npz --traj traj.bin -o events --select pair

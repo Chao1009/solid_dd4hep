@@ -1,6 +1,6 @@
 {
-  "SPDX-License-Identifier": "LGPL-3.0-or-later",
-  "comment": "lAger 3.7.0 configuration: exclusive J/psi electroproduction on the proton at 11 GeV, J/psi -> mu+ mu-, for SoLID. The parameters are those of lAger's examples/solid/solid.ep-2gluon.json (SoLID pCDR); changed here: the vertex range is the 15 cm LH2 cell in the hall frame (z = -322.5 to -307.5 cm), the number of events replaces the luminosity, HepMC3 output is on, the decay leptons are muons (also in the acceptance cuts). Run: lager -c THIS_FILE -r SEED -e EVENTS -o OUTDIR, then hepmc_prepare.py. See docs/event_display.md.",
+  "SPDX-License-Identifier": "GPL-3.0-or-later",
+  "comment": "lAger 3.7.0 configuration: exclusive J/psi electroproduction on the proton at 11 GeV, J/psi -> mu+ mu-, for SoLID. The parameters are those of lAger's examples/solid/solid.ep-2gluon.json (SoLID pCDR; lAger is GPL-3.0-or-later, hence the licence of this file); changed here: the vertex range is the 15 cm LH2 cell in the hall frame (z = -322.5 to -307.5 cm), the number of events replaces the luminosity, HepMC3 output is on, the decay leptons are muons (also in the acceptance cuts). Run: lager -c THIS_FILE -r SEED -e EVENTS -o OUTDIR, then hepmc_prepare.py. See docs/event_display.md.",
   "mc": {
     "type": "solid",
     "tag": "jpsi-mumu",
