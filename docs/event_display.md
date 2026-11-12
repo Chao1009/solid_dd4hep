@@ -410,9 +410,9 @@ events, alternating order): the CPU time of the event loop was 16.33 ± 1.29 s w
 the recorder (mean and standard deviation of 12 runs each), the mean of the 12 paired differences
 +3.0 ± 2.5 % (standard error), from the fastest run of each kind +2.8 %. Equal runs differ by up to 12 % on
 this machine, so this method cannot do better here; the earlier numbers of this section (gun +1.5 %, toy
-J/ψ −7 % to +11 %) were single pairs of the same kind. The two measurements agree: recording costs 1 to 2 %,
-and the whole, with the idle part, is compatible with that and below 5 % within its error. The EDM4hep files have the same size with and without
-the recorder up to 46 bytes of metadata.
+J/ψ −7 % to +11 %) were single pairs of the same kind. The two measurements agree: recording costs 1 to 2 %;
+the whole-job number is compatible with that but, with its error of 2.5 %, cannot exclude 5 % by itself.
+The EDM4hep files have the same size with and without the recorder up to 46 bytes of metadata.
 
 **Other configurations and generators.** lAger and gun events, `SOLID_OPTICAL=0`:
 
