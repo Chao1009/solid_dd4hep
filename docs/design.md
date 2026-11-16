@@ -133,7 +133,8 @@ translate/rotate a map (cylindrical-z solenoid maps, cylindrical-x maps such as 
 |---|---|---|
 | `solenoid_SoLID_v4c_2D.dat` | full SoLID | 2D solve of this repository's v4c iron (`magnet_field/`); the 3D TOSCA map of the v4 yoke is not available |
 | `solenoid_CLEOv10.dat` | SoLID-Lite | POISSON, unmodified CLEO-II iron (the collaboration's reference map) |
-| `oxford_ptarget.dat` | NH3 target magnet (5 T) | solid_gemc |
+| `ptarget_oxford2012_6m.dat` | NH3 target magnet (5 T) | computed here from the coils of the Oxford 2012 design (`magnet_field/coil_map.py`), out to 6 m |
+| `oxford_ptarget.dat` | NH3 target magnet, GEMC parity only (`field_NH3_target_gemc.xml`): ends at 2 m, wrong sign of Br between the coil halves | solid_gemc |
 | `solenoid_SoLIDlite_stage1_2D.dat` | optional | CLEOv10's iron solved with an open boundary instead of POISSON's box |
 | `solenoid_SoLIDlite_stage2_2D.dat` | stage-2 magnet test | provisional SIDIS-lite iron |
 | `solenoid_CLEOv9.dat` | GEMC-parity test | POISSON, older iron, unconverged steel (`rhogam` = 1e-6) |

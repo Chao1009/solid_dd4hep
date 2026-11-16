@@ -147,6 +147,13 @@ if(BUILD_TESTING)
   )
   set_tests_properties(scene_dump PROPERTIES TIMEOUT 300 LABELS scene)
 
+  # air-core coil field (polarized NH3 target magnet): closed forms, Maxwell's equations, the Oxford 2012 model
+  add_test(NAME coil_field
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
+            python3 ${PROJECT_SOURCE_DIR}/magnet_field/tests/test_coils.py
+  )
+  set_tests_properties(coil_field PROPERTIES TIMEOUT 600 LABELS field)
+
   # field views: line clean-up and window clipping of solid_lineview, solid_field_dump against DD4hep's field,
   # the drawing from the sampled field against the drawing from the GEMC map
   add_test(NAME field_view

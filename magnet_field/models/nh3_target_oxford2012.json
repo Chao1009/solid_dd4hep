@@ -1,0 +1,34 @@
+{
+  "_comment": [
+    "SPDX-License-Identifier: LGPL-3.0-or-later",
+    "Coils of the polarized NH3 target magnet in the Oxford Instruments 2012 design study for SoLID: a split pair",
+    "of 7 superconducting coils per side on a common axis, with a +-25 deg opening and 5 T at the centre.",
+    "The numbers are those of solid_gemc/field/oxford_field.f (subroutine sda_ptf_solid_nh3, C. Gu): arrays RI, RA,",
+    "ZAU, ZBU, TURNS and the current CURm; the first pair is wound in the opposite sense (RJ(1), RJ(2) negative",
+    "there, negative turns here). oxford_field.f made the GEMC map oxford_ptarget.dat (r 0..199 cm, axis -200..200",
+    "cm, values rounded to 0.1 G); coil_map.py reproduces it and writes the same field out to any distance.",
+    "z is the coordinate along the magnet axis, r the distance from it, both in the magnet frame (origin at the",
+    "target centre). In the hall the magnet axis is the x axis (transverse polarization): \"axis\": \"x\".",
+    "No iron: the yoke of the SoLID solenoid is not part of this calculation."
+  ],
+  "name": "nh3_target_oxford2012",
+  "source": "solid_gemc/field/oxford_field.f (Oxford Instruments 2012 design study, C. Gu)",
+  "axis": "x",
+  "current_A": 106.0958,
+  "coils": [
+    {"name": "pair1+", "r_in_cm": 6.478, "r_out_cm": 8.487, "z_min_cm": 6.042, "z_max_cm": 9.047, "turns": -1118},
+    {"name": "pair1-", "r_in_cm": 6.478, "r_out_cm": 8.487, "z_min_cm": -9.047, "z_max_cm": -6.042, "turns": -1118},
+    {"name": "pair2+", "r_in_cm": 10.963, "r_out_cm": 11.648, "z_min_cm": 6.967, "z_max_cm": 13.935, "turns": 616},
+    {"name": "pair2-", "r_in_cm": 10.963, "r_out_cm": 11.648, "z_min_cm": -13.935, "z_max_cm": -6.967, "turns": 616},
+    {"name": "pair3+", "r_in_cm": 11.648, "r_out_cm": 13.877, "z_min_cm": 6.967, "z_max_cm": 13.935, "turns": 2003},
+    {"name": "pair3-", "r_in_cm": 11.648, "r_out_cm": 13.877, "z_min_cm": -13.935, "z_max_cm": -6.967, "turns": 2003},
+    {"name": "pair4+", "r_in_cm": 14.451, "r_out_cm": 17.465, "z_min_cm": 8.709, "z_max_cm": 14.930, "turns": 3515},
+    {"name": "pair4-", "r_in_cm": 14.451, "r_out_cm": 17.465, "z_min_cm": -14.930, "z_max_cm": -8.709, "turns": 3515},
+    {"name": "pair5+", "r_in_cm": 18.936, "r_out_cm": 19.510, "z_min_cm": 10.949, "z_max_cm": 16.920, "turns": 638},
+    {"name": "pair5-", "r_in_cm": 18.936, "r_out_cm": 19.510, "z_min_cm": -16.920, "z_max_cm": -10.949, "turns": 638},
+    {"name": "pair6+", "r_in_cm": 19.559, "r_out_cm": 21.908, "z_min_cm": 10.949, "z_max_cm": 16.920, "turns": 3534},
+    {"name": "pair6-", "r_in_cm": 19.559, "r_out_cm": 21.908, "z_min_cm": -16.920, "z_max_cm": -10.949, "turns": 3534},
+    {"name": "pair7+", "r_in_cm": 22.424, "r_out_cm": 25.430, "z_min_cm": 12.690, "z_max_cm": 16.323, "turns": 3853},
+    {"name": "pair7-", "r_in_cm": 22.424, "r_out_cm": 25.430, "z_min_cm": -16.323, "z_max_cm": -12.690, "turns": 3853}
+  ]
+}

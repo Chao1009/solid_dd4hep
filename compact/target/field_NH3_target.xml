@@ -1,30 +1,41 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
 <!--
-  OPTIONAL: field of the polarized-NH3 target magnet (5 T, transverse = along hall +x), added ON TOP of the solenoid
-  field (DD4hep sums all <field> overlays). Include it in solid_SIDIS_NH3.xml after the solenoid field.
+  Field of the polarized-NH3 target magnet (5 T, transverse = along hall +x), added ON TOP of the solenoid field
+  (DD4hep sums all <field> overlays). Included by solid_SIDIS_NH3.xml after the solenoid field.
   Requires from the top level: TargetCenter_z (-350 cm).
-  Map: GEMC field/oxford_ptarget.dat (Oxford 2012 design study, C. Gu, oxford_field.f): 2D map, r 0..199 cm x
-  longitudinal -200..200 cm, 1 cm grid, gauss, columns "r x Br Bx", header symmetry cylindrical-x (map axis = hall x).
-  B(0,0) = +49996 G along +x; maximum 8.62 T near the coils. GEMC solid_SIDIS_NH3_moved_full uses it with
-  DISPLACE_FIELDMAP 0,0,-350 cm (gemc ignores the header <shift>), restricted to a 130 cm air box around the target
-  where it REPLACES the solenoid field; here it is a global overlay (the CLEO fringe field at the target, ~27 G, is
-  negligible against 5 T; the map ends at |x| = 200 cm, r = 199 cm, where its field is still 84 G on the magnet
-  axis and 44 G in the mid plane: the total field steps down to the solenoid fringe (6 G) there, see
-  docs/images/field_xz_solid_SIDIS_NH3.svg).
-  Caveats: (1) this is the Oxford design map; the installed Scientific-Magnetics magnet (SM2023 geometry, default of
-  target_NH3.xml) has no public map yet (GEMC runs SM2023 without target field); (2) the 5 T field deflects the
-  incoming and outgoing beam (no chicane is modelled); (3) needs the SoLID_FieldMapB with header/symmetry support
-  (map axis from the "cylindrical-x" header, translationCoord = map origin) - the original FieldMapB rotated only
-  the B vector and cannot place an x-axis map.
+
+  Map: ptarget_oxford2012_6m.dat, computed in this repository (magnet_field/coil_map.py) from the 14 coils of the
+  Oxford Instruments 2012 design study (magnet_field/models/nh3_target_oxford2012.json, the numbers of GEMC's
+  field/oxford_field.f): the Biot-Savart sum over the coils, no iron. 2D map, r 0..600 cm x longitudinal
+  -600..600 cm, 1 cm grid, gauss, columns "r x Br Bx", header symmetry cylindrical-x (map axis = hall x).
+  Reference values: B(0,0) = +49996.25 G along +x; 87.72 G on the magnet axis and -42.98 G in the mid plane 2 m
+  from the target; 3.22 G and -1.61 G at 6 m, where the map ends; maximum 8.62 T in the windings.
+
+  It replaces GEMC's oxford_ptarget.dat (field_NH3_target_gemc.xml), made from the same coils:
+    * more than 5 cm from the windings the two agree within the 0.1 G rounding of that file (79 336 nodes);
+    * that file ends 2 m from the target, where the field is still 43 to 88 G;
+    * its radial component has the wrong sign where the field points towards the magnet axis (the gap between
+      the two coil halves, r up to 38 cm, |x| up to 14 cm, up to 4.4 T): its Br always has the sign of x, which
+      contradicts div B = 0 with its own axial component. magnet_field/README.md has the comparison.
+  Caveats: (1) this is the Oxford design; the installed Scientific-Magnetics magnet (SM2023 geometry, default of
+  target_NH3.xml) has no public map or coil data yet; (2) no iron: the yoke of the solenoid, 0.8 m downstream,
+  would change the stray field in and behind it; (3) the 5 T field deflects the incoming and outgoing beam (no
+  chicane is modelled); (4) needs SoLID_FieldMapB with header/symmetry support (map axis from the
+  "cylindrical-x" header, translationCoord = map origin).
+
   The map is looked up in ./fieldmaps, then in ${DETECTOR_PATH}/fieldmaps, else downloaded there once from the
-  solid_gemc repository (pinned commit 6826f84). Offline: copy field/oxford_ptarget.dat into ${DETECTOR_PATH}/fieldmaps/.
+  fieldmaps-v2 release of solid_dd4hep; its sha256 is checked. Offline, or to make it yourself (python3 with
+  numpy and scipy, 10 s; the result has the same sha256):
+      magnet_field/coil_map.py magnet_field/models/nh3_target_oxford2012.json -o ${DETECTOR_PATH}/fieldmaps/ptarget_oxford2012_6m.dat
 -->
 <lccdd>
   <fields>
     <field type="SoLID_FieldMapB" name="NH3TargetField" field_type="magnetic" coord_type="BrBz"
-           field_map="fieldmaps/oxford_ptarget.dat"
+           field_map="fieldmaps/ptarget_oxford2012_6m.dat"
            cache="${DETECTOR_PATH}/fieldmaps"
-           url="https://raw.githubusercontent.com/JeffersonLab/solid_gemc/6826f84fc9a9d561c82c655d970fe00e584399dd/field/oxford_ptarget.dat"
+           url="https://github.com/JeffersonLab/solid_dd4hep/releases/download/fieldmaps-v2/ptarget_oxford2012_6m.dat"
+           sha256="21c04d6ec3d0ccca6d5e3d0c0bef77a46e5978c578b5f4b807575f1d35c19cf8"
+           hint="Generate it from a solid_dd4hep checkout: magnet_field/coil_map.py magnet_field/models/nh3_target_oxford2012.json -o ${DETECTOR_PATH}/fieldmaps/ptarget_oxford2012_6m.dat"
            scale="1.0">
       <dimensions>
         <translationCoord x="0*cm" y="0*cm" z="TargetCenter_z"/>

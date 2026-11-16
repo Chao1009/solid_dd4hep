@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""GEMC 2D (cylindrical-z) field maps: rows 'R Z Br Bz' in cm and gauss, R-major with Z fastest, after an
-<mfield> header laid out exactly like solid_gemc/field/solenoid_CLEOv10.dat (read by SoLID_FieldMapB)."""
+"""GEMC 2D field maps: rows 'R Z Br Bz' in cm and gauss, R-major with Z fastest, after an <mfield> header laid
+out exactly like solid_gemc/field/solenoid_CLEOv10.dat (read by SoLID_FieldMapB). Z is the coordinate along the
+symmetry axis: the hall z axis for the solenoid maps (cylindrical-z), the hall x axis for the map of the
+polarized target magnet (cylindrical-x, as solid_gemc/field/oxford_ptarget.dat)."""
 from __future__ import annotations
 
 import re
@@ -10,7 +12,7 @@ import numpy as np
 _HEADER = (
     "<mfield>\n"
     '       <description name="{name}" factory="ASCII" comment="{comment}"/>\n'
-    '       <symmetry type="cylindrical-z" format="map" integration="ClassicalRK4" minStep="0.01*mm"/>\n'
+    '       <symmetry type="{symmetry}" format="map" integration="ClassicalRK4" minStep="0.01*mm"/>\n'
     "       <map>\n"
     "               <coordinate>\n"
     '                       <first  name="transverse" npoints="{nr}"   min="{rmin}"  max="{rmax}"  units="cm"/>\n'
@@ -40,13 +42,16 @@ def _attr(text: str) -> str:
     return text.replace('"', "'").replace("<", "(").replace(">", ")").replace("&", "+")
 
 
-def header(name: str, r, z, comment: str | None = None) -> str:
+def header(name: str, r, z, comment: str | None = None, symmetry: str = "cylindrical-z") -> str:
+    if symmetry not in ("cylindrical-z", "cylindrical-x", "cylindrical-y"):
+        raise ValueError("symmetry must be cylindrical-z, cylindrical-x or cylindrical-y")
     return _HEADER.format(name=_attr(name), comment=_attr(comment if comment is not None else name),
                           nr=len(r), nz=len(z), rmin=_num(r[0]), rmax=_num(r[-1]), zmin=_num(z[0]),
-                          zmax=_num(z[-1]))
+                          zmax=_num(z[-1]), symmetry=symmetry)
 
 
-def write_map(path: str, name: str, r_cm, z_cm, Br_G, Bz_G, comment: str | None = None):
+def write_map(path: str, name: str, r_cm, z_cm, Br_G, Bz_G, comment: str | None = None,
+              symmetry: str = "cylindrical-z"):
     """Write a GEMC map; Br_G, Bz_G have shape (len(r_cm), len(z_cm))."""
     r_cm = np.asarray(r_cm, dtype=float)
     z_cm = np.asarray(z_cm, dtype=float)
@@ -60,7 +65,7 @@ def write_map(path: str, name: str, r_cm, z_cm, Br_G, Bz_G, comment: str | None 
     # avoid '-0' in the output
     cols = [R.ravel() + 0.0, Z.ravel() + 0.0, Br_G.ravel() + 0.0, Bz_G.ravel() + 0.0]
     with open(path, "w") as f:
-        f.write(header(name, r_cm, z_cm, comment))
+        f.write(header(name, r_cm, z_cm, comment, symmetry))
         lines = ["%#.6g\t%#.6g\t%.6E\t%.6E\n" % row for row in zip(*[c.tolist() for c in cols])]
         f.writelines(lines)
 

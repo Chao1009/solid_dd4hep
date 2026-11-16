@@ -271,13 +271,16 @@ The whole detector in the same plane is [field_xz_solid_SIDIS_NH3.svg](images/fi
 the x = 0 plane ([field_yz_solid_SIDIS_NH3.svg](images/field_yz_solid_SIDIS_NH3.svg)) the target field points out
 of the page: the bands and the dots and crosses show it, and the field lines there are those of the solenoid.
 
-Two things these drawings show about the field the simulation uses:
+The target field comes from a map computed in this repository (`magnet_field/coil_map.py`): the Biot-Savart sum
+over the 14 coils of the Oxford 2012 design, out to 6 m from the target, where it has fallen to 2 to 3 G.
 
-- The map of the target magnet ends 2 m from the target. The total field is still 84 G there on the magnet axis
-  and 44 G in its mid plane, and it drops to the 6 G of the solenoid fringe in the next centimetre. The straight
-  edges in the bands of the full views are this step.
-- The map is the Oxford design study (`compact/target/field_NH3_target.xml`); the magnet delivered to JLab has no
-  public map yet.
+- GEMC's map of the same coils (`oxford_ptarget.dat`, still available as `field_NH3_target_gemc.xml`) ends 2 m from
+  the target, where the field is still 43 to 88 G; with it the total field stepped down to the solenoid fringe
+  along straight edges. Its radial component also has the wrong sign in the gap between the coil halves
+  ([magnet_field/README.md](../magnet_field/README.md#target-magnet-polarized-nh3)).
+- The calculation has no iron. The yoke of the solenoid begins 0.8 m downstream of the target and would change the
+  stray field of the target magnet in and behind it; the two fields are simply added here.
+- The coils are the Oxford design study; the magnet delivered to JLab has no public map or coil data yet.
 
 ### Limits
 

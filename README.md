@@ -149,8 +149,8 @@ Open items:
 - the field maps are 2D: the 3D TOSCA map of the v4 yoke is missing upstream, and `magnet_field/` computes 2D maps
   from the DD4hep magnet geometry;
 - the SoLID-Lite SIDIS magnet (stage 2) and its map are provisional, and there is no SIDIS-lite configuration yet;
-- the NH₃ target field is the Oxford design map, which ends 2 m from the target where the field is still 44 to 84 G;
-  the delivered magnet has no public map;
+- the NH₃ target field is computed from the coils of the Oxford design study, without the iron of the solenoid; the
+  delivered magnet has no public map or coil data;
 - the lite forward-angle segment azimuths are still under discussion;
 - the beam-test geometry has not been ported;
 - the ACTS material map has to be regenerated.

@@ -63,10 +63,12 @@ extract_rz_model.py   DD4hep magnet -> POISSON-style deck (.am) + JSON sidecar; 
 solve_rz.py           deck -> mesh -> nonlinear solve -> solution (.npz) [+ GEMC map]       (needs gmsh)
 write_map.py          solution -> GEMC map on any grid                                       (numpy and scipy)
 eval_field.py         solution -> B(r, z) at points or on the axis                           (numpy and scipy)
+coil_map.py           air-core coil set (JSON) -> GEMC map; benchmark against another map (target magnet)
 plot_map.py           map -> picture: |B| bands, field lines, the deck's iron and coils, on-axis field (matplotlib)
 validate_poisson.py   solution vs a POISSON map or another solution: reference points, regions, plots
 compare_references.py new maps vs the POISSON references; rebuilds the CLEOv11 deck from the Stage 1/2 html
 models/               the three decks, their JSON sidecars, cleo2_coils.json (coil currents), README.md (details);
+                      nh3_target_oxford2012.json (coils of the polarized NH3 target magnet);
                       equal_area/ (the same magnets at equal-area radii, for sensitivity studies)
 rzfield/              solver: amdeck (deck reader), bh (B-H curves, data/bh_1010_poisson.txt), mesh (gmsh),
                       fem (assembly, Newton), field (solution, B evaluation), gemcmap (map I/O), geometry, driver
@@ -204,6 +206,77 @@ five shields, donut and two bottom plates, with no nose and no correction coil. 
 deck with an open boundary gives Bz(0,-350) = 13.4 G and \|B\|(215,300) = 174 G. The correction-coil current
 therefore has to be re-tuned with an open boundary, or with a much larger POISSON box.
 
+## Target magnet (polarized NH3)
+
+The polarized NH3 target has its own magnet: a split pair of superconducting coils on the hall x axis, 5 T at the
+target. It has no iron, so its field is the Biot-Savart sum over the coils, with no mesh and no solver
+(`rzfield/coils.py`: circular loops at Gauss-Legendre nodes of every coil cross-section, closed-form loop field).
+
+```bash
+magnet_field/coil_map.py magnet_field/models/nh3_target_oxford2012.json -o ptarget_oxford2012_6m.dat    # 10 s
+magnet_field/coil_map.py magnet_field/models/nh3_target_oxford2012.json --compare oxford_ptarget.dat      # benchmark
+```
+
+- **Coils:** `models/nh3_target_oxford2012.json` holds the 14 coils of the Oxford Instruments 2012 design study
+  (inner and outer radius, extent along the axis, turns, 106.0958 A), copied from `solid_gemc/field/oxford_field.f`.
+  The first pair is wound in the opposite sense.
+- **Map:** `ptarget_oxford2012_6m.dat`, r 0..600 cm and -600..600 cm along the magnet axis on a 1 cm grid, 31 MB,
+  in the GEMC format with the `cylindrical-x` header. `compact/target/field_NH3_target.xml` uses it.
+- **Reproducible:** the file made with numpy 2.2 and scipy 1.15 on the host and the one made with scipy 1.17 in
+  eic_xl are identical byte for byte, so a map made locally passes the sha256 check of the field fragment.
+
+| quantity | value |
+|---|---|
+| field at the centre | 49 996.25 G along the magnet axis |
+| homogeneity over the target cell (r 1.5 cm, 1.5 cm to either side) | 7e-6 |
+| 2 m from the target | 87.72 G on the magnet axis, -42.98 G in the mid plane |
+| 6 m from the target (end of the map) | 3.22 G on the axis, -1.61 G in the mid plane |
+| largest field | 8.62 T, in the windings |
+
+**Checks** (`tests/test_coils.py`, ctest `coil_field`): on the axis the loop sum equals the closed form to 1e-10;
+div B = 0 and curl B = 0 outside the windings to 1e-6 of |B| per cm; curl B = mu0 J inside them (ratio 0.99998);
+next to and inside the windings the default rule agrees with one of four times the order to 5e-6.
+
+**Benchmark against GEMC's map.** `oxford_ptarget.dat` was made from the same coils with `oxford_field.f`. It
+covers r 0..199 cm and -200..200 cm, with values rounded to 0.1 G.
+
+| distance from the nearest winding | nodes | largest difference in \|Br\| | largest difference in Bz |
+|---|---|---|---|
+| more than 5 cm | 79 336 | 0.055 G | 0.061 G |
+| 2 to 5 cm | 430 | 0.13 G | 0.14 G |
+| 1 to 2 cm | 128 | 1.1 G | 0.8 G |
+| 0.5 to 1 cm | 94 | 14 G | 14 G |
+| less than 0.5 cm | 62 | 874 G | 810 G |
+| inside a winding | 150 | 1263 G | 1373 G |
+
+More than 5 cm from the windings the two agree within the rounding of the file. Next to the windings the
+calculation here is converged to 5e-6, so the differences there are the old file's.
+
+**The old map has the wrong sign of Br in the gap between the coil halves.** In `oxford_ptarget.dat` the radial
+component always has the sign of the coordinate along the magnet axis: it is never negative on the positive side.
+The field is: between the two coil halves it points towards the axis, at 411 of the file's nodes on that side (r up
+to 38 cm, up to 14 cm from the mid plane, up to 4.4 T). The file contradicts itself there: next to the axis,
+div B = 0 gives Br = -(r/2) dBz/dz, and with the file's own Bz that is negative where its Br is positive (for
+example -116 G predicted and +103 G in the file at r 1 cm, 5 cm from the mid plane; the calculation gives -103 G).
+
+This is the region every particle from the target crosses. For a straight track from the target centre at an
+angle a out of the magnet's mid plane, the bending integral is ∫(cos a · Bz − sin a · Br) dl:
+
+| a | with the field | with the old map | difference |
+|---|---|---|---|
+| 2° | 0.785 T m | 0.783 T m | -0.3 % |
+| 5° | 0.788 T m | 0.773 T m | -1.9 % |
+| 10° | 0.796 T m | 0.736 T m | -7.5 % |
+| 20° | 0.833 T m | 0.579 T m | -31 % |
+
+**Limits.**
+- No iron. The yoke of the solenoid begins 0.8 m downstream of the target; it would be magnetized by the stray
+  field of the target magnet and change that field in and behind it. This needs a 3D calculation with both
+  magnets. The map is the free-space field, added to the solenoid field.
+- The coils are the Oxford design study. The magnet delivered to JLab (Scientific Magnetics, the SM2023 geometry of
+  `compact/target/target_NH3.xml`) has four coils per side in its CAD model; its turns and currents are not
+  public, so no map of it can be computed yet. With them, a JSON file like the Oxford one is all that is needed.
+
 ## Models and conventions
 
 * Hall frame with the origin at the coil centre; x = r and y = z in cm.
@@ -281,21 +354,23 @@ therefore has to be re-tuned with an open boundary, or with a much larger POISSO
 
 ## Publishing the maps
 
-The maps are assets of a release of this repository, one tag per version (`fieldmaps-v1`, ...): no map is in git,
-and the URLs never change. Each fragment pins its map with `url` and `sha256`. `SoLID_FieldMapB` downloads it once
+The maps are assets of a release of this repository, one tag per version: no map is in git, and the URLs never
+change. `fieldmaps-v1` holds the three solenoid maps, `fieldmaps-v2` the map of the NH3 target magnet
+(`ptarget_oxford2012_6m.dat`). Each fragment pins its map with `url` and `sha256`. `SoLID_FieldMapB` downloads it once
 into `${DETECTOR_PATH}/fieldmaps/`, checks the checksum, and replaces an earlier download of another version.
 
 To publish new maps after a magnet change:
 1. run `magnet_field/make_maps.sh` (it re-extracts the decks) and commit the changed `models/`;
 2. upload the maps as a new release, for example
-   `gh release create fieldmaps-v2 --repo JeffersonLab/solid_dd4hep --latest=false --title "Field maps v2" --notes-file NOTES.md magnet_field/work/maps/solenoid_*.dat`;
+   `gh release create fieldmaps-v3 --repo JeffersonLab/solid_dd4hep --latest=false --title "Field maps v3" --notes-file NOTES.md magnet_field/work/maps/solenoid_*.dat`;
 3. in each fragment, point `url` at the new tag, set `sha256` to the output of `sha256sum`, and update the reference
    values in its comment.
 
 Do not replace the files of an existing tag: every installation would then fail the checksum until the fragments
 change. A regenerated map differs from the release file in its header comment (how and when it was made); its field
 values are byte-identical on the same host and can differ in the last printed digit with other gmsh, numpy or scipy
-versions. To use such a file, set `sha256` in the fragment to the value the checksum error reports.
+versions. To use such a file, set `sha256` in the fragment to the value the checksum error reports. The target
+magnet map is different: `coil_map.py` writes no date, and the file came out identical with two scipy versions.
 
 ## Handing the decks to Poisson users
 
