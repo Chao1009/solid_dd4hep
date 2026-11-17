@@ -5,6 +5,7 @@ The table is the common input of the acceptance, resolution and rate studies. It
 (ddsim, EDM4hep) and holds, for every generator particle (generatorStatus 1):
 
   event, pdg, p, theta, phi, vx, vy, vz           at the vertex (GeV, rad, mm)
+  parent                                          PDG code of the particle's first parent in the event record (0: none)
   for every tracker-type collection C (GEM planes, scintillator pads, MRPC), per layer:
       C_hit[row, layer]      True if the particle itself left a hit in that layer
       C_x, C_y, C_z, C_t     position (mm) and time (ns) of its first hit there
@@ -92,14 +93,17 @@ def _collections(tree):
     return out
 
 
-def _flat(tree, branch):
+def _read_flat(tree, branch, start=None, stop=None):
     import awkward as ak
-    a = tree[branch].array(library="ak")
+    a = tree[branch].array(library="ak", entry_start=start, entry_stop=stop)
     return ak.to_numpy(ak.num(a)), ak.to_numpy(ak.flatten(a))
 
 
-def build_table(path, encodings=None):
-    """Read one EDM4hep file; returns (arrays, info): dict of numpy arrays and a description (JSON-able)."""
+def build_table(path, encodings=None, step=2000):
+    """Read one EDM4hep file; returns (arrays, info): dict of numpy arrays and a description (JSON-able).
+
+    The file is read `step` events at a time, which bounds the memory. `encodings` ({collection: encoding string})
+    replaces or supplies the cell-ID encodings: a file that was not closed (a recovered file) has no metadata."""
     import uproot
 
     f = uproot.open(path)
@@ -107,6 +111,25 @@ def build_table(path, encodings=None):
     enc_text = dict(read_encodings(f))
     enc_text.update(encodings or {})
     cols = _collections(tree)
+    parts, info = [], None
+    n = tree.num_entries
+    for start in range(0, max(n, 1), step):
+        t, i = _build_range(tree, enc_text, cols, start, min(n, start + step), path)
+        parts.append(t)
+        if info is None:
+            info = i
+        else:
+            for name, c in i["collections"].items():
+                if c.get("layers", 0) > info["collections"][name].get("layers", 0):
+                    info["collections"][name] = c
+    arrays = parts[0] if len(parts) == 1 else concat_tables(parts, renumber=False)
+    info.update(events=int(n), rows=int(len(arrays["pdg"])))
+    return arrays, info
+
+
+def _build_range(tree, enc_text, cols, start, stop, path):
+    def _flat(tree, branch):
+        return _read_flat(tree, branch, start, stop)
 
     n_mc, pdg = _flat(tree, "MCParticles/MCParticles.PDG")
     _, status = _flat(tree, "MCParticles/MCParticles.generatorStatus")
@@ -135,12 +158,14 @@ def build_table(path, encodings=None):
             break
         anc[up] = parent[anc[up]]
     row_of_anc = np.where(anc >= 0, row_of[np.clip(anc, 0, None)], -1)
+    parent_pdg = np.where(parent >= 0, pdg[np.clip(parent, 0, None)], 0)
     p = np.sqrt(mom[0][prim] ** 2 + mom[1][prim] ** 2 + mom[2][prim] ** 2)
     with np.errstate(invalid="ignore", divide="ignore"):
         theta = np.arccos(np.clip(mom[2][prim] / np.where(p > 0, p, 1.0), -1.0, 1.0))
-    out = {"event": event_of_mc[prim].astype(np.int32), "pdg": pdg[prim].astype(np.int32), "p": p.astype(np.float32),
+    out = {"event": (event_of_mc[prim] + start).astype(np.int32), "pdg": pdg[prim].astype(np.int32), "p": p.astype(np.float32),
            "theta": theta.astype(np.float32), "phi": np.arctan2(mom[1][prim], mom[0][prim]).astype(np.float32),
-           "vx": vtx[0][prim].astype(np.float32), "vy": vtx[1][prim].astype(np.float32), "vz": vtx[2][prim].astype(np.float32)}
+           "vx": vtx[0][prim].astype(np.float32), "vy": vtx[1][prim].astype(np.float32), "vz": vtx[2][prim].astype(np.float32),
+           "parent": parent_pdg[prim].astype(np.int32)}
     info = {"file": str(path), "events": int(len(n_mc)), "rows": int(nrow), "collections": {}}
 
     for name, kind in sorted(cols.items()):
@@ -188,7 +213,7 @@ def build_table(path, encodings=None):
         else:
             n_hit, e_hit = _flat(tree, "%s/%s.energy" % (name, name))
             etot = np.bincount(np.repeat(np.arange(len(n_hit)), n_hit), weights=e_hit, minlength=len(n_hit))
-            out[name + "_etot"] = etot[out["event"]].astype(np.float32)
+            out[name + "_etot"] = etot[event_of_mc[prim]].astype(np.float32)
             out[name + "_e"] = np.zeros(nrow, np.float32)
             out[name + "_x"] = np.full(nrow, np.nan, np.float32)
             out[name + "_y"] = np.full(nrow, np.nan, np.float32)
@@ -239,8 +264,9 @@ def load_table(path):
         return {k: z[k] for k in z.files if k != "__info__"}, info
 
 
-def concat_tables(tables):
-    """Join the arrays of several tables of the same configuration (events are renumbered to stay unique)."""
+def concat_tables(tables, renumber=True):
+    """Join the arrays of several tables of the same configuration; with `renumber` the events are renumbered to
+    stay unique (tables of different files)."""
     out, shift = {}, 0
     keys = set(tables[0])
     for t in tables[1:]:
@@ -255,9 +281,10 @@ def concat_tables(tables):
             parts = [np.pad(a, ((0, 0), (0, w - a.shape[1])), constant_values=(np.nan if a.dtype.kind == "f" else 0))
                      for a in parts]
         out[k] = np.concatenate(parts)
-    ev = []
-    for t in tables:
-        ev.append(t["event"].astype(np.int64) + shift)
-        shift += int(t["event"].max()) + 1 if len(t["event"]) else 0
-    out["event"] = np.concatenate(ev)
+    if renumber:
+        ev = []
+        for t in tables:
+            ev.append(t["event"].astype(np.int64) + shift)
+            shift += int(t["event"].max()) + 1 if len(t["event"]) else 0
+        out["event"] = np.concatenate(ev)
     return out

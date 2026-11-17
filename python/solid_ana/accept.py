@@ -51,6 +51,8 @@ class Arm:
     ec: str = ""                     # calorimeter shower collection ("" = not required)
     ec_min: float = 0.0              # GeV in the shower collection attributed to the particle (visible energy)
     ec_total: bool = False           # use the energy of the whole event instead (single-particle samples)
+    ec_r: tuple = ()                 # (rmin, rmax) in cm of the particle at the calorimeter front; () = no cut
+    front: tuple = ()                # (tracker collection, layer) whose hit gives that position; () = use the cell
     spd: str = ""                    # scintillator collection ("" = not required)
     gem_sector1: float = 96.0        # azimuth (deg) of the centre of GEM sector 1; sectors of gem_dphi follow
     gem_dphi: float = 12.0
@@ -78,6 +80,13 @@ class Arm:
             if seg.centers:
                 phi = np.degrees(np.arctan2(t[self.ec + "_y"], t[self.ec + "_x"]))
                 ok &= seg.contains(np.nan_to_num(phi, nan=1e9)) & np.isfinite(phi)
+            if self.ec_r:
+                if self.front and self.front[0] + "_x" in t and self.front[1] < t[self.front[0] + "_x"].shape[1]:
+                    x, y = t[self.front[0] + "_x"][:, self.front[1]], t[self.front[0] + "_y"][:, self.front[1]]
+                else:                # the cell with most energy: deeper in the calorimeter, so at a larger radius
+                    x, y = t[self.ec + "_x"], t[self.ec + "_y"]
+                r = np.nan_to_num(np.hypot(x, y), nan=-1.0) / 10.0
+                ok &= (r > self.ec_r[0]) & (r < self.ec_r[1])
         if self.spd:
             if self.spd + "_hit" not in t:
                 return np.zeros(n, bool)
@@ -94,12 +103,16 @@ class Arm:
 def arms(config, ec_min=0.05, spd=False):
     """Forward and large-angle arms of a configuration family: 'lite' (separate GEM trackers) or 'full'."""
     if config == "lite":
-        fa = Arm("forward", "GEMTrackerFAHits", (1, 2, 3, 4, 5), 4, "FAECShowerHits", ec_min, spd="FASPDHits" if spd else "")
-        la = Arm("large", "GEMTrackerLAHits", (1, 2, 3, 4), 3, "LAECShowerHits", ec_min, spd="LASPDHits" if spd else "")
+        fa = Arm("forward", "GEMTrackerFAHits", (1, 2, 3, 4, 5), 4, "FAECShowerHits", ec_min, spd="FASPDHits" if spd else "",
+                 front=("FASPDHits", 1))
+        la = Arm("large", "GEMTrackerLAHits", (1, 2, 3, 4), 3, "LAECShowerHits", ec_min, spd="LASPDHits" if spd else "",
+                 front=("GEMTrackerLAHits", 4))
     elif config == "full":
         # six planes: 1-4 serve the large angle, 2-6 the forward angle (pre-CDR table 11)
-        fa = Arm("forward", "GEMTrackerHits", (2, 3, 4, 5, 6), 4, "FAECShowerHits", ec_min, spd="FASPDHits" if spd else "")
-        la = Arm("large", "GEMTrackerHits", (1, 2, 3, 4), 3, "LAECShowerHits", ec_min, spd="LASPDHits" if spd else "")
+        fa = Arm("forward", "GEMTrackerHits", (2, 3, 4, 5, 6), 4, "FAECShowerHits", ec_min, spd="FASPDHits" if spd else "",
+                 front=("FASPDHits", 1))
+        la = Arm("large", "GEMTrackerHits", (1, 2, 3, 4), 3, "LAECShowerHits", ec_min, spd="LASPDHits" if spd else "",
+                 front=("GEMTrackerHits", 4))
     else:
         raise ValueError("config is 'lite' or 'full'")
     return fa, la

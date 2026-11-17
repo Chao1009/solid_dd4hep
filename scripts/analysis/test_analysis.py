@@ -148,7 +148,8 @@ def main():
 
     # 6. the tool
     rc = run([sys.executable, os.path.join(HERE, "acceptance.py"), os.path.join(out, "table.npz"), "--config", "lite",
-              "--theta", "8:24:2", "--p", "3:5:1", "--fa-segments", "4x24", "-o", os.path.join(out, "acc.npz"),
+              "--theta", "8:24:2", "--p", "3:5:1", "--fa-segments", "4x24", "--ec-r-la", "83:127",
+              "-o", os.path.join(out, "acc.npz"),
               "--plot", os.path.join(out, "acc.png")], os.path.join(out, "acceptance.log"))
     ok = rc == 0 and os.path.exists(os.path.join(out, "acc.npz"))
     if ok:

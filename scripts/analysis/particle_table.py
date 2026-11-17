@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Make the particle table of a simulated file: one row per generated particle with what it left in every detector.
 
-usage: particle_table.py SIM.edm4hep.root [...] -o TABLE.npz
+usage: particle_table.py SIM.edm4hep.root [...] -o TABLE.npz [--encodings-from OTHER.edm4hep.root]
+
+--encodings-from takes the cell-ID encodings from another file of the same configuration: needed for a file that
+was not closed (a job that was stopped), which ROOT recovers without its metadata.
 
 Several input files are joined into one table (same configuration). The table is described in
 python/solid_ana/table.py; scripts/analysis/acceptance.py reads it. Needs uproot, awkward, numpy.
@@ -13,17 +16,22 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "python"))
 
-from solid_ana.table import build_table, concat_tables, save_table  # noqa: E402
+from solid_ana.table import build_table, concat_tables, read_encodings, save_table  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="+")
     ap.add_argument("-o", "--output", required=True)
+    ap.add_argument("--encodings-from")
     a = ap.parse_args()
+    enc = None
+    if a.encodings_from:
+        import uproot
+        enc = read_encodings(uproot.open(a.encodings_from))
     tables, infos = [], []
     for f in a.files:
-        t, info = build_table(f)
+        t, info = build_table(f, encodings=enc)
         tables.append(t)
         infos.append(info)
         print("%s: %d events, %d generated particles" % (f, info["events"], info["rows"]))

@@ -6,6 +6,7 @@ usage:
     acceptance.py TABLE.npz [...] --config full|lite [-o MAPS.npz] [--plot FIG.png] [--gemc REF.root]
                   [--fa-segments none|4x24|C1,C2,..:WIDTH] [--la-segments ...]
                   [--theta 6:28:1] [--p 0.5:8:0.5] [--gem-min-fa 4] [--gem-min-la 3] [--ec-min 0.05] [--spd]
+                  [--ec-r-fa MIN:MAX] [--ec-r-la MIN:MAX]
                   [--pdg ID] [--title TEXT]
 
 A particle counts as detected in the forward (large-angle) arm when it left hits in at least --gem-min-fa
@@ -16,6 +17,9 @@ A particle counts as detected in the forward (large-angle) arm when it left hits
   --fa-segments   azimuthal segments of the forward arm, applied as a selection on the stored detector elements:
                   none (default), 4x24 (four 24-deg segments at 42, 138, 222, 318 deg), or centres and width in deg
   --la-segments   the same for the large-angle arm
+  --ec-r-fa, --ec-r-la   keep particles that reach the calorimeter front between these radii (cm). The position is
+                  the particle's hit in the detector just in front: the scintillator pads (forward), the last
+                  large-angle GEM plane. GEMC's maps of 2017 were made with 105:220 and 83:127
   --gemc REF.root acceptance file of solid_gemc/analysis/acceptance (histograms acceptance_ThetaP_forwardangle and
                   acceptance_ThetaP_largeangle); it is averaged over the bins used here and compared
   --plot          maps as a figure; with --gemc also the reference and the difference
@@ -111,7 +115,7 @@ def plot(path, title, theta_edges, p_edges, maps, ref):
             ax.set_facecolor(SURFACE)
             diff = what == "difference"
             im = ax.pcolormesh(theta_edges, p_edges, np.ma.masked_invalid(m.T), cmap=div if diff else seq,
-                               vmin=-0.5 if diff else 0.0, vmax=0.5 if diff else 1.0, shading="flat")
+                               vmin=-0.5 if diff else 0.0, vmax=0.5 if diff else 1.0, shading="flat", rasterized=True)
             if diff:
                 im_d = im
             else:
@@ -152,6 +156,8 @@ def main():
     ap.add_argument("--gem-min-la", type=int, default=3)
     ap.add_argument("--ec-min", type=float, default=0.05)
     ap.add_argument("--spd", action="store_true")
+    ap.add_argument("--ec-r-fa")
+    ap.add_argument("--ec-r-la")
     ap.add_argument("--pdg", type=int)
     ap.add_argument("--gemc")
     ap.add_argument("--plot")
@@ -164,6 +170,10 @@ def main():
     te, pe = edges(a.theta), edges(a.p)
     fa, la = arms(a.config, ec_min=a.ec_min, spd=a.spd)
     fa.gem_min, la.gem_min = a.gem_min_fa, a.gem_min_la
+    if a.ec_r_fa:
+        fa.ec_r = tuple(float(v) for v in a.ec_r_fa.split(":"))
+    if a.ec_r_la:
+        la.ec_r = tuple(float(v) for v in a.ec_r_la.split(":"))
     sel = np.ones(len(t["pdg"]), bool) if a.pdg is None else (t["pdg"] == a.pdg)
     dfa = fa.detected(t, segments(a.fa_segments))
     dla = la.detected(t, segments(a.la_segments))

@@ -66,6 +66,34 @@ and negative particles in opposite directions on their way to the detectors.
 This selection is exact as long as the removed elements were not needed for the particle to reach the kept ones.
 The segmented geometry (`solid_SIDIS_He3_lite.xml`) exists to check that.
 
+## Check against GEMC: electrons in the full SoLID
+
+33 486 electrons, flat in 0.5–8 GeV and 6°–28° and along the 40 cm ³He cell, through `solid_SIDIS_He3` with all
+materials and the v4c field map, against GEMC's map of 2017 (`solid_gemc/analysis/acceptance/result_SIDIS_He3/201701`:
+10⁷ electrons, vacuum-and-absorber geometry, field CLEOv8, particles counted at virtual planes in front of the
+calorimeters within 105–220 cm and 83–127 cm). With the same radii (`--ec-r-fa 105:220 --ec-r-la 83:127`):
+
+| | forward arm | large-angle arm |
+|---|---|---|
+| edges at half of the plateau, this simulation | 8.2° and 15.2° | 16.8° and 24.9° |
+| the same, GEMC | 8.2° and 15.1° | 16.7° and 24.7° |
+| mean difference where both are above 50 % | −1.8 % | 0.0 % |
+| scatter of the difference per bin (1° × 0.5 GeV, about 100 electrons) | 5.6 % | 5.3 % |
+
+The edges agree within 0.2° and the plateau within 2 %; the scatter is the statistical error of this sample. The
+forward arm loses about 2 % to the material that GEMC's simple geometry does not have.
+
+![electron acceptance against GEMC](images/acceptance_electron_SIDIS_He3_vs_gemc.svg)
+
+Two things to know when comparing:
+
+- **Where the radius is taken matters.** A cut on the calorimeter cell with most energy instead of on the position
+  at the front moves the large-angle window down by 1.2°, because the shower maximum lies deeper and, for an
+  inclined track, further out.
+- **The calorimeters are larger than those radii.** Without the cut, with every module of the present layout, the
+  arms span 7.3°–15.4° and 15.5°–25.6°. How much of the edge modules is usable is a question for the shower
+  containment, not for the acceptance.
+
 ## Trapped particles
 
 A low-energy electron born in a vacuum volume inside the solenoid field can be trapped between two regions of
