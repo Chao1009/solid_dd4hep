@@ -43,6 +43,13 @@
    "nodes": 4598,
    "segments": 72
   },
+  "solid_SIDIS_He3_lite": {
+   "drawn": 1600,
+   "geometry_hash": "41b96667a21f3aa44471dfaaf8092ab39dff6817102a7ebe482b2204a47f20e5",
+   "meshes": 60,
+   "nodes": 1638,
+   "segments": 72
+  },
   "solid_SIDIS_NH3": {
    "drawn": 4537,
    "geometry_hash": "eb05754d8df9e0cee4a08e67f31245c421a3c285407d13287ec0163f9b7c7f06",

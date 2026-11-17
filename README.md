@@ -54,6 +54,7 @@ computed in this repository from the magnet geometry.
 | topic | where |
 |---|---|
 | Design and conventions | [docs/design.md](docs/design.md) |
+| SoLID-Lite options and the tool that writes them | [docs/lite_options.md](docs/lite_options.md) |
 | Comparison with solid_gemc and the reference documents | [docs/geometry_comparison.md](docs/geometry_comparison.md) |
 | Drawings: overviews, sections, cutaways, field on the geometry | [docs/visualization.md](docs/visualization.md) |
 | Event displays and animations | [docs/event_display.md](docs/event_display.md) |
@@ -73,6 +74,7 @@ computed in this repository from the magnet geometry.
 | `solid_DDVCS.xml` | J/psi + DDVCS forward muon detector | v4c / v4c 2D map | solid_JPsi_DDVCS_LH2_moved_full | [overview](docs/images/overview_solid_DDVCS.svg), [field](docs/images/field_yz_solid_DDVCS.svg) |
 | `solid_JPsi_lite.xml` | **SoLID-Lite** J/psi (stage 1) | CLEO-II iron as built / CLEOv10 | solid_JPsi_LH2_lite_full | [overview](docs/images/overview_solid_JPsi_lite.svg), [field](docs/images/field_yz_solid_JPsi_lite.svg) |
 | `solid_DDVCS_lite.xml` | **SoLID-Lite** DDVCS | CLEO-II iron as built / CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full | [overview](docs/images/overview_solid_DDVCS_lite.svg), [field](docs/images/field_yz_solid_DDVCS_lite.svg) |
+| `solid_SIDIS_He3_lite.xml` | **SoLID-Lite** SIDIS, polarized 3He (stage 2, provisional; [options](docs/lite_options.md)) | CLEO-II iron with front piece and endcap / stage-2 2D map | none | [overview](docs/images/overview_solid_SIDIS_He3_lite.svg), [field](docs/images/field_yz_solid_SIDIS_He3_lite.svg) |
 | `solid_beamtest.xml` | beam-test placeholder (telescope Cherenkov) | none | – | – |
 
 Subsystems: CLEO-II solenoid (yoke, coil, cryostat), targets and beamlines, PVDIS baffles, GEM trackers, light-gas and

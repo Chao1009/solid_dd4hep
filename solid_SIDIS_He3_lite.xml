@@ -1,0 +1,71 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<lccdd>
+  <info name="solid_SIDIS_He3_lite" title="SoLID-Lite SIDIS, polarized 3He target (stage 2: CLEO-II iron with front piece and endcap; PROVISIONAL)"
+        author="SoLID collaboration"
+        url="https://github.com/JeffersonLab/solid_dd4hep"
+        status="development"
+        version="v0.3 2026-11">
+    <comment>SoLID-Lite option after the High-Lumi workshop of October 2026: large angle full, forward angle in 4 segments of 24 deg, one CO2 Cherenkov, scintillator pads instead of the MRPC. Written by bin/solid_lite_config; options and what is provisional: docs/lite_options.md</comment>
+  </info>
+
+  <!-- Standard environmental conditions: 20 degC, 1 atm -->
+  <std_conditions type="NTP"/>
+
+  <define>
+    <include ref="${DD4hepINSTALL}/DDDetectors/compact/detector_types.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/definitions.xml"/>
+    <!-- ======================= configuration constants ======================= -->
+    <constant name="SoLID_Config" value="13"/>
+    <constant name="TargetCenter_z" value="-350*cm"/>  <!-- center of the 40 cm 3He cell -->
+    <!-- ======================= forward-angle coverage ======================= -->
+    <!-- 4 segments of 24 deg. For full azimuth (segments applied in the analysis): solid_lite_config, fa = full -->
+    <include ref="${DETECTOR_PATH}/compact/configs/lite_FA_4seg24.xml"/>
+  </define>
+
+  <includes>
+    <gdmlFile ref="${DD4hepINSTALL}/DDDetectors/compact/elements.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/materials.xml"/>
+    <file ref="${DETECTOR_PATH}/compact/optics.xml"/>
+  </includes>
+
+  <limits>
+    <limitset name="world_limits"/>
+    <limitset name="beamline_limits">
+      <limit name="step_length_max" particles="*" value="1.0" unit="mm"/>
+      <limit name="track_length_max" particles="*" value="1.0" unit="mm"/>
+      <limit name="time_max" particles="*" value="0.1" unit="ns"/>
+      <limit name="ekin_min" particles="*" value="0.001" unit="MeV"/>
+      <limit name="range_min" particles="*" value="0.1" unit="mm"/>
+    </limitset>
+    <limitset name="cal_limits">
+      <limit name="step_length_max" particles="*" value="5.0" unit="mm"/>
+    </limitset>
+  </limits>
+
+  <regions>
+    <region name="world_region" eunit="MeV" lunit="mm" cut="0.001" threshold="0.001">
+      <limitsetref name="world_limits"/>
+    </region>
+  </regions>
+
+  <display>
+    <include ref="${DETECTOR_PATH}/compact/colors.xml"/>
+    <include ref="${DETECTOR_PATH}/compact/display.xml"/>
+  </display>
+
+  <!-- ======================= magnetic field ======================= -->
+  <include ref="${DETECTOR_PATH}/compact/fields/field_SoLIDlite_stage2_2D.xml"/>
+
+  <!-- ======================= detectors ======================= -->
+  <!-- written by bin/solid_lite_config: experiment = SIDIS_He3, iron = stage2, fa = 4seg24, la = full, mrpc = off -->
+  <include ref="${DETECTOR_PATH}/compact/magnet/solenoid_lite_sidis.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/tracking/gem_LA_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/tracking/gem_FA_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/cherenkov/cherenkov_lite.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_SIDIS_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/ecal/ec_lite_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_LA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/timing/spd_FA.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/target/target_He3.xml"/>
+  <include ref="${DETECTOR_PATH}/compact/beamline/beamline_SIDIS_He3.xml"/>
+</lccdd>

@@ -37,6 +37,11 @@ CONFIG_GCARD = {
     'solid_DDVCS_lite': 'solid_JPsi_DDVCS_LH2_lite_full.gcard',
 }
 
+# configurations that have no GEMC counterpart
+NO_GEMC = {
+    'solid_SIDIS_He3_lite': 'there is no GEMC set-up of SoLID-Lite SIDIS (stage-2 iron)',
+}
+
 # (dd4hep DetElement name, regex on GEMC detector-file basename, regex on GEMC volume name or None)
 DETECTOR_MAP = [
     ('MagnetYoke', r'^solid_solenoid$', None),
@@ -222,6 +227,14 @@ def main():
     ap.add_argument('--json', default=None)
     a = ap.parse_args()
 
+    if a.config in NO_GEMC:
+        # nothing to compare with: say so, also in the report file, and succeed
+        text = f'{a.config}: {NO_GEMC[a.config]}; nothing to compare.'
+        print(text)
+        if a.md:
+            with open(a.md, 'w') as f:
+                f.write(f'# {a.config} vs GEMC\n\n{text}\n')
+        return 0
     gcard = CONFIG_GCARD.get(a.config)
     if not gcard:
         sys.exit(f'no GEMC gcard known for {a.config}')

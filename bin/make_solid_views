@@ -103,6 +103,7 @@ DISPLAY_NAMES = {
     'solid_DDVCS': 'SoLID J/ψ and DDVCS (forward muon detector)',
     'solid_JPsi_lite': 'SoLID-Lite J/ψ',
     'solid_DDVCS_lite': 'SoLID-Lite DDVCS',
+    'solid_SIDIS_He3_lite': 'SoLID-Lite SIDIS, polarized ³He target',
 }
 SUBTITLE = '{config}.xml · DD4hep geometry, half cut away at x = 0 to show the interior'
 

@@ -44,6 +44,10 @@ def main():
     print(f'loaded {a.compact} in {t1 - t0:.1f} s: {len(dets)} top-level detectors')
     for name, did in dets:
         print(f'  {did:4d}  {name}')
+    if not dets:
+        # an XML error that DD4hep reports without raising leaves an empty world: that is a failed load
+        print('LOAD FAILED: no detector was built (see the messages above)')
+        return 2
 
     mgr = desc.manager()
     mgr.SetVerboseLevel(0)

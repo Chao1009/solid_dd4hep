@@ -18,6 +18,8 @@
   (gem_SIDIS_annular.xml) for the exact GEMC tube segments.
   Sector s (= readout field module = GEMC sector) is centred at phi = 96 + 12(s-1) deg (+ phi_offset of the layer).
   Optional per-layer/per-detector `sectors="..."` list (e.g. NH3 sheet-of-flame masking) keeps the ids unchanged.
+  The detector-wide list is the string constant GEMLA_Sectors (default "1-30"); define it in the top-level <define>
+  BEFORE this file is included to build a segmented large-angle tracker.
 
   ACTS / EICrecon: the ACTS legacy DD4hep conversion translates endcaps only inside a DD4hep_SubdetectorAssembly
   ("compound") holding one negative and one positive endcap, classified by the sign of the endcap placement z.
@@ -44,6 +46,7 @@
 <lccdd>
   <define>
     <constant name="GEMLA_nsectors"      value="30"/>
+    <constant name="GEMLA_Sectors"       value="1-30" type="string"/>   <!-- sectors built; see the header -->
     <constant name="GEMLA_phi_sector1"   value="96*deg"/>   <!-- centre of GEMC sector 1; sector s at 96 + 12(s-1) deg -->
     <constant name="GEMLA_strip_sigma"   value="70*um"/>    <!-- single-view resolution (WP p26) -->
     <constant name="GEMLA_stereo_angle"  value="12*deg"/>   <!-- U/V stereo angle (preCDR p83) -->
@@ -121,7 +124,7 @@
     <detector id="GEMLA_ID" name="GEMTrackerLA" type="SoLID_GEMTracker" readout="GEMTrackerLAHits" vis="InvisibleWithDaughters">
       <type_flags type="DetType_TRACKER + DetType_ENDCAP + DetType_GASEOUS"/>
       <acts side="negative" z_offset="1*um"/>   <!-- ACTS endcap classification: placement z sign -->
-      <module_layout shape="trapezoid" nsectors="GEMLA_nsectors" phi_sector1="GEMLA_phi_sector1"
+      <module_layout shape="trapezoid" nsectors="GEMLA_nsectors" phi_sector1="GEMLA_phi_sector1" sectors="GEMLA_Sectors"
                      module_vis="GEMLA_ModuleVis" layer_vis="InvisibleWithDaughters"/>
       <!-- 25-layer module stack, upstream (target side) -> downstream; slice k = GEMC slice k (16.005 mm) -->
       <slice name="window_up"       material="SoLID_GEM_Aluminum" thickness="0.050*mm"/>  <!-- 1: entrance window (G4_Al) -->

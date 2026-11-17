@@ -134,6 +134,17 @@ if(BUILD_TESTING)
     set_tests_properties(load_${cfg_name} PROPERTIES TIMEOUT 1800 LABELS geometry)
   endforeach()
 
+  # SoLID-Lite options: bin/solid_lite_config writes the committed file, every option loads without overlap, the
+  # azimuthal segments reach every forward detector
+  add_test(NAME lite_config
+    COMMAND ${CMAKE_COMMAND} -E env
+            DETECTOR_PATH=${PROJECT_SOURCE_DIR}
+            LD_LIBRARY_PATH=${PROJECT_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}
+            PYTHONDONTWRITEBYTECODE=1
+            python3 ${PROJECT_SOURCE_DIR}/scripts/geometry/test_lite_config.py
+  )
+  set_tests_properties(lite_config PROPERTIES TIMEOUT 1800 LABELS geometry)
+
   # scene producer: a small geometry with a doubly placed, a reflected and a parameterised volume
   add_test(NAME scene_dump
     COMMAND ${CMAKE_COMMAND} -E env
