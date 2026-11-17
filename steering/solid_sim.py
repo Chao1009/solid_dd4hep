@@ -24,6 +24,11 @@ Environment switches (all optional):
     SOLID_MAX_TIME=NS   stop charged particles still being tracked after NS nanoseconds (default 1e5; 0 = no
                         limit): the SoLIDTrackTimeLimit stepping action. An electron trapped by the field in a
                         vacuum volume would otherwise never end its event.
+    SOLID_FAST=0|1      acceptance mode (default 0): the SoLIDShowerStop stacking action drops the secondaries
+                        born in a calorimeter with less than SOLID_FAST_MIN_EKIN MeV (default 50), so only the
+                        energetic core of a shower develops. Several times faster for electrons; the ionization
+                        of that core still shows that the particle reached the calorimeter. NOT for anything
+                        that needs the calorimeter response (docs/analysis.md).
 Command-line options of ddsim override everything set here.
 """
 import os
@@ -113,6 +118,13 @@ if _scene:
 _max_time = float(os.environ.get('SOLID_MAX_TIME', '1e5'))
 if _max_time > 0:
     SIM.action.step = {'name': 'SoLIDTrackTimeLimit/TrackTimeLimit', 'parameter': {'MaxTime': _max_time}}
+
+# --------------------------------------------------------------------------------------
+# acceptance mode: no showers in the calorimeters
+if os.environ.get('SOLID_FAST', '0') not in ('', '0'):
+    SIM.action.stack = {'name': 'SoLIDShowerStop/ShowerStop',
+                        'parameter': {'Volumes': ['ECShower_', 'ECPreShower_'],
+                                      'MinEkin': float(os.environ.get('SOLID_FAST_MIN_EKIN', '50'))}}
 
 # --------------------------------------------------------------------------------------
 # trajectories for event displays: the SoLIDTrajectoryRecorder stepping action (libsolid_ddg4). It does not

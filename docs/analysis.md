@@ -45,14 +45,15 @@ and visible energy in the arm's calorimeter; a scintillator pad can be asked for
 
 | arm | GEM planes | default requirement |
 |---|---|---|
-| forward, SoLID-Lite | 5 forward planes | 4 planes, more than 50 MeV visible in the forward shower modules |
-| large angle, SoLID-Lite | 4 large-angle planes | 3 planes, more than 50 MeV visible in the large-angle shower modules |
+| forward, SoLID-Lite | 5 forward planes | 4 planes, more than 5 MeV visible in the forward shower modules |
+| large angle, SoLID-Lite | 4 large-angle planes | 3 planes, more than 5 MeV visible in the large-angle shower modules |
 | forward, full SoLID | planes 2–6 of the six | the same |
 | large angle, full SoLID | planes 1–4 | the same |
 
-The shashlik modules show about 20 % of an electron's energy, so 50 MeV visible is about 250 MeV. These are loose
-requirements: they give acceptance, not efficiency. No Cherenkov is asked for, since optical photons are off in
-these runs.
+The shashlik modules show about 20 % of an electron's energy; 5 MeV visible is what a minimum-ionizing particle
+leaves in 17 of the 194 layers. The requirement says that the particle reached the calorimeter, for full showers
+and for the fast mode below alike: it gives acceptance, not efficiency. No Cherenkov is asked for, since optical
+photons are off in these runs.
 
 ## Azimuthal segments as a selection
 
@@ -77,8 +78,8 @@ calorimeters within 105–220 cm and 83–127 cm). With the same radii (`--ec-r-
 |---|---|---|
 | edges at half of the plateau, this simulation | 8.2° and 15.2° | 16.8° and 24.9° |
 | the same, GEMC | 8.2° and 15.1° | 16.7° and 24.7° |
-| mean difference where both are above 50 % | −1.8 % | 0.0 % |
-| scatter of the difference per bin (1° × 0.5 GeV, about 100 electrons) | 5.6 % | 5.3 % |
+| mean difference where both are above 50 % | −1.8 % | +0.1 % |
+| scatter of the difference per bin (1° × 0.5 GeV, about 100 electrons) | 5.9 % | 5.2 % |
 
 The edges agree within 0.2° and the plateau within 2 %; the scatter is the statistical error of this sample. The
 forward arm loses about 2 % to the material that GEMC's simple geometry does not have.
@@ -91,8 +92,30 @@ Two things to know when comparing:
   at the front moves the large-angle window down by 1.2°, because the shower maximum lies deeper and, for an
   inclined track, further out.
 - **The calorimeters are larger than those radii.** Without the cut, with every module of the present layout, the
-  arms span 7.3°–15.4° and 15.5°–25.6°. How much of the edge modules is usable is a question for the shower
+  arms span 7.2°–15.8° and 15.2°–25.9°. How much of the edge modules is usable is a question for the shower
   containment, not for the acceptance.
+
+## Fast mode for acceptance runs
+
+A shower in the shashlik modules takes most of the simulation time of an electron, nearly all of it in particles
+of a few MeV crossing thin layers. An acceptance map only asks whether the particle arrived. With `SOLID_FAST=1`
+the `SoLIDShowerStop` stacking action drops the secondaries that are born inside a calorimeter with less than
+50 MeV (`SOLID_FAST_MIN_EKIN`); the energetic core of the shower still develops and marks the calorimeter.
+Everything in front of the calorimeters is simulated in full.
+
+| 150 electrons, 0.5–8 GeV, full SoLID | time per event | file size per event | detected forward / large angle |
+|---|---|---|---|
+| full showers | 0.34 s | 100 kB | 44 / 50 |
+| production cut raised from 0.7 to 50 mm | 0.30 s | 90 kB | – |
+| fast mode, secondaries below 20 MeV dropped | 0.13 s | 34 kB | 41 / 49 |
+| fast mode, below 50 MeV (default) | 0.11 s | 27 kB | 43 / 50 |
+| fast mode, below 100 MeV | 0.10 s | 24 kB | 39 / 44 |
+| every secondary dropped | 0.08 s | 19 kB | 19 / 22 |
+
+Two full-shower runs of the same electrons differ by up to three detected particles in an arm (electrons at the
+edges), so the default reproduces the full result within that scatter. Dropping every secondary does not work:
+the electron itself often ends in the lead radiator of the preshower. A fast-mode file has **no calorimeter
+response**: no energy, no E/p, no trigger thresholds. The log says so in its last lines.
 
 ## Trapped particles
 

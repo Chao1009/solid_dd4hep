@@ -100,7 +100,7 @@ class Arm:
         return ok
 
 
-def arms(config, ec_min=0.05, spd=False):
+def arms(config, ec_min=0.005, spd=False):
     """Forward and large-angle arms of a configuration family: 'lite' (separate GEM trackers) or 'full'."""
     if config == "lite":
         fa = Arm("forward", "GEMTrackerFAHits", (1, 2, 3, 4, 5), 4, "FAECShowerHits", ec_min, spd="FASPDHits" if spd else "",

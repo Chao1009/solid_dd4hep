@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-# solid_xl: the EIC software image (eic_xl) + ffmpeg, gmsh, a working lAger + the SoLID geometry (solid_dd4hep),
+# solid_xl: the EIC software image (eic_xl) + ffmpeg, gmsh, a working lAger, SIDIS-RC EvGen + the SoLID geometry (solid_dd4hep),
 # optional Gaudi/k4FWCore.
 #
 #   docker build -f containers/Dockerfile -t solid_xl:dev .                       # from the repository root
@@ -64,6 +64,20 @@ RUN cd /tmp/lager && \
     mkdir -p /opt/lager/share/lager && cp -r src/examples src/COPYING src/README.md lager.patch /opt/lager/share/lager/ && \
     cd / && rm -rf /tmp/lager && \
     /opt/lager/bin/lager --help > /dev/null && echo "lager: starts"
+
+# SIDIS-RC EvGen (D. Byer et al., Comput. Phys. Commun. 287 (2023) 108702; GPL-3.0): semi-inclusive DIS with
+# lowest-order QED radiative corrections, the generator of the SoLID SIDIS studies (docs/generators.md). Built
+# from a fixed commit with its submodules (mstwpdf, cubature-cpp, bubble) into /opt/sidis; it needs ROOT and GSL,
+# both in eic_xl, and no patch. profile.d/z20_solid.sh puts /opt/sidis/bin on PATH.
+ARG SIDIS_COMMIT=8f9881ae958027c01daf3aa588caffcc47f6c11a
+RUN git clone https://github.com/duanebyer/sidis.git /tmp/sidis && cd /tmp/sidis && \
+    git checkout -q ${SIDIS_COMMIT} && git submodule update --init --recursive && \
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/sidis \
+          -DSidis_BUILD_TESTS=OFF -DSidis_BUILD_EXAMPLES=OFF -DSidis_BUILD_DOXYGEN=OFF && \
+    cmake --build build -j"$(nproc)" && cmake --install build && \
+    cp LICENSE README.md /opt/sidis/share/sidis/ && \
+    cd / && rm -rf /tmp/sidis && \
+    /opt/sidis/bin/sidisgen --help > /dev/null && echo "sidisgen: starts"
 
 # SoLID geometry, built with the image's own toolchain
 COPY . /opt/src/solid_dd4hep

@@ -15,6 +15,8 @@ usage (inside eic-shell / solid-shell; needs DETECTOR_PATH and the plugins): tes
   5. segments: a particle passes the 4 x 24 deg selection exactly when its GEM hits and its calorimeter cell lie
      inside a segment; about 27 % pass; the full-azimuth selection keeps every detected particle
   6. acceptance.py: maps and a figure are written
+  8. fast mode (SOLID_FAST=1): the 40 forward electrons again, without low-energy shower particles; as many are
+     detected as with full showers, give or take the electrons at the edges
   7. track time limit (SOLID_MAX_TIME): with a limit of 5 ns a 4 GeV electron is stopped 1.5 m from the target
      and leaves nothing in the forward calorimeter; the default limit stopped nothing in step 2
 
@@ -171,6 +173,20 @@ def main():
     t5, _ = build_table(os.path.join(out, "limit.edm4hep.root")) if rc == 0 else ({}, None)
     check(rc == 0 and "stopped e- with" in log and "after 5" in log and float(t5["FAECShowerHits_etot"][0]) == 0.0,
           "with SOLID_MAX_TIME=5 the electron is stopped after 5 ns and the forward calorimeter stays empty")
+
+    # 8. fast mode
+    cmd = ["ddsim", "--steeringFile", os.path.join(path, "steering", "solid_sim.py"), "--compactFile",
+           os.path.join(path, "solid_JPsi_lite.xml"), "--inputFiles", files[0], "-N", str(n), "--random.seed", "7",
+           "--outputFile", "fast.edm4hep.root"]
+    rc = run(cmd, os.path.join(out, "fast.log"), env=dict(env, SOLID_FAST="1"), cwd=out)
+    log = open(os.path.join(out, "fast.log")).read()
+    tf, _ = build_table(os.path.join(out, "fast.edm4hep.root")) if rc == 0 else ({}, None)
+    nfast = int(fa.detected(tf).sum()) if rc == 0 else -1
+    size = os.path.getsize(os.path.join(out, "fast.edm4hep.root")) if rc == 0 else 0
+    check(rc == 0 and "SoLIDShowerStop" in log and "were dropped" in log and abs(nfast - int(dfa[fwd].sum())) <= 4
+          and float(np.median(tf["FAECShowerHits_e"][fa.detected(tf)])) < 0.5 * r_fa * 4.0,
+          "fast mode: %d of %d forward electrons detected (%d with full showers); the file is %.1f MB"
+          % (nfast, n, dfa[fwd].sum(), size / 1e6))
 
     print("%d check%s failed" % (len(FAILED), "" if len(FAILED) == 1 else "s") if FAILED else "all checks passed")
     if not a.keep and not a.outdir and not FAILED:
