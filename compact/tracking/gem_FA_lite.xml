@@ -3,8 +3,9 @@
   SoLID-Lite forward-angle GEM tracker: 5 planes x 30 sectors at z = 0 ... 180 cm, theta 6-14 deg from z = -350 cm.
   Rin = floor((350+z) tan 6deg), Rout = ceil((350+z) tan 14deg) (gem_separated/readme.md).
   layer n = 1..5 = GEMC ids n (GEMC volume names solid_SIDIS_FA_gem_2..6).
-  GEMC lite GEMs are full 2pi; a reduced FA (e.g. '4seg24degFA') = a copy of this file with sectors="..."
-  on <module_layout> (e.g. sectors="4,5,11,12,19,20,26,27"), ids unchanged.
+  GEMC lite GEMs are full 2pi (default GEMFA_Sectors = "1-30"). A reduced FA (e.g. '4seg24degFA'): define the string
+  constant GEMFA_Sectors in the top-level <define> BEFORE this file is included, e.g. "4,5,11,12,19,20,26,27"
+  (compact/configs/lite_FA_4seg24.xml does it for all forward detectors together); ids unchanged.
   Reference: solid_gemc geometry/gem_separated/solid_SIDIS_FA_gem (2026-10-25), used by script/solid_JPsi_{,DDVCS_}LH2_lite_full.gcard.
   DetElement GEMTrackerFA (GEMFA_ID), readout GEMTrackerFAHits, plugin SoLID_GEMTracker (src/GEMTracker_geo.cpp).
   Requires from the top level: nothing (hall-frame z).
@@ -45,6 +46,7 @@
 <lccdd>
   <define>
     <constant name="GEMFA_nsectors"      value="30"/>
+    <constant name="GEMFA_Sectors"       value="1-30" type="string"/>   <!-- sectors built; see the header -->
     <constant name="GEMFA_phi_sector1"   value="96*deg"/>   <!-- centre of GEMC sector 1; sector s at 96 + 12(s-1) deg -->
     <constant name="GEMFA_strip_sigma"   value="70*um"/>    <!-- single-view resolution (WP p26) -->
     <constant name="GEMFA_stereo_angle"  value="12*deg"/>   <!-- U/V stereo angle (preCDR p83) -->
@@ -119,7 +121,7 @@
     <detector id="GEMFA_ID" name="GEMTrackerFA" type="SoLID_GEMTracker" readout="GEMTrackerFAHits" vis="InvisibleWithDaughters">
       <type_flags type="DetType_TRACKER + DetType_ENDCAP + DetType_GASEOUS"/>
       <acts side="positive" z_offset="1*um"/>   <!-- ACTS endcap classification: placement z sign -->
-      <module_layout shape="trapezoid" nsectors="GEMFA_nsectors" phi_sector1="GEMFA_phi_sector1"
+      <module_layout shape="trapezoid" nsectors="GEMFA_nsectors" phi_sector1="GEMFA_phi_sector1" sectors="GEMFA_Sectors"
                      module_vis="GEMFA_ModuleVis" layer_vis="InvisibleWithDaughters"/>
       <!-- 25-layer module stack, upstream (target side) -> downstream; slice k = GEMC slice k (16.005 mm) -->
       <slice name="window_up"       material="SoLID_GEM_Aluminum" thickness="0.050*mm"/>  <!-- 1: entrance window (G4_Al) -->

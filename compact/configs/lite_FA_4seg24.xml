@@ -1,0 +1,21 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite forward-angle coverage "4seg24degFA" (High-Lumi workshop, October 2026): every forward-angle detector is
+  built in four azimuthal segments of 24 deg, 4 x 24 / 360 = 0.27 of the full ring.
+  The segments are those of the CO2 Cherenkov in GEMC (hgc_moved_ext, variation 4seg2sec): pairs of 12-deg sectors
+  {4,5}, {11,12}, {19,20}, {26,27}, centred at phi = 138, 222, 318 and 42 deg. They come in two opposite pairs
+  (42/222 and 138/318 deg), which the SIDIS asymmetries need; the talks draw them at 0/90/180/270 deg, which whole
+  12-deg sectors cannot give.
+
+  Use: include this file INSIDE the top-level <define>, before any detector fragment is included. The plugins take
+  the first definition of these constants, so the defaults in the fragments (full ring) no longer apply.
+  Without this file the forward detectors are full rings, except the Cherenkov: set LiteCherenkov_Sectors to "all"
+  for a full-azimuth detector (compact/configs/lite_FA_full.xml).
+-->
+<define>
+  <constant name="GEMFA_Sectors"         value="4,5,11,12,19,20,26,27" type="string"/>  <!-- forward GEM planes -->
+  <constant name="LiteCherenkov_Sectors" value="4 5 11 12 19 20 26 27" type="string"/>  <!-- CO2 Cherenkov (its default) -->
+  <constant name="FAEC_PhiMask_enable"   value="1"/>   <!-- calorimeter modules with their centre inside a segment -->
+  <constant name="FASPD_UsePhiMask"      value="1"/>   <!-- scintillator pads -->
+  <constant name="FAMRPC_UsePhiMask"     value="1"/>   <!-- MRPC, where a configuration includes it -->
+</define>

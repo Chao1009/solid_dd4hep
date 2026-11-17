@@ -79,6 +79,15 @@ std::string attrStr(xml_comp_t x, const char* name, const std::string& def) {
   return x.hasAttr(tag) ? x.attr<std::string>(tag) : def;
 }
 
+// A sector list given as the name of a string <constant> (e.g. sectors="GEMFA_Sectors"): the constant's value.
+// Detector::constants() keeps the FIRST definition, so a list defined in the top-level <define> before the fragment
+// is included replaces the fragment default. Anything else ("1-30", "4,5,11") is returned unchanged.
+std::string sectorList(Detector& desc, const std::string& text) {
+  if (text.empty() || desc.constants().find(text) == desc.constants().end())
+    return text;
+  return desc.constantAsString(text);
+}
+
 void setVis(Detector& desc, Volume vol, const std::string& vis) {
   if (vis.empty())
     vol.setVisAttributes(desc.invisible());
@@ -126,7 +135,7 @@ static Ref_t create_detector(Detector& desc, xml_h e, SensitiveDetector sens) {
     shape = attrStr(x_lay, "shape", shape);
     nsectors = getAttrOrDefault<int>(x_lay, _Unicode(nsectors), nsectors);
     phi_sector1 = getAttrOrDefault<double>(x_lay, _Unicode(phi_sector1), phi_sector1);
-    default_sectors = attrStr(x_lay, "sectors", "");
+    default_sectors = sectorList(desc, attrStr(x_lay, "sectors", ""));
     module_vis = attrStr(x_lay, "module_vis", "");
     layer_vis = attrStr(x_lay, "layer_vis", "");
     slice_vis = attrStr(x_lay, "slice_vis", "");
@@ -208,7 +217,7 @@ static Ref_t create_detector(Detector& desc, xml_h e, SensitiveDetector sens) {
     const double rmin = x_layer.rmin();
     const double rmax = x_layer.rmax();
     const double phi_off = getAttrOrDefault<double>(x_layer, _Unicode(phi_offset), 0.);
-    const std::vector<int> sectors = parseIndexList(attrStr(x_layer, "sectors", default_sectors));
+    const std::vector<int> sectors = parseIndexList(sectorList(desc, attrStr(x_layer, "sectors", default_sectors)));
     const std::string layer_name = det_name + "_layer" + std::to_string(l_id);
 
     if (rmin >= rmax || rmin < 0.)

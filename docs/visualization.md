@@ -181,7 +181,7 @@ The figures in `docs/images/overview_<config>.svg` were made in `containers/soli
 the note under the [gallery](#gallery-generated-by-make_solid_views-november-2026-geometry)) with
 
 ```bash
-for c in solid_SIDIS_He3 solid_SIDIS_NH3 solid_PVDIS solid_JPsi solid_DDVCS solid_JPsi_lite solid_DDVCS_lite; do
+for c in solid_SIDIS_He3 solid_SIDIS_NH3 solid_PVDIS solid_JPsi solid_DDVCS solid_JPsi_lite solid_DDVCS_lite solid_SIDIS_He3_lite; do
     make_solid_views -c $c --views overview --formats svg --name '{view}_{config}' -o docs/images
 done
 ```

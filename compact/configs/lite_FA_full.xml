@@ -1,0 +1,10 @@
+<!-- SPDX-License-Identifier: LGPL-3.0-or-later -->
+<!--
+  SoLID-Lite detector types with FULL forward azimuth: the set-up to simulate when the azimuthal segments are
+  applied afterwards as a selection on the hits (docs/lite_options.md). Only the CO2 Cherenkov needs a setting:
+  the other forward detectors are full rings by default.
+  Use: include this file INSIDE the top-level <define>, before any detector fragment is included.
+-->
+<define>
+  <constant name="LiteCherenkov_Sectors" value="all" type="string"/>
+</define>

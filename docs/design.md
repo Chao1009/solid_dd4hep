@@ -62,13 +62,15 @@ containers/                   solid-shell launcher and the solid_xl image recipe
 | `solid_PVDIS.xml` | v4 magnet, PVDIS target, beamline, baffles, PVDIS GEM, PVDIS LGC, PVDIS FAEC | v4c 2D | solid_PVDIS_LD2_moved_full |
 | `solid_JPsi_lite.xml` | lite_common + LH2 15 cm + J/psi beamline | CLEOv10 | solid_JPsi_LH2_lite_full |
 | `solid_DDVCS_lite.xml` | J/psi-lite + muon system | CLEOv10 | solid_JPsi_DDVCS_LH2_lite_full |
+| `solid_SIDIS_He3_lite.xml` | stage-2 magnet, lite GEMs, CO2 Cherenkov, LAEC, FAEC, SPD (forward detectors in 4 x 24 deg), He3 target and beamline; written by `bin/solid_lite_config` | SoLID-Lite stage 2, 2D | none |
 
 * `full_common` = magnet v4 (longer endcap) + cryostat/coil, 6-plane GEM, LGC (SIDIS), HGC, LAEC, FAEC (95-240 cm),
   LA/FA SPD, FA MRPC.
 * `lite_common` = magnet "nomod" (CLEO-II iron as built) + cryostat/coil, LA GEM (4 planes) + FA GEM (5 planes), one
   CO2 Cherenkov (HGC-based tank, sectors 4,5,11,12,19,20,26,27 = "4seg24degFA"), LAEC, FAEC (95-220 cm), SPD, FA MRPC.
-* A provisional `solid_SIDIS_He3_lite.xml` (stage-2 magnet with front piece + endcap without nose) is planned; the
-  iron outline exists only as a 2D POISSON test (Oct 2026) and there is no 3D field map yet.
+* `solid_SIDIS_He3_lite.xml` is provisional (stage-2 magnet with front piece and endcap without nose). The SoLID-Lite
+  choices (iron, forward and large-angle coverage, MRPC) and the tool that writes a top-level file for each are in
+  [lite_options.md](lite_options.md).
 
 Components are swapped by including a different fragment (e.g. `ecal/ec_lite_FA.xml` vs `ecal/ec_SIDIS_FA.xml`).
 A variant that differs only in parameters is either a copy of the fragment with different constants, or is
