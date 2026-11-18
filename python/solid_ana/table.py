@@ -9,6 +9,7 @@ The table is the common input of the acceptance, resolution and rate studies. It
   for every tracker-type collection C (GEM planes, scintillator pads, MRPC), per layer:
       C_hit[row, layer]      True if the particle itself left a hit in that layer
       C_x, C_y, C_z, C_t     position (mm) and time (ns) of its first hit there
+      C_p[row, layer]        its momentum (GeV) at that hit: what is left after the material in front
       C_elem[row, layer]     azimuthal element of that hit: the "module" or "sector" field of the cell ID
       C_ring[row, layer]     the "ring" field, where the read-out has one
   for every calorimeter collection C:
@@ -180,6 +181,8 @@ def _build_range(tree, enc_text, cols, start, stop, path):
             row = np.where(pidx >= 0, row_of[np.clip(pidx + off, 0, len(row_of) - 1)], -1)
             _, t = _flat(tree, "%s/%s.time" % (name, name))
             xyz = [_flat(tree, "%s/%s.position.%s" % (name, name, c))[1] for c in "xyz"]
+            pm = [_flat(tree, "%s/%s.momentum.%s" % (name, name, c))[1] for c in "xyz"]
+            pmag = np.sqrt(pm[0] ** 2 + pm[1] ** 2 + pm[2] ** 2)
             layer = decode(cid, enc, "layer") if "layer" in enc else np.ones(len(cid), np.int64)
             elem_field = next((k for k in ("module", "sector") if k in enc), None)
             elem = decode(cid, enc, elem_field) if elem_field else np.zeros(len(cid), np.int64)
@@ -201,6 +204,9 @@ def _build_range(tree, enc_text, cols, start, stop, path):
             arr = np.full((nrow, nlay), np.nan, np.float32)
             arr[r_, l_] = t[sel]
             out[name + "_t"] = arr
+            arr = np.full((nrow, nlay), np.nan, np.float32)
+            arr[r_, l_] = pmag[sel]
+            out[name + "_p"] = arr
             arr = np.zeros((nrow, nlay), np.int16)
             arr[r_, l_] = elem[sel]
             out[name + "_elem"] = arr

@@ -54,6 +54,7 @@ class Arm:
     ec_total: bool = False           # use the energy of the whole event instead (single-particle samples)
     ec_r: tuple = ()                 # (rmin, rmax) in cm of the particle at the calorimeter front; () = no cut
     front: tuple = ()                # (tracker collection, layer) whose hit gives that position; () = use the cell
+    p_keep: float = 0.0              # at the front hit the particle must still have this fraction of its momentum
     spd: str = ""                    # scintillator collection ("" = not required)
     gem_sector1: float = 96.0        # azimuth (deg) of the centre of GEM sector 1; sectors of gem_dphi follow
     gem_dphi: float = 12.0
@@ -94,6 +95,9 @@ class Arm:
                     x, y = cx, cy
                 r = np.nan_to_num(np.hypot(x, y), nan=-1.0) / 10.0
                 ok &= (r > self.ec_r[0]) & (r < self.ec_r[1])
+        if self.p_keep > 0.0 and self.front and self.front[0] + "_p" in t:
+            pf = t[self.front[0] + "_p"][:, self.front[1]]
+            ok &= np.nan_to_num(pf, nan=0.0) > self.p_keep * t["p"]
         if self.spd:
             if self.spd + "_hit" not in t:
                 return np.zeros(n, bool)
