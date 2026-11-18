@@ -5,13 +5,14 @@
 usage:
     acceptance.py TABLE.npz [...] --config full|lite [-o MAPS.npz] [--plot FIG.png] [--gemc REF.root]
                   [--fa-segments none|4x24|C1,C2,..:WIDTH] [--la-segments ...]
-                  [--theta 6:28:1] [--p 0.5:8:0.5] [--gem-min-fa 4] [--gem-min-la 3] [--ec-min 0.005] [--spd]
+                  [--theta 6:28:1] [--p 0.5:8:0.5] [--gem-min-fa 4] [--gem-min-la 3] [--ec-min 0.005] [--no-spd]
                   [--ec-r-fa MIN:MAX] [--ec-r-la MIN:MAX]
                   [--pdg ID] [--title TEXT]
 
 A particle counts as detected in the forward (large-angle) arm when it left hits in at least --gem-min-fa
-(--gem-min-la) GEM planes of that arm and more than --ec-min GeV of visible energy in that arm's calorimeter;
---spd also asks for a scintillator pad. Tables come from particle_table.py. The default of 5 MeV visible says that
+(--gem-min-la) GEM planes of that arm, a hit of its own in the scintillator pads in front of that arm's
+calorimeter, and more than --ec-min GeV of visible energy in the calorimeter (shower plus preshower). --no-spd
+drops the scintillator requirement. Tables come from particle_table.py. The default of 5 MeV visible says that
 the particle reached the calorimeter; it holds for full showers and for the fast mode (SOLID_FAST=1) alike.
 
   --config        full: one six-plane GEM tracker (planes 2-6 forward, 1-4 large angle); lite: separate trackers
@@ -156,7 +157,7 @@ def main():
     ap.add_argument("--gem-min-fa", type=int, default=4)
     ap.add_argument("--gem-min-la", type=int, default=3)
     ap.add_argument("--ec-min", type=float, default=0.005)
-    ap.add_argument("--spd", action="store_true")
+    ap.add_argument("--no-spd", action="store_true")
     ap.add_argument("--ec-r-fa")
     ap.add_argument("--ec-r-la")
     ap.add_argument("--pdg", type=int)
@@ -169,7 +170,7 @@ def main():
     tabs = [load_table(f)[0] for f in a.tables]
     t = tabs[0] if len(tabs) == 1 else concat_tables(tabs)
     te, pe = edges(a.theta), edges(a.p)
-    fa, la = arms(a.config, ec_min=a.ec_min, spd=a.spd)
+    fa, la = arms(a.config, ec_min=a.ec_min, spd=not a.no_spd)
     fa.gem_min, la.gem_min = a.gem_min_fa, a.gem_min_la
     if a.ec_r_fa:
         fa.ec_r = tuple(float(v) for v in a.ec_r_fa.split(":"))

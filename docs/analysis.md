@@ -40,20 +40,28 @@ hits behind a calorimeter to a particle's row.
 
 ## What counts as detected
 
-`python/solid_ana/accept.py`. A particle is detected in an arm when it left hits in enough GEM planes of the arm
-and visible energy in the arm's calorimeter; a scintillator pad can be asked for as well.
+`python/solid_ana/accept.py`. A particle is detected in an arm when it left
+
+- hits in enough GEM planes of the arm,
+- a hit of its own in the scintillator pads in front of the arm's calorimeter, and
+- visible energy in the calorimeter, shower plus preshower, from itself and its descendants.
 
 | arm | GEM planes | default requirement |
 |---|---|---|
-| forward, SoLID-Lite | 5 forward planes | 4 planes, more than 5 MeV visible in the forward shower modules |
-| large angle, SoLID-Lite | 4 large-angle planes | 3 planes, more than 5 MeV visible in the large-angle shower modules |
+| forward, SoLID-Lite | 5 forward planes | 4 planes, forward pad, more than 5 MeV visible |
+| large angle, SoLID-Lite | 4 large-angle planes | 3 planes, large-angle pad, more than 5 MeV visible |
 | forward, full SoLID | planes 2–6 of the six | the same |
 | large angle, full SoLID | planes 1–4 | the same |
 
-The shashlik modules show about 20 % of an electron's energy; 5 MeV visible is what a minimum-ionizing particle
-leaves in 17 of the 194 layers. The requirement says that the particle reached the calorimeter, for full showers
-and for the fast mode below alike: it gives acceptance, not efficiency. No Cherenkov is asked for, since optical
-photons are off in these runs.
+The pad hit says that the particle itself arrived at the calorimeter front; both electron triggers of the pre-CDR
+ask for the pads as well. The calorimeter energy says that a module is there. The shashlik modules show about
+20 % of an electron's energy; 5 MeV visible is what a minimum-ionizing particle leaves in 17 of the 194 layers, so
+the requirement holds for full showers and for the fast mode below alike. It gives acceptance, not efficiency. No
+Cherenkov is asked for, since optical photons are off in these runs.
+
+Without the pad hit (`--no-spd`) the arms come out wider, because shower debris alone can then mark a
+calorimeter: 7.2°–15.8° and 15.2°–25.9° for electrons in the full SoLID instead of the 7.3°–15.2° and 16.0°–25.8°
+quoted below.
 
 ## Azimuthal segments as a selection
 
@@ -92,30 +100,40 @@ Two things to know when comparing:
   at the front moves the large-angle window down by 1.2°, because the shower maximum lies deeper and, for an
   inclined track, further out.
 - **The calorimeters are larger than those radii.** Without the cut, with every module of the present layout, the
-  arms span 7.2°–15.8° and 15.2°–25.9°. How much of the edge modules is usable is a question for the shower
+  arms span 7.3°–15.2° and 16.0°–25.8°. How much of the edge modules is usable is a question for the shower
   containment, not for the acceptance.
 
 ## Fast mode for acceptance runs
 
 A shower in the shashlik modules takes most of the simulation time of an electron, nearly all of it in particles
 of a few MeV crossing thin layers. An acceptance map only asks whether the particle arrived. With `SOLID_FAST=1`
-the `SoLIDShowerStop` stacking action drops the secondaries that are born inside a calorimeter with less than
-50 MeV (`SOLID_FAST_MIN_EKIN`); the energetic core of the shower still develops and marks the calorimeter.
-Everything in front of the calorimeters is simulated in full.
+the `SoLIDShowerStop` stacking action drops the secondaries that are born inside the shower modules with less than
+20 MeV (`SOLID_FAST_MIN_EKIN`); the energetic core of the shower still develops and marks the calorimeter.
+Everything in front of the shower modules is simulated in full, the preshower with its lead radiator included.
 
-| 150 electrons, 0.5–8 GeV, full SoLID | time per event | file size per event | detected forward / large angle |
-|---|---|---|---|
-| full showers | 0.34 s | 100 kB | 44 / 50 |
-| production cut raised from 0.7 to 50 mm | 0.30 s | 90 kB | – |
-| fast mode, secondaries below 20 MeV dropped | 0.13 s | 34 kB | 41 / 49 |
-| fast mode, below 50 MeV (default) | 0.11 s | 27 kB | 43 / 50 |
-| fast mode, below 100 MeV | 0.10 s | 24 kB | 39 / 44 |
-| every secondary dropped | 0.08 s | 19 kB | 19 / 22 |
+10 000 electrons in the full SoLID in fast mode against the 33 486 with full showers:
 
-Two full-shower runs of the same electrons differ by up to three detected particles in an arm (electrons at the
-edges), so the default reproduces the full result within that scatter. Dropping every secondary does not work:
-the electron itself often ends in the lead radiator of the preshower. A fast-mode file has **no calorimeter
-response**: no energy, no E/p, no trigger thresholds. The log says so in its last lines.
+| | fast mode | full showers |
+|---|---|---|
+| time per electron (one core) | 0.09 s | 0.34 s |
+| file size per electron | 38 kB | 100 kB |
+| edges of the forward arm | 7.3° and 15.3° | 7.3° and 15.2° |
+| edges of the large-angle arm | 16.1° and 25.8° | 16.0° and 25.8° |
+| pass the calorimeter requirement, of those with GEM planes and pad hit, forward | 98.6 ± 0.3 % | 99.5 % |
+| the same, large angle | 98.5 ± 0.2 % | 98.8 % |
+| difference per bin of (θ, p) in units of its error: mean, spread | −0.2 and −0.1, 1.0 | – |
+
+So a fast-mode map is right in shape and up to 1 % low in the forward arm. The particles it misses are
+electrons that leave the lead radiator only as soft photons. What was tried on the way:
+
+- Raising the Geant4 production cut from 0.7 to 50 mm saves 10 % of the time, no more.
+- Dropping every secondary born in a calorimeter loses about 40 % of the electrons: the electron itself often
+  ends in the radiator.
+- Dropping secondaries in the radiator as well, or only those below 50 MeV, leaves 2–3 % of the arriving
+  electrons without a signal, mostly below 1 GeV.
+
+A fast-mode file has **no calorimeter response**: no energy, no E/p, no trigger thresholds. The log says so in its
+last lines.
 
 ## Trapped particles
 

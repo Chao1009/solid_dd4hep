@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
 // SoLIDShowerStop: a DDG4 stacking action for acceptance studies. It drops the low-energy secondaries that are born
-// inside a calorimeter, so that only the energetic core of a shower develops there.
+// inside the shower modules of a calorimeter, so that only the energetic core of a shower develops there.
 //
 // Why: a shower in the shashlik modules (194 layers of lead and scintillator per module) takes most of the
 // simulation time of an electron, nearly all of it in particles of a few MeV, and an acceptance map only asks
-// whether the particle reached the calorimeter. With this action the incoming particle and its secondaries above
-// MinEkin are still tracked and leave their ionization in the scintillator, which is enough to see that the
-// particle arrived; the energy of the dropped secondaries is lost. Everything in front of the calorimeters
-// (target, windows, GEM planes, Cherenkov gas, scintillator pads) is simulated in full.
+// whether the particle reached the calorimeter. With this action the incoming particles and their secondaries
+// above MinEkin are still tracked and leave their ionization in the scintillator; the energy of the dropped
+// secondaries is lost. Everything in front of the shower modules is simulated in full: target, windows, GEM
+// planes, Cherenkov gas, scintillator pads, and the preshower with its lead radiator. The radiator has to stay:
+// a low-energy electron often ends in it, and then only its shower reaches the scintillator behind
+// (with the radiator included, 3 % of the electrons that arrive leave no signal; docs/analysis.md).
 //
 // NOT for anything that needs the calorimeter response: energy, E/p, shower shape, trigger thresholds, particle
 // identification, backgrounds from albedo. For those run without it.
 //
 // Properties:
 //   Volumes   name fragments; a secondary is a candidate when the name of the volume it is born in contains one
-//             of them (default "ECShower_", "ECPreShower_": every part of the forward and large-angle calorimeters)
-//   MinEkin   MeV; candidates born with less kinetic energy are dropped (default 50)
+//             of them (default "ECShower_": the shower modules of the forward and large-angle calorimeters)
+//   MinEkin   MeV; candidates born with less kinetic energy are dropped (default 20)
 //
 // steering/solid_sim.py adds the action with SOLID_FAST=1 (SOLID_FAST_MIN_EKIN changes MinEkin).
 
@@ -44,8 +46,8 @@ public:
   SoLIDShowerStop(dd4hep::sim::Geant4Context* ctx, const std::string& nam)
       : dd4hep::sim::Geant4StackingAction(ctx, nam)
   {
-    declareProperty("Volumes", m_fragments = {"ECShower_", "ECPreShower_"});
-    declareProperty("MinEkin", m_minEkin = 50.0);
+    declareProperty("Volumes", m_fragments = {"ECShower_"});
+    declareProperty("MinEkin", m_minEkin = 20.0);
     dd4hep::InstanceCount::increment(this);
   }
 
@@ -53,7 +55,7 @@ public:
   {
     if (!s_reported.exchange(true)) {
       dd4hep::printout(dd4hep::INFO, "SoLIDShowerStop",
-                       "%ld secondaries below %g MeV born in calorimeter volumes were dropped: NO calorimeter response "
+                       "%ld secondaries below %g MeV born in calorimeter shower modules were dropped: NO calorimeter response "
                        "in this run", (long)s_dropped.load(), m_minEkin);
     }
     dd4hep::InstanceCount::decrement(this);
@@ -84,7 +86,7 @@ public:
 
 private:
   std::vector<std::string> m_fragments;
-  double m_minEkin = 50.0;
+  double m_minEkin = 20.0;
   std::unordered_map<const G4LogicalVolume*, bool> m_cache;
   static std::atomic<long> s_dropped;
   static std::atomic<bool> s_reported;
