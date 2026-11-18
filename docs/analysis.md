@@ -103,6 +103,22 @@ Two things to know when comparing:
   arms span 7.3°–15.2° and 16.0°–25.8°. How much of the edge modules is usable is a question for the shower
   containment, not for the acceptance.
 
+### Pions
+
+20 000 pions of each charge (fast mode) against GEMC's pion maps have the same edges and, at first, a plateau
+11–13 % higher. With real tungsten the collimators of the ³He target are not opaque to hadrons: 35–50 % of
+few-GeV pions arrive from the part of the target where electrons are fully blocked. A crosser loses 150–200 MeV;
+a pion that misses the collimators loses 3 MeV up to the last large-angle GEM plane and 15 MeV up to the forward
+pads. `--p-loss-max 0.05` removes the crossers:
+
+| pions, loss below 50 MeV | forward arm | large-angle arm |
+|---|---|---|
+| edges, this simulation | 8.1° and 15.1° | 16.8° and 24.8° |
+| edges, GEMC | 8.2° and 15.1° | 16.7° and 24.7° |
+| mean difference in the plateau, π⁺ / π⁻ | −6 % / −7 % | +1 % / −1 % |
+
+The forward arm is lower because about one pion in ten interacts in the material in front of the forward pads.
+
 ## Fast mode for acceptance runs
 
 A shower in the shashlik modules takes most of the simulation time of an electron, nearly all of it in particles
