@@ -68,15 +68,19 @@ RUN cd /tmp/lager && \
 # SIDIS-RC EvGen (D. Byer et al., Comput. Phys. Commun. 287 (2023) 108702; GPL-3.0): semi-inclusive DIS with
 # lowest-order QED radiative corrections, the generator of the SoLID SIDIS studies (docs/generators.md). Built
 # from a fixed commit with its submodules (mstwpdf, cubature-cpp, bubble) into /opt/sidis; it needs ROOT and GSL,
-# both in eic_xl, and no patch. profile.d/z20_solid.sh puts /opt/sidis/bin on PATH.
+# both in eic_xl. One patch: its built-in structure functions are the proton's for every target;
+# patches/sidis-neutron-isospin.patch gives the neutron by isospin rotation.
+# profile.d/z20_solid.sh puts /opt/sidis/bin on PATH.
 ARG SIDIS_COMMIT=8f9881ae958027c01daf3aa588caffcc47f6c11a
+COPY containers/patches/sidis-neutron-isospin.patch /tmp/sidis-neutron-isospin.patch
 RUN git clone https://github.com/duanebyer/sidis.git /tmp/sidis && cd /tmp/sidis && \
     git checkout -q ${SIDIS_COMMIT} && git submodule update --init --recursive && \
+    patch -p1 < /tmp/sidis-neutron-isospin.patch && \
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/sidis \
           -DSidis_BUILD_TESTS=OFF -DSidis_BUILD_EXAMPLES=OFF -DSidis_BUILD_DOXYGEN=OFF && \
     cmake --build build -j"$(nproc)" && cmake --install build && \
-    cp LICENSE README.md /opt/sidis/share/sidis/ && \
-    cd / && rm -rf /tmp/sidis && \
+    cp LICENSE README.md /tmp/sidis-neutron-isospin.patch /opt/sidis/share/sidis/ && \
+    cd / && rm -rf /tmp/sidis /tmp/sidis-neutron-isospin.patch && \
     /opt/sidis/bin/sidisgen --help > /dev/null && echo "sidisgen: starts"
 
 # SoLID geometry, built with the image's own toolchain
