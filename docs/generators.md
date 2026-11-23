@@ -39,7 +39,8 @@ equalled those on the proton (5.79 nb for π⁺ in the cuts above). `containers/
 gives the neutron by isospin rotation of the proton's parton distributions (u ↔ d, ū ↔ d̄), for the unpolarized
 and all polarized distributions; charges and fragmentation functions keep the flavour of the struck quark. In a
 box at x = 0.2–0.3 the Born cross sections then stand as p π⁺ : p π⁻ : n π⁺ : n π⁻ = 7.2 : 3.9 : 4.3 : 3.7, and
-the neutron-to-proton ratio summed over both pions is 0.73, as F₂ⁿ/F₂ᵖ there. The deuteron is not implemented:
+the neutron-to-proton ratio summed over both pions is 0.73, as F₂ⁿ/F₂ᵖ there. Inside the SoLID cuts above the
+cross sections are 5.79 (p π⁺), 3.41 (p π⁻), 4.00 (n π⁺) and 3.55 nb (n π⁻). The deuteron is not implemented:
 the generator now says that it uses the proton set.
 
 **Polarized ³He** is not a target of the generator. Generate on the neutron and on the proton and combine
