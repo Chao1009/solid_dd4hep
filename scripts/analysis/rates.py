@@ -4,7 +4,7 @@
 
 usage:
     rates.py SIM.edm4hep.root [...] --electrons-per-event N --current UA [-o RATES.npz] [--encodings-from FILE]
-             [--gem-emin 26e-9] [--r-step 5] [--window NS]
+             [--emin NAME=GEV ...] [--r-step 5] [--window NS]
 
 The input is a simulation of beam electrons on the target (scripts/event_display/beam_on_target.py, N electrons
 per event, full physics, not the fast mode). For every tracker-type collection (GEM planes, scintillator pads,
@@ -12,11 +12,17 @@ MRPC) and layer the hits are counted in rings of --r-step cm and turned into a r
 (in uA; 1 uA = 6.2415e12 electrons per second):
 
     rate per area   hits / (electrons x ring area) x electrons per second          kHz/cm2
-    rate per element, for collections with pads (ring field in the cell ID): hits per pad                 kHz
+    rate per pad, for collections with a sector field in the cell ID (scintillator pads), by ring         kHz
     occupancy       with --window NS: rate per element x window (pads), for comparison with the pre-CDR tables
 
-A GEM hit counts when it left at least --gem-emin GeV in the drift gap (default 26 eV, one primary ionization);
-every other hit counts as stored. Several steps of one particle in one volume are one hit in ddsim.
+A hit counts when it left at least a threshold energy. ddsim stores a hit for every particle that crosses a
+sensitive volume, photons without any deposit included, so a threshold is needed everywhere. Defaults:
+    GEM, MRPC   26 eV in the gas gap (one primary ionization)
+    FASPD       0.6 MeV, half of a minimum-ionizing particle in the 6 mm pads
+    LASPD       2 MeV, half of a minimum-ionizing particle in the 20 mm pads
+--emin NAME=GEV changes the threshold of the collections whose name contains NAME (repeatable). The threshold is
+applied to single hits: several particles in one pad within the read-out window are not added up. Several steps
+of one particle in one volume are one hit in ddsim.
 
 Statistical errors are sqrt(hits); a ring with fewer than about 100 hits says little. The simulation has the
 electromagnetic background and Geant4's photo- and electro-nuclear processes; the hadron background of the GEMC
@@ -40,7 +46,7 @@ def main():
     ap.add_argument("files", nargs="+")
     ap.add_argument("--electrons-per-event", type=float, required=True)
     ap.add_argument("--current", type=float, required=True)
-    ap.add_argument("--gem-emin", type=float, default=26e-9)
+    ap.add_argument("--emin", action="append", default=[], metavar="NAME=GEV")
     ap.add_argument("--r-step", type=float, default=5.0)
     ap.add_argument("--window", type=float, default=0.0)
     ap.add_argument("--encodings-from")
@@ -49,6 +55,14 @@ def main():
 
     import awkward as ak
     import uproot
+
+    emin = [("GEM", 26e-9), ("MRPC", 26e-9), ("FASPD", 0.6e-3), ("LASPD", 2.0e-3)]
+    for item in a.emin:
+        k, v = item.split("=")
+        emin.insert(0, (k, float(v)))
+
+    def threshold(name):
+        return next((v for k, v in emin if k in name), 0.0)
 
     enc_text = {}
     if a.encodings_from:
@@ -75,7 +89,7 @@ def main():
                 ed = ak.to_numpy(ak.flatten(arr["%s/%s.eDep" % (name, name)]))
                 x = ak.to_numpy(ak.flatten(arr["%s/%s.position.x" % (name, name)])) / 10.0
                 y = ak.to_numpy(ak.flatten(arr["%s/%s.position.y" % (name, name)])) / 10.0
-                ok = ed >= a.gem_emin if "GEM" in name else np.ones(len(cid), bool)
+                ok = ed >= threshold(name)
                 layer = decode(cid, e, "layer") if "layer" in e else np.ones(len(cid), np.int64)
                 r = np.hypot(x, y)
                 for l in np.unique(layer[ok]):
@@ -83,8 +97,9 @@ def main():
                     h, _ = np.histogram(r[m], bins=redges)
                     key = (name, int(l))
                     hist[key] = hist.get(key, 0) + h
-                if "ring" in e and "sector" in e:
-                    ring, sec = decode(cid, e, "ring"), decode(cid, e, "sector")
+                if "sector" in e:
+                    sec = decode(cid, e, "sector")[ok]
+                    ring = decode(cid, e, "ring")[ok] if "ring" in e else np.ones(len(sec), np.int64)
                     for rg in np.unique(ring):
                         cnt = np.bincount(sec[ring == rg], minlength=sec.max() + 1)
                         key = (name, int(rg))
@@ -94,6 +109,7 @@ def main():
     electrons = nev * a.electrons_per_event
     per_s = a.current * E_PER_UA
     print("%d events x %g electrons = %.3g beam electrons; rates at %g uA" % (nev, a.electrons_per_event, electrons, a.current))
+    print("thresholds: " + ", ".join("%s %.3g MeV" % (k, v * 1e3) for k, v in emin))
     out = {"r_edges": redges, "electrons": electrons, "current_uA": a.current}
     print("%-22s %5s %10s %9s %14s %12s" % ("collection", "layer", "hits", "r range", "highest ring", "kHz/cm2 there"))
     for (name, l), h in sorted(hist.items()):
@@ -112,7 +128,9 @@ def main():
             c = cnt[1:] if len(cnt) > 1 else cnt          # sector numbers start at 1
             khz = c / electrons * per_s / 1e3
             occ = "   %.3f mean" % (khz.mean() * 1e3 * a.window * 1e-9) if a.window else ""
-            print("%-22s %5d %10d %16.1f %16.1f%s" % (name, rg, c.sum(), khz.mean(), khz.max(), occ))
+            # the largest single pad means something only with enough hits per pad
+            top = "%16.1f" % khz.max() if c.sum() >= 20 * len(c) else "%16s" % "(too few hits)"
+            print("%-22s %5d %10d %16.1f %s%s" % (name, rg, c.sum(), khz.mean(), top, occ))
             out["%s_ring%d_kHz" % (name, rg)] = khz
     if a.output:
         np.savez_compressed(a.output, **out)
