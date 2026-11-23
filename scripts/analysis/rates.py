@@ -4,7 +4,7 @@
 
 usage:
     rates.py SIM.edm4hep.root [...] --electrons-per-event N --current UA [-o RATES.npz] [--encodings-from FILE]
-             [--emin NAME=GEV ...] [--r-step 5] [--window NS]
+             [--emin NAME=GEV ...] [--r-step 5] [--window NS] [--pads 60]
 
 The input is a simulation of beam electrons on the target (scripts/event_display/beam_on_target.py, N electrons
 per event, full physics, not the fast mode). For every tracker-type collection (GEM planes, scintillator pads,
@@ -49,6 +49,7 @@ def main():
     ap.add_argument("--emin", action="append", default=[], metavar="NAME=GEV")
     ap.add_argument("--r-step", type=float, default=5.0)
     ap.add_argument("--window", type=float, default=0.0)
+    ap.add_argument("--pads", type=int, default=60, help="pads per ring (default 60)")
     ap.add_argument("--encodings-from")
     ap.add_argument("-o", "--output")
     a = ap.parse_args()
@@ -126,6 +127,7 @@ def main():
         print("%-22s %5s %10s %16s %16s%s" % ("pads", "ring", "hits", "mean kHz per pad", "max kHz per pad", "   occupancy in %g ns" % a.window if a.window else ""))
         for (name, rg), cnt in sorted(pads.items()):
             c = cnt[1:] if len(cnt) > 1 else cnt          # sector numbers start at 1
+            c = np.pad(c, (0, max(0, a.pads - len(c))))   # pads without a hit count too
             khz = c / electrons * per_s / 1e3
             occ = "   %.3f mean" % (khz.mean() * 1e3 * a.window * 1e-9) if a.window else ""
             # the largest single pad means something only with enough hits per pad
