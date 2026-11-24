@@ -151,6 +151,25 @@ electrons that leave the lead radiator only as soft photons. What was tried on t
 A fast-mode file has **no calorimeter response**: no energy, no E/p, no trigger thresholds. The log says so in its
 last lines.
 
+## Rates and their sources
+
+Beam electrons on the target with all physics (`scripts/event_display/beam_on_target.py`, not the fast mode):
+
+```
+rates.py beam*.edm4hep.root --electrons-per-event 1000 --current 15 --window 50      # kHz/cm2 per ring, kHz per pad
+rate_sources.py beam*.edm4hep.root --electrons-per-event 1000 --current 15           # where the hits come from
+```
+
+`rates.py` counts hits above a threshold (26 eV in a GEM or MRPC gas gap, half a minimum-ionizing particle in the
+scintillator pads) in rings of radius and per pad. A threshold is needed everywhere: ddsim stores a hit for every
+photon that crosses a sensitive volume. `rate_sources.py` follows the particle behind each hit back to the beam
+electron and sorts the hits by origin (target gas, cell windows and wall, beam-line windows, collimators, exit
+pipe), by what the beam electron made first (photon, electron, positron, hadron) and by what made the hit.
+
+ddsim does not store every secondary: photons below 1 MeV in particular are dropped, and the chain of a hit they
+cause then seems to start at the detector. `SOLID_KEEP_ALL=1` stores every secondary above 1 keV with its parent;
+beam-on-target files become about ten times larger (0.9 GB per million beam electrons), the speed is the same.
+
 ## Trapped particles
 
 A low-energy electron born in a vacuum volume inside the solenoid field can be trapped between two regions of

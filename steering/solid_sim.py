@@ -29,6 +29,10 @@ Environment switches (all optional):
                         20), so only the energetic core of a shower develops there; the preshower is simulated
                         in full. Several times faster for electrons. NOT for anything that needs the
                         calorimeter response (docs/analysis.md).
+    SOLID_KEEP_ALL=0|1  store every secondary above 1 keV with its parent (default 0: ddsim keeps only what it needs
+                        for the hits, and drops most photons below 1 MeV). Needed to trace a hit back to where
+                        the background started (scripts/analysis/rate_sources.py). About ten times larger files
+                        for beam-on-target runs; same speed.
 Command-line options of ddsim override everything set here.
 """
 import os
@@ -112,6 +116,13 @@ if _scene:
         return None
 
     SIM.physics.setupUserPhysics(setup_scene_dump)
+
+# --------------------------------------------------------------------------------------
+# full ancestry of every hit, for the study of where the background comes from
+if os.environ.get('SOLID_KEEP_ALL', '0') not in ('', '0'):
+    SIM.part.keepAllParticles = True
+    SIM.part.minimalKineticEnergy = 0.001          # MeV
+    SIM.part.userParticleHandler = ''
 
 # --------------------------------------------------------------------------------------
 # particles trapped by the field in vacuum: stop charged tracks that are still moving long after the event
